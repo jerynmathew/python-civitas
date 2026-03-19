@@ -1,0 +1,16 @@
+supervision:
+  name: root
+  strategy: one_for_one
+  max_restarts: 3
+  restart_window: 60.0
+  children:
+    - supervisor:
+        name: research_sup
+        strategy: one_for_one
+        max_restarts: 5
+        restart_window: 30.0
+        backoff: exponential
+        children:
+          - agent: { type: Researcher, name: researcher_1 }
+          - agent: { type: Researcher, name: researcher_2 }
+    - agent: { type: Summarizer, name: summarizer }
