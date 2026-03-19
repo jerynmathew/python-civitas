@@ -16,6 +16,15 @@ if TYPE_CHECKING:
     from agency.registry import Registry
 
 
+class HeartbeatTimeout(Exception):
+    """Raised when a remote agent fails to respond to heartbeat pings."""
+
+    def __init__(self, agent_name: str, missed: int) -> None:
+        self.agent_name = agent_name
+        self.missed = missed
+        super().__init__(f"Agent '{agent_name}' missed {missed} heartbeats")
+
+
 class RestartStrategy(Enum):
     ONE_FOR_ONE = "ONE_FOR_ONE"
     ONE_FOR_ALL = "ONE_FOR_ALL"
@@ -68,6 +77,14 @@ class Supervisor:
         self._registry: Registry | None = None
         self._tracer: Tracer | None = None
 
+        # Heartbeat monitoring for remote agents
+        self._remote_children: set[str] = set()
+        self._heartbeat_task: asyncio.Task[None] | None = None
+        self._heartbeat_interval: float = 5.0
+        self._heartbeat_timeout: float = 2.0
+        self._missed_heartbeats_threshold: int = 3
+        self._missed_heartbeats: dict[str, int] = {}
+
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
@@ -88,9 +105,13 @@ class Supervisor:
             else:
                 await self._start_child(child)
 
+        # Start heartbeat monitoring for remote children
+        await self._start_heartbeat_monitor()
+
     async def stop(self) -> None:
         """Stop all children gracefully."""
         self._running = False
+        await self._stop_heartbeat_monitor()
         for child in reversed(self.children):
             if isinstance(child, Supervisor):
                 await child.stop()
@@ -115,6 +136,81 @@ class Supervisor:
         exc = task.exception()
         if exc is not None:
             asyncio.create_task(self._handle_crash(name, exc))
+
+    # ------------------------------------------------------------------
+    # Remote child / heartbeat support
+    # ------------------------------------------------------------------
+
+    def add_remote_child(
+        self,
+        name: str,
+        heartbeat_interval: float = 5.0,
+        heartbeat_timeout: float = 2.0,
+        missed_heartbeats_threshold: int = 3,
+    ) -> None:
+        """Register a remote child for heartbeat-based monitoring.
+
+        Remote children are agents running in a Worker process. They are
+        monitored via periodic heartbeat pings instead of task callbacks.
+        """
+        self._remote_children.add(name)
+        self._missed_heartbeats[name] = 0
+        self._heartbeat_interval = heartbeat_interval
+        self._heartbeat_timeout = heartbeat_timeout
+        self._missed_heartbeats_threshold = missed_heartbeats_threshold
+
+    async def _start_heartbeat_monitor(self) -> None:
+        """Start the heartbeat monitoring loop for remote children."""
+        if not self._remote_children:
+            return
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+
+    async def _heartbeat_loop(self) -> None:
+        """Periodically ping remote children and detect crashes."""
+        from agency.messages import Message, _uuid7
+        from agency.observability.tracer import _new_span_id
+
+        while self._running:
+            for name in list(self._remote_children):
+                if not self._running:
+                    break
+                try:
+                    heartbeat = Message(
+                        type="_agency.heartbeat",
+                        sender=self.name,
+                        recipient=name,
+                        correlation_id=_uuid7(),
+                        span_id=_new_span_id(),
+                    )
+                    assert self._bus is not None
+                    await asyncio.wait_for(
+                        self._bus.request(heartbeat, timeout=self._heartbeat_timeout),
+                        timeout=self._heartbeat_timeout + 1.0,
+                    )
+                    # Got ack — reset missed counter
+                    self._missed_heartbeats[name] = 0
+                except (TimeoutError, asyncio.TimeoutError):
+                    self._missed_heartbeats[name] = (
+                        self._missed_heartbeats.get(name, 0) + 1
+                    )
+                    missed = self._missed_heartbeats[name]
+                    if missed >= self._missed_heartbeats_threshold:
+                        await self._handle_crash(
+                            name, HeartbeatTimeout(name, missed)
+                        )
+                        self._missed_heartbeats[name] = 0
+
+            await asyncio.sleep(self._heartbeat_interval)
+
+    async def _stop_heartbeat_monitor(self) -> None:
+        """Stop the heartbeat monitor task."""
+        if self._heartbeat_task is not None:
+            self._heartbeat_task.cancel()
+            try:
+                await self._heartbeat_task
+            except asyncio.CancelledError:
+                pass
+            self._heartbeat_task = None
 
     # ------------------------------------------------------------------
     # Crash handling
@@ -173,7 +269,12 @@ class Supervisor:
             await self._restart_rest_for_one(name)
 
     async def _restart_child(self, name: str) -> None:
-        """Restart a single child by name."""
+        """Restart a single child by name (local or remote)."""
+        # Remote child — send restart command via message bus
+        if name in self._remote_children:
+            await self._restart_remote_child(name)
+            return
+
         agent = self._find_child(name)
         if agent is None or isinstance(agent, Supervisor):
             return
@@ -185,6 +286,20 @@ class Supervisor:
             self._registry.deregister(name)
             self._registry.register(name, agent)
         await self._start_child(agent)
+
+    async def _restart_remote_child(self, name: str) -> None:
+        """Send a restart command to a remote worker via ZMQ."""
+        from agency.messages import Message
+
+        if self._bus is None:
+            return
+        restart_msg = Message(
+            type="_agency.restart",
+            sender=self.name,
+            recipient="_agency.worker.restart",
+            payload={"agent_name": name},
+        )
+        await self._bus.route(restart_msg)
 
     async def _restart_all_children(self) -> None:
         """Stop and restart all children (ONE_FOR_ALL)."""

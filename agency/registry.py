@@ -12,10 +12,19 @@ if TYPE_CHECKING:
 # At runtime, values are AgentProcess instances.
 
 
-class Registry:
-    """In-memory process registry for Level 1 (single-process).
+class _RemoteStub:
+    """Lightweight stand-in for an agent running in another process."""
 
-    Provides register, lookup, pattern-based lookup, and deregister.
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+class Registry:
+    """Process registry with support for both local and remote agents.
+
+    Level 1 (single-process): all entries are AgentProcess instances.
+    Level 2+ (multi-process): remote agents are registered as stubs
+    so that pattern-based lookups (broadcast) work across processes.
     """
 
     def __init__(self) -> None:
@@ -42,6 +51,11 @@ class Registry:
             for name, proc in self._processes.items()
             if fnmatch.fnmatch(name, pattern)
         ]
+
+    def register_remote(self, name: str) -> None:
+        """Register a remote agent by name (for cross-process pattern matching)."""
+        if name not in self._processes:
+            self._processes[name] = _RemoteStub(name)
 
     def has(self, name: str) -> bool:
         """Check if a process is registered under the given name."""

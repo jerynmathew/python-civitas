@@ -1,0 +1,51 @@
+# M2.1 — Multi-Process Topology
+#
+# The same research assistant from M1.7, now split across two processes:
+#   Process A (supervisor): Orchestrator + Synthesizer + Writer
+#   Process B (worker):     WebResearcher
+#
+# Usage:
+#   # Process A (starts proxy):
+#   agency run --topology examples/multi_process.yaml --process supervisor
+#
+#   # Process B (connects to proxy):
+#   agency run --topology examples/multi_process.yaml --process worker
+#
+# Or programmatically:
+#   runtime = Runtime.from_config("examples/multi_process.yaml")
+#   await runtime.start()
+
+transport:
+  type: zmq
+  pub_addr: "tcp://127.0.0.1:5559"
+  sub_addr: "tcp://127.0.0.1:5560"
+  start_proxy: true
+
+supervision:
+  name: root
+  strategy: ONE_FOR_ONE
+  max_restarts: 5
+  children:
+    - supervisor:
+        name: research_sup
+        strategy: ONE_FOR_ONE
+        max_restarts: 3
+        backoff: CONSTANT
+        backoff_base: 0.1
+        children:
+          - agent:
+              name: web_researcher
+              type: examples.research_assistant.WebResearcher
+              process: worker  # runs in worker process
+
+    - agent:
+        name: orchestrator
+        type: examples.research_assistant.Orchestrator
+
+    - agent:
+        name: synthesizer
+        type: examples.research_assistant.Synthesizer
+
+    - agent:
+        name: writer
+        type: examples.research_assistant.Writer

@@ -230,6 +230,18 @@ class AgentProcess:
             message = await self._mailbox.get()
             if message.type == "_agency.shutdown":
                 break
+            if message.type == "_agency.heartbeat":
+                # Auto-respond to heartbeat pings from supervisor
+                if self._bus is not None:
+                    ack = Message(
+                        type="_agency.heartbeat_ack",
+                        sender=self.name,
+                        recipient=message.reply_to or message.sender,
+                        correlation_id=message.correlation_id,
+                        trace_id=message.trace_id,
+                    )
+                    await self._bus.route(ack)
+                continue
             self._current_message = message
             try:
                 result = await self.handle(message)

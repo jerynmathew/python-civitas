@@ -46,6 +46,9 @@ class Runtime:
         model_provider: Any = None,
         tool_registry: Any = None,
         state_store: Any = None,
+        zmq_pub_addr: str = "tcp://127.0.0.1:5559",
+        zmq_sub_addr: str = "tcp://127.0.0.1:5560",
+        zmq_start_proxy: bool = True,
     ) -> None:
         self._root_supervisor = supervisor
         self._transport_type = transport
@@ -54,10 +57,15 @@ class Runtime:
         self._tool_registry = tool_registry
         self._state_store = state_store
 
+        # ZMQ-specific config
+        self._zmq_pub_addr = zmq_pub_addr
+        self._zmq_sub_addr = zmq_sub_addr
+        self._zmq_start_proxy = zmq_start_proxy
+
         # Built during start()
         self._serializer: Serializer | None = None
         self._tracer: Tracer | None = None
-        self._transport: InProcessTransport | None = None
+        self._transport: Any = None  # Transport protocol (InProcess or ZMQ)
         self._registry: Registry | None = None
         self._bus: MessageBus | None = None
         self._started = False
@@ -123,7 +131,20 @@ class Runtime:
             backoff=sup_cfg.get("backoff", "CONSTANT").upper(),
         )
 
-        return cls(supervisor=root)
+        # Transport config
+        transport_cfg = config.get("transport", {})
+        transport_type = transport_cfg.get("type", "in_process")
+
+        kwargs: dict[str, Any] = {"supervisor": root, "transport": transport_type}
+        if transport_type == "zmq":
+            if "pub_addr" in transport_cfg:
+                kwargs["zmq_pub_addr"] = transport_cfg["pub_addr"]
+            if "sub_addr" in transport_cfg:
+                kwargs["zmq_sub_addr"] = transport_cfg["sub_addr"]
+            if "start_proxy" in transport_cfg:
+                kwargs["zmq_start_proxy"] = transport_cfg["start_proxy"]
+
+        return cls(**kwargs)
 
     def print_tree(self) -> str:
         """Return an ASCII representation of the supervision tree."""
@@ -173,7 +194,17 @@ class Runtime:
         self._tracer = Tracer()
 
         # 4. Create Transport
-        self._transport = InProcessTransport(self._serializer)
+        if self._transport_type == "zmq":
+            from agency.transport.zmq import ZMQTransport
+
+            self._transport = ZMQTransport(
+                self._serializer,
+                pub_addr=self._zmq_pub_addr,
+                sub_addr=self._zmq_sub_addr,
+                start_proxy=self._zmq_start_proxy,
+            )
+        else:
+            self._transport = InProcessTransport(self._serializer)
 
         # 5. Create Registry
         self._registry = Registry()
@@ -221,6 +252,10 @@ class Runtime:
         # Set up transport subscriptions for each agent
         for agent in all_agents:
             await self._bus.setup_agent(agent)
+
+        # Wait for subscriptions to propagate (ZMQ slow joiner mitigation)
+        if hasattr(self._transport, "wait_ready"):
+            await self._transport.wait_ready()
 
         # 11-12. Start supervision tree (supervisors start their children)
         await self._root_supervisor.start()
