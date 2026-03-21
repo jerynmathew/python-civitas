@@ -9,6 +9,8 @@ Public API:
     ErrorAction   — enum: RETRY, SKIP, ESCALATE, STOP
 """
 
+from __future__ import annotations
+
 from agency.errors import AgencyError, ErrorAction
 from agency.messages import Message
 from agency.process import AgentProcess

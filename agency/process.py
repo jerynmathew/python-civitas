@@ -9,11 +9,10 @@ from typing import TYPE_CHECKING, Any
 from agency.errors import ErrorAction
 from agency.messages import Message, _uuid7
 from agency.observability.tracer import Tracer, _new_span_id
+from agency.registry import Registry
 
 if TYPE_CHECKING:
     from agency.bus import MessageBus
-    from agency.plugins.state import StateStore
-    from agency.plugins.tools import ToolRegistry
 
 
 class ProcessStatus(Enum):
@@ -66,6 +65,7 @@ class Mailbox:
             await self._notify.wait()
 
     def empty(self) -> bool:
+        """Return True if both priority and normal queues are empty."""
         return self._priority_queue.empty() and self._queue.empty()
 
 
@@ -135,12 +135,34 @@ class AgentProcess:
         """Called on graceful shutdown."""
 
     # ------------------------------------------------------------------
+    # State persistence — checkpoint and restore
+    # ------------------------------------------------------------------
+
+    async def checkpoint(self) -> None:
+        """Save self.state to the configured StateStore.
+
+        Call this from handle() after completing a meaningful unit of work.
+        On restart, self.state is automatically restored from the last checkpoint.
+        Agents that never call checkpoint() incur zero overhead.
+        """
+        if self.store is not None:
+            await self.store.set(self.name, self.state)
+
+    async def _restore_state(self) -> None:
+        """Restore self.state from the StateStore if a checkpoint exists."""
+        if self.store is not None:
+            saved = await self.store.get(self.name)
+            if saved is not None:
+                self.state = saved
+
+    # ------------------------------------------------------------------
     # Messaging methods — call from inside hooks
     # ------------------------------------------------------------------
 
     async def send(self, recipient: str, payload: dict[str, Any]) -> None:
         """Fire-and-forget: send a message to another agent by name."""
-        assert self._bus is not None, "AgentProcess not wired to a MessageBus"
+        if self._bus is None:
+            raise RuntimeError("AgentProcess not wired to a MessageBus")
         trace_id = ""
         parent_span_id: str | None = None
         if self._current_message is not None:
@@ -162,7 +184,8 @@ class AgentProcess:
         self, recipient: str, payload: dict[str, Any], timeout: float = 30.0
     ) -> Message:
         """Request-reply: send a message and await a response."""
-        assert self._bus is not None, "AgentProcess not wired to a MessageBus"
+        if self._bus is None:
+            raise RuntimeError("AgentProcess not wired to a MessageBus")
         trace_id = ""
         parent_span_id: str | None = None
         if self._current_message is not None:
@@ -184,8 +207,8 @@ class AgentProcess:
 
     async def broadcast(self, pattern: str, payload: dict[str, Any]) -> None:
         """Send a message to all agents matching a glob pattern."""
-        assert self._bus is not None, "AgentProcess not wired to a MessageBus"
-        from agency.registry import Registry
+        if self._bus is None:
+            raise RuntimeError("AgentProcess not wired to a MessageBus")
 
         # Access registry through the bus
         registry: Registry = self._bus._registry
@@ -195,7 +218,8 @@ class AgentProcess:
 
     def reply(self, payload: dict[str, Any]) -> Message:
         """Create a reply message. Return this from handle() for request-reply."""
-        assert self._current_message is not None, "reply() called outside of handle()"
+        if self._current_message is None:
+            raise RuntimeError("reply() called outside of handle()")
         msg = self._current_message
         return Message(
             type=payload.get("type", "reply"),
@@ -216,6 +240,7 @@ class AgentProcess:
         """Initialize the agent and start the message loop as a task."""
         self._status = ProcessStatus.INITIALIZING
         self._running_event = asyncio.Event()
+        await self._restore_state()
         await self.on_start()
         self._task = asyncio.create_task(self._message_loop(), name=self.name)
         # Wait until the message loop has entered RUNNING
@@ -245,8 +270,7 @@ class AgentProcess:
             self._current_message = message
             try:
                 result = await self.handle(message)
-                if result is not None and message.correlation_id:
-                    assert self._bus is not None
+                if result is not None and message.correlation_id and self._bus is not None:
                     await self._bus.route(result)
             except Exception as exc:
                 action = await self.on_error(exc, message)
@@ -287,5 +311,5 @@ class AgentProcess:
             try:
                 async with asyncio.timeout(30):
                     await self._task
-            except (asyncio.TimeoutError, asyncio.CancelledError):
+            except (TimeoutError, asyncio.CancelledError):
                 self._task.cancel()

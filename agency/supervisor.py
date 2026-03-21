@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import random
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
+from agency.messages import Message, _uuid7
+from agency.observability.tracer import _new_span_id
 from agency.process import AgentProcess, ProcessStatus
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from agency.bus import MessageBus
@@ -26,12 +31,16 @@ class HeartbeatTimeout(Exception):
 
 
 class RestartStrategy(Enum):
+    """Strategy used by a Supervisor when a child process crashes."""
+
     ONE_FOR_ONE = "ONE_FOR_ONE"
     ONE_FOR_ALL = "ONE_FOR_ALL"
     REST_FOR_ONE = "REST_FOR_ONE"
 
 
 class BackoffPolicy(Enum):
+    """Delay strategy applied between successive restart attempts."""
+
     CONSTANT = "CONSTANT"
     LINEAR = "LINEAR"
     EXPONENTIAL = "EXPONENTIAL"
@@ -167,9 +176,6 @@ class Supervisor:
 
     async def _heartbeat_loop(self) -> None:
         """Periodically ping remote children and detect crashes."""
-        from agency.messages import Message, _uuid7
-        from agency.observability.tracer import _new_span_id
-
         while self._running:
             for name in list(self._remote_children):
                 if not self._running:
@@ -182,14 +188,15 @@ class Supervisor:
                         correlation_id=_uuid7(),
                         span_id=_new_span_id(),
                     )
-                    assert self._bus is not None
+                    if self._bus is None:
+                        break
                     await asyncio.wait_for(
                         self._bus.request(heartbeat, timeout=self._heartbeat_timeout),
                         timeout=self._heartbeat_timeout + 1.0,
                     )
                     # Got ack — reset missed counter
                     self._missed_heartbeats[name] = 0
-                except (TimeoutError, asyncio.TimeoutError):
+                except TimeoutError:
                     self._missed_heartbeats[name] = (
                         self._missed_heartbeats.get(name, 0) + 1
                     )
@@ -239,7 +246,7 @@ class Supervisor:
         restart_num = self._restart_counts[name]
         if self._tracer:
             span = self._tracer.start_span(
-                f"supervisor.restart",
+                "supervisor.restart",
                 attributes={
                     "agency.supervisor": self.name,
                     "agency.child": name,
@@ -250,9 +257,9 @@ class Supervisor:
             )
             span.end()
         else:
-            print(
-                f"[{self.name}] Restart {restart_num}/{self.max_restarts}: "
-                f"{name} crashed ({exc})"
+            logger.info(
+                "[%s] Restart %d/%d: %s crashed (%s)",
+                self.name, restart_num, self.max_restarts, name, exc,
             )
 
         # Apply backoff delay
@@ -289,8 +296,6 @@ class Supervisor:
 
     async def _restart_remote_child(self, name: str) -> None:
         """Send a restart command to a remote worker via ZMQ."""
-        from agency.messages import Message
-
         if self._bus is None:
             return
         restart_msg = Message(
@@ -353,9 +358,9 @@ class Supervisor:
 
     async def _escalate(self, name: str, exc: Exception) -> None:
         """Max restarts exceeded — escalate to parent or stop permanently."""
-        print(
-            f"[{self.name}] Max restarts ({self.max_restarts}) exceeded for {name}. "
-            f"Escalating."
+        logger.warning(
+            "[%s] Max restarts (%d) exceeded for %s. Escalating.",
+            self.name, self.max_restarts, name,
         )
         if self._parent is not None:
             # Escalate: parent treats this supervisor as crashed

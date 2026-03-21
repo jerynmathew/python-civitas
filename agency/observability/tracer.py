@@ -7,11 +7,15 @@ know which backend is active.
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from typing import Any
 
-from agency.messages import Message, _uuid7
+from agency.config import settings
+from agency.messages import Message
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Span abstraction — thin wrapper so callers don't depend on OTEL types
@@ -39,11 +43,13 @@ class Span:
         self._otel_span: Any = None  # holds real OTEL span if available
 
     def set_attribute(self, key: str, value: Any) -> None:
+        """Set an attribute on this span."""
         self.attributes[key] = value
         if self._otel_span is not None:
             self._otel_span.set_attribute(key, value)
 
     def end(self) -> None:
+        """Mark this span as finished."""
         self.end_time = time.time()
         if self._otel_span is not None:
             self._otel_span.end()
@@ -60,6 +66,8 @@ try:
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import (
         ConsoleSpanExporter as OTELConsoleSpanExporter,
+    )
+    from opentelemetry.sdk.trace.export import (
         SimpleSpanProcessor,
     )
 
@@ -89,7 +97,7 @@ class Tracer:
 
         if _HAS_OTEL:
             provider = TracerProvider()
-            endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+            endpoint = settings.otel_endpoint
 
             if endpoint:
                 try:
@@ -138,7 +146,7 @@ class Tracer:
         elif self._console_fallback:
             ts = time.strftime("%H:%M:%S", time.localtime(span.start_time))
             ms = f"{span.start_time % 1:.3f}"[1:]
-            print(f"[{ts}{ms}] {message.sender} -> {message.recipient}: {message.type}")
+            logger.info("[%s%s] %s -> %s: %s", ts, ms, message.sender, message.recipient, message.type)
         return span
 
     def start_receive_span(self, message: Message) -> Span:
@@ -212,9 +220,9 @@ class Tracer:
         span.end()
         if self._console_fallback:
             model = span.attributes.get("llm.model", "?")
-            print(
-                f"  [llm] {model}: {tokens_in}in/{tokens_out}out "
-                f"${cost_usd:.4f} {latency_ms:.0f}ms"
+            logger.info(
+                "  [llm] %s: %din/%dout $%.4f %.0fms",
+                model, tokens_in, tokens_out, cost_usd, latency_ms,
             )
 
     def start_tool_span(
@@ -245,7 +253,7 @@ class Tracer:
         span.end()
         if self._console_fallback:
             tool_name = span.attributes.get("tool.name", "?")
-            print(f"  [tool] {tool_name}: {status} {latency_ms:.0f}ms")
+            logger.info("  [tool] %s: %s %.0fms", tool_name, status, latency_ms)
 
     def new_trace_id(self) -> str:
         """Generate a new trace ID (32-hex-char)."""

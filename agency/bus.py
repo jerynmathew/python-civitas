@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from agency.errors import MessageValidationError
 from agency.messages import SYSTEM_MESSAGE_TYPES, Message
