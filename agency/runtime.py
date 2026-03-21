@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import importlib
-import os
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 from agency.bus import MessageBus
+from agency.config import settings
 from agency.messages import Message, _uuid7
 from agency.observability.tracer import Tracer, _new_span_id
 from agency.process import AgentProcess
@@ -49,6 +49,9 @@ class Runtime:
         zmq_pub_addr: str = "tcp://127.0.0.1:5559",
         zmq_sub_addr: str = "tcp://127.0.0.1:5560",
         zmq_start_proxy: bool = True,
+        nats_servers: str | list[str] = "nats://localhost:4222",
+        nats_jetstream: bool = False,
+        nats_stream_name: str = "AGENCY",
     ) -> None:
         self._root_supervisor = supervisor
         self._transport_type = transport
@@ -61,6 +64,11 @@ class Runtime:
         self._zmq_pub_addr = zmq_pub_addr
         self._zmq_sub_addr = zmq_sub_addr
         self._zmq_start_proxy = zmq_start_proxy
+
+        # NATS-specific config
+        self._nats_servers = nats_servers
+        self._nats_jetstream = nats_jetstream
+        self._nats_stream_name = nats_stream_name
 
         # Built during start()
         self._serializer: Serializer | None = None
@@ -143,6 +151,24 @@ class Runtime:
                 kwargs["zmq_sub_addr"] = transport_cfg["sub_addr"]
             if "start_proxy" in transport_cfg:
                 kwargs["zmq_start_proxy"] = transport_cfg["start_proxy"]
+        elif transport_type == "nats":
+            if "servers" in transport_cfg:
+                kwargs["nats_servers"] = transport_cfg["servers"]
+            if "jetstream" in transport_cfg:
+                kwargs["nats_jetstream"] = transport_cfg["jetstream"]
+            if "stream_name" in transport_cfg:
+                kwargs["nats_stream_name"] = transport_cfg["stream_name"]
+
+        # Plugin config
+        if "plugins" in config:
+            from agency.plugins.loader import load_plugins_from_config
+
+            loaded = load_plugins_from_config(config)
+            if loaded["model_providers"]:
+                # Use first model provider as the primary
+                kwargs["model_provider"] = loaded["model_providers"][0]
+            if loaded["state_store"] is not None:
+                kwargs["state_store"] = loaded["state_store"]
 
         return cls(**kwargs)
 
@@ -185,7 +211,7 @@ class Runtime:
         # 2. Create Serializer
         if self._custom_serializer is not None:
             self._serializer = self._custom_serializer
-        elif os.environ.get("AGENCY_SERIALIZER") == "json":
+        elif settings.serializer == "json":
             self._serializer = JsonSerializer()
         else:
             self._serializer = MsgpackSerializer()
@@ -202,6 +228,15 @@ class Runtime:
                 pub_addr=self._zmq_pub_addr,
                 sub_addr=self._zmq_sub_addr,
                 start_proxy=self._zmq_start_proxy,
+            )
+        elif self._transport_type == "nats":
+            from agency.transport.nats import NATSTransport
+
+            self._transport = NATSTransport(
+                self._serializer,
+                servers=self._nats_servers,
+                jetstream=self._nats_jetstream,
+                stream_name=self._nats_stream_name,
             )
         else:
             self._transport = InProcessTransport(self._serializer)
@@ -276,7 +311,11 @@ class Runtime:
         if self._transport is not None:
             await self._transport.stop()
 
-        # 5. Flush Tracer
+        # 5. Close StateStore
+        if self._state_store is not None and hasattr(self._state_store, "close"):
+            await self._state_store.close()
+
+        # 6. Flush Tracer
         if self._tracer is not None:
             self._tracer.flush()
 
@@ -290,8 +329,8 @@ class Runtime:
         self, agent_name: str, payload: dict[str, Any], timeout: float = 30.0
     ) -> Message:
         """Send a message to an agent and await a reply."""
-        assert self._bus is not None, "Runtime not started"
-        assert self._tracer is not None
+        if self._bus is None or self._tracer is None:
+            raise RuntimeError("Runtime not started")
 
         trace_id = self._tracer.new_trace_id()
         message = Message(
@@ -307,8 +346,8 @@ class Runtime:
 
     async def send(self, agent_name: str, payload: dict[str, Any]) -> None:
         """Fire-and-forget: send a message to an agent."""
-        assert self._bus is not None, "Runtime not started"
-        assert self._tracer is not None
+        if self._bus is None or self._tracer is None:
+            raise RuntimeError("Runtime not started")
 
         trace_id = self._tracer.new_trace_id()
         message = Message(
