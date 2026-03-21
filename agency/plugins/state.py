@@ -8,9 +8,17 @@ from typing import Any, Protocol
 class StateStore(Protocol):
     """Protocol for agent state persistence."""
 
-    async def get(self, agent_name: str) -> dict[str, Any] | None: ...
-    async def set(self, agent_name: str, state: dict[str, Any]) -> None: ...
-    async def delete(self, agent_name: str) -> None: ...
+    async def get(self, agent_name: str) -> dict[str, Any] | None:
+        """Retrieve the persisted state for an agent, or None if absent."""
+        ...
+
+    async def set(self, agent_name: str, state: dict[str, Any]) -> None:
+        """Persist state for an agent."""
+        ...
+
+    async def delete(self, agent_name: str) -> None:
+        """Remove persisted state for an agent."""
+        ...
 
 
 class InMemoryStateStore:
@@ -20,10 +28,13 @@ class InMemoryStateStore:
         self._data: dict[str, dict[str, Any]] = {}
 
     async def get(self, agent_name: str) -> dict[str, Any] | None:
+        """Retrieve the in-memory state for an agent."""
         return self._data.get(agent_name)
 
     async def set(self, agent_name: str, state: dict[str, Any]) -> None:
+        """Store state for an agent in memory."""
         self._data[agent_name] = state
 
     async def delete(self, agent_name: str) -> None:
+        """Remove state for an agent from memory."""
         self._data.pop(agent_name, None)

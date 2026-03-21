@@ -25,4 +25,6 @@ class ModelProvider(Protocol):
         model: str,
         messages: list[dict[str, Any]],
         tools: list[Any] | None = None,
-    ) -> ModelResponse: ...
+    ) -> ModelResponse:
+        """Send a chat completion request to the model."""
+        ...

@@ -9,12 +9,18 @@ class ToolProvider(Protocol):
     """Protocol for external tool/API invocation with schema."""
 
     @property
-    def name(self) -> str: ...
+    def name(self) -> str:
+        """Human-readable tool name used for lookup."""
+        ...
 
     @property
-    def schema(self) -> dict[str, Any]: ...
+    def schema(self) -> dict[str, Any]:
+        """JSON Schema describing the tool's input parameters."""
+        ...
 
-    async def execute(self, **kwargs: Any) -> Any: ...
+    async def execute(self, **kwargs: Any) -> Any:
+        """Invoke the tool with the given keyword arguments."""
+        ...
 
 
 class ToolRegistry:
