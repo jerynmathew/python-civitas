@@ -1,0 +1,6 @@
+supervision:
+  name: root
+  strategy: one_for_one
+  max_restarts: 3
+  children:
+    - agent: { type: agents.GreeterAgent, name: greeter }

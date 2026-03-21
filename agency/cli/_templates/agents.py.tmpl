@@ -1,0 +1,12 @@
+"""Example agents for $project_name."""
+
+from agency import AgentProcess
+from agency.messages import Message
+
+
+class GreeterAgent(AgentProcess):
+    """A simple agent that greets the sender."""
+
+    async def handle(self, message: Message) -> Message | None:
+        name = message.payload.get("name", "world")
+        return self.reply({"greeting": f"Hello, {name}!"})

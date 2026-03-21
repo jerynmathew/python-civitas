@@ -9,10 +9,12 @@ packages = ["agency"]
 name = "python-agency"
 version = "0.1.0"
 description = "The production runtime for Python agents"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "msgpack>=1.1",
     "pyyaml>=6.0",
+    "typer>=0.12",
+    "rich>=13",
 ]
 
 [project.optional-dependencies]
@@ -43,6 +45,9 @@ docs      = [
     "mkdocs-gen-files>=0.5",
 ]
 
+[project.scripts]
+agency = "agency.cli:main"
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
@@ -52,6 +57,9 @@ addopts = "--cov=agency --cov-report=term-missing --cov-fail-under=85"
 branch = true
 omit = [
     "agency/adapters/*",
+    "agency/cli/*",
+    "agency/dashboard/*",
+    "agency/__main__.py",
     "agency/plugins/anthropic.py",
     "agency/plugins/litellm.py",
     "agency/transport/__init__.py",
@@ -67,7 +75,7 @@ exclude_lines = [
 ]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 100
 
 [tool.ruff.lint]
@@ -87,7 +95,7 @@ ignore = [
 known-first-party = ["agency"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict = true
 ignore_missing_imports = false
 disallow_untyped_defs = true
