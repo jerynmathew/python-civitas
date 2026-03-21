@@ -1,0 +1,51 @@
+# M2.2 — Distributed Topology (NATS)
+#
+# The same research assistant from M1.7, now distributed across machines:
+#   Machine A: Orchestrator + Synthesizer + Writer
+#   Machine B: WebResearcher
+#
+# All connected via a NATS server. Same agent code, different transport.
+#
+# Usage:
+#   # Start NATS server:
+#   docker run -d -p 4222:4222 nats
+#
+#   # Start runtime (machine A):
+#   agency run --topology examples/distributed.yaml
+#
+#   # Start worker (machine B):
+#   agency run --topology examples/distributed.yaml --process worker
+
+transport:
+  type: nats
+  servers: "nats://localhost:4222"
+  jetstream: false
+
+supervision:
+  name: root
+  strategy: ONE_FOR_ONE
+  max_restarts: 5
+  children:
+    - supervisor:
+        name: research_sup
+        strategy: ONE_FOR_ONE
+        max_restarts: 3
+        backoff: CONSTANT
+        backoff_base: 0.1
+        children:
+          - agent:
+              name: web_researcher
+              type: examples.research_assistant.WebResearcher
+              process: worker  # runs on remote machine
+
+    - agent:
+        name: orchestrator
+        type: examples.research_assistant.Orchestrator
+
+    - agent:
+        name: synthesizer
+        type: examples.research_assistant.Synthesizer
+
+    - agent:
+        name: writer
+        type: examples.research_assistant.Writer

@@ -1,0 +1,49 @@
+# M2.3 — Production Topology with Plugin Configuration
+#
+# All plugins loaded from YAML — no code imports needed.
+#
+# Usage:
+#   pip install python-agency[nats] python-agency[anthropic]
+#   agency run --topology examples/production.yaml
+
+transport:
+  type: nats
+  servers: "nats://localhost:4222"
+
+plugins:
+  models:
+    - type: anthropic
+      config:
+        default_model: "claude-sonnet-4-20250514"
+
+  exporters:
+    - type: console
+
+  state:
+    type: in_memory
+
+supervision:
+  name: root
+  strategy: ONE_FOR_ONE
+  max_restarts: 5
+  children:
+    - supervisor:
+        name: research_sup
+        strategy: ONE_FOR_ONE
+        max_restarts: 3
+        children:
+          - agent:
+              name: web_researcher
+              type: examples.research_assistant.WebResearcher
+
+    - agent:
+        name: orchestrator
+        type: examples.research_assistant.Orchestrator
+
+    - agent:
+        name: synthesizer
+        type: examples.research_assistant.Synthesizer
+
+    - agent:
+        name: writer
+        type: examples.research_assistant.Writer

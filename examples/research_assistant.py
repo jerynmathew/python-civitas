@@ -20,6 +20,7 @@ import sys
 from typing import Any
 
 from agency import AgentProcess, Runtime, Supervisor
+from agency.errors import ErrorAction
 from agency.messages import Message
 from agency.plugins.model import ModelResponse
 from agency.plugins.tools import ToolRegistry
@@ -95,8 +96,7 @@ class Orchestrator(AgentProcess):
 class WebResearcher(AgentProcess):
     """Searches the web; retries on transient failures."""
 
-    async def on_error(self, error: Exception, message: Message) -> "ErrorAction":
-        from agency.errors import ErrorAction
+    async def on_error(self, error: Exception, message: Message) -> ErrorAction:
         if isinstance(error, ConnectionError) and message.attempt < 2:
             print(f"  [retry] {self.name}: {error} (attempt {message.attempt + 1})")
             return ErrorAction.RETRY

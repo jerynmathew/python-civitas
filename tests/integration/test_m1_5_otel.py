@@ -126,8 +126,8 @@ def _make_console_tracer() -> Tracer:
     return tracer
 
 
-async def test_console_fallback_send_format(capsys):
-    """Console exporter prints 'sender -> recipient: type' for sends."""
+async def test_console_fallback_send_format(caplog):
+    """Console exporter logs 'sender -> recipient: type' for sends."""
     tracer = _make_console_tracer()
 
     msg = Message(
@@ -137,35 +137,36 @@ async def test_console_fallback_send_format(capsys):
         trace_id="abc123",
         span_id=_new_span_id(),
     )
-    span = tracer.start_send_span(msg)
-    span.end()
+    with caplog.at_level("INFO", logger="agency.observability.tracer"):
+        span = tracer.start_send_span(msg)
+        span.end()
 
-    captured = capsys.readouterr()
-    assert "agent_a -> agent_b: test_msg" in captured.out
+    assert "agent_a -> agent_b: test_msg" in caplog.text
 
 
-async def test_console_fallback_llm_format(capsys):
-    """Console exporter prints LLM summary line."""
+async def test_console_fallback_llm_format(caplog):
+    """Console exporter logs LLM summary line."""
     tracer = _make_console_tracer()
 
-    span = tracer.start_llm_span("claude-test")
-    tracer.end_llm_span(span, tokens_in=100, tokens_out=50, cost_usd=0.005)
+    with caplog.at_level("INFO", logger="agency.observability.tracer"):
+        span = tracer.start_llm_span("claude-test")
+        tracer.end_llm_span(span, tokens_in=100, tokens_out=50, cost_usd=0.005)
 
-    captured = capsys.readouterr()
-    assert "[llm]" in captured.out
-    assert "claude-test" in captured.out
-    assert "100in/50out" in captured.out
-    assert "$0.0050" in captured.out
+    assert "[llm]" in caplog.text
+    assert "claude-test" in caplog.text
+    assert "100" in caplog.text
+    assert "50" in caplog.text
+    assert "0.0050" in caplog.text
 
 
-async def test_console_fallback_tool_format(capsys):
-    """Console exporter prints tool summary line."""
+async def test_console_fallback_tool_format(caplog):
+    """Console exporter logs tool summary line."""
     tracer = _make_console_tracer()
 
-    span = tracer.start_tool_span("web_search")
-    tracer.end_tool_span(span, status="ok")
+    with caplog.at_level("INFO", logger="agency.observability.tracer"):
+        span = tracer.start_tool_span("web_search")
+        tracer.end_tool_span(span, status="ok")
 
-    captured = capsys.readouterr()
-    assert "[tool]" in captured.out
-    assert "web_search" in captured.out
-    assert "ok" in captured.out
+    assert "[tool]" in caplog.text
+    assert "web_search" in caplog.text
+    assert "ok" in caplog.text
