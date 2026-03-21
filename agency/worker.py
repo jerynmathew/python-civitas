@@ -1,9 +1,9 @@
 """Worker — lightweight process host for remote agents.
 
-A Worker connects to an existing ZMQ proxy and hosts one or more agents.
-It provides the same wiring as Runtime (bus, registry, tracer, serializer)
-but without the supervision tree — supervision is handled remotely by the
-Runtime process.
+A Worker connects to an existing transport broker (ZMQ proxy or NATS server)
+and hosts one or more agents. It provides the same wiring as Runtime (bus,
+registry, tracer, serializer) but without the supervision tree — supervision
+is handled remotely by the Runtime process.
 
 Usage from a subprocess:
 
@@ -11,38 +11,43 @@ Usage from a subprocess:
     from agency.worker import Worker
     from myagents import MyAgent
 
-    async def main():
-        worker = Worker(
-            agents=[MyAgent("my_agent")],
-            zmq_pub_addr="tcp://127.0.0.1:5559",
-            zmq_sub_addr="tcp://127.0.0.1:5560",
-        )
-        await worker.start()
-        await worker.wait_until_stopped()
+    # ZMQ worker
+    worker = Worker(
+        agents=[MyAgent("my_agent")],
+        transport="zmq",
+        zmq_pub_addr="tcp://127.0.0.1:5559",
+        zmq_sub_addr="tcp://127.0.0.1:5560",
+    )
 
-    asyncio.run(main())
+    # NATS worker
+    worker = Worker(
+        agents=[MyAgent("my_agent")],
+        transport="nats",
+        nats_servers="nats://localhost:4222",
+    )
 """
 
 from __future__ import annotations
 
 import asyncio
-import os
 from typing import Any
 
 from agency.bus import MessageBus
-from agency.messages import Message
+from agency.config import settings
 from agency.observability.tracer import Tracer
+from agency.plugins.state import InMemoryStateStore
 from agency.process import AgentProcess, ProcessStatus
 from agency.registry import Registry
-from agency.serializer import MsgpackSerializer, Serializer
-from agency.transport.zmq import ZMQTransport
+from agency.serializer import JsonSerializer, MsgpackSerializer, Serializer
 
 
 class Worker:
-    """Hosts agents in a worker process, connecting to an existing ZMQ proxy.
+    """Hosts agents in a worker process, connecting to an existing broker.
+
+    Supports ZMQ (connect to proxy) and NATS (connect to server) transports.
 
     The Worker provides:
-    - ZMQ transport (connect-only, no proxy start)
+    - Transport connectivity (ZMQ or NATS)
     - Local registry and message bus
     - Heartbeat auto-response (handled by AgentProcess._message_loop)
     - Restart command handling (_agency.restart messages)
@@ -51,16 +56,22 @@ class Worker:
     def __init__(
         self,
         agents: list[AgentProcess],
+        transport: str = "zmq",
         zmq_pub_addr: str = "tcp://127.0.0.1:5559",
         zmq_sub_addr: str = "tcp://127.0.0.1:5560",
+        nats_servers: str | list[str] = "nats://localhost:4222",
+        nats_jetstream: bool = False,
         serializer: Serializer | None = None,
         model_provider: Any = None,
         tool_registry: Any = None,
         state_store: Any = None,
     ) -> None:
         self._agents = agents
+        self._transport_type = transport
         self._zmq_pub_addr = zmq_pub_addr
         self._zmq_sub_addr = zmq_sub_addr
+        self._nats_servers = nats_servers
+        self._nats_jetstream = nats_jetstream
         self._custom_serializer = serializer
         self._model_provider = model_provider
         self._tool_registry = tool_registry
@@ -68,7 +79,7 @@ class Worker:
 
         self._serializer: Serializer | None = None
         self._tracer: Tracer | None = None
-        self._transport: ZMQTransport | None = None
+        self._transport: Any = None
         self._registry: Registry | None = None
         self._bus: MessageBus | None = None
         self._started = False
@@ -79,9 +90,7 @@ class Worker:
         # Serializer
         if self._custom_serializer is not None:
             self._serializer = self._custom_serializer
-        elif os.environ.get("AGENCY_SERIALIZER") == "json":
-            from agency.serializer import JsonSerializer
-
+        elif settings.serializer == "json":
             self._serializer = JsonSerializer()
         else:
             self._serializer = MsgpackSerializer()
@@ -89,13 +98,24 @@ class Worker:
         # Tracer
         self._tracer = Tracer()
 
-        # Transport — connect to proxy, don't start one
-        self._transport = ZMQTransport(
-            self._serializer,
-            pub_addr=self._zmq_pub_addr,
-            sub_addr=self._zmq_sub_addr,
-            start_proxy=False,
-        )
+        # Transport — connect to existing broker
+        if self._transport_type == "nats":
+            from agency.transport.nats import NATSTransport
+
+            self._transport = NATSTransport(
+                self._serializer,
+                servers=self._nats_servers,
+                jetstream=self._nats_jetstream,
+            )
+        else:
+            from agency.transport.zmq import ZMQTransport
+
+            self._transport = ZMQTransport(
+                self._serializer,
+                pub_addr=self._zmq_pub_addr,
+                sub_addr=self._zmq_sub_addr,
+                start_proxy=False,
+            )
 
         # Registry and bus
         self._registry = Registry()
@@ -108,8 +128,6 @@ class Worker:
 
         # State store
         if self._state_store is None:
-            from agency.plugins.state import InMemoryStateStore
-
             self._state_store = InMemoryStateStore()
 
         # Wire agents
@@ -128,8 +146,9 @@ class Worker:
         for agent in self._agents:
             await self._bus.setup_agent(agent)
 
-        # Wait for subscriptions to propagate
-        await self._transport.wait_ready()
+        # Wait for subscriptions to propagate (ZMQ slow joiner)
+        if hasattr(self._transport, "wait_ready"):
+            await self._transport.wait_ready()
 
         # Subscribe to restart commands for this worker
         await self._transport.subscribe(
@@ -144,7 +163,8 @@ class Worker:
 
     async def _on_restart_command(self, data: bytes) -> None:
         """Handle restart commands from the supervisor."""
-        assert self._serializer is not None
+        if self._serializer is None:
+            raise RuntimeError("Worker not started")
         msg = self._serializer.deserialize(data)
         target_name = msg.payload.get("agent_name", "")
 

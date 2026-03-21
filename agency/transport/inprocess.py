@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from typing import Any
 
-from agency.messages import Message, _uuid7
+from agency.messages import _uuid7
 from agency.serializer import Serializer
 
 

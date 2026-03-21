@@ -59,7 +59,8 @@ class ZMQProxy:
         self._ready.wait(timeout=5.0)
 
     def _run(self) -> None:
-        assert self._ctx is not None
+        if self._ctx is None:
+            raise RuntimeError("ZMQ context not initialized")
         xsub = self._ctx.socket(zmq.XSUB)
         xsub.bind(self._frontend_addr)
         xpub = self._ctx.socket(zmq.XPUB)
@@ -180,7 +181,8 @@ class ZMQTransport:
     ) -> None:
         """Subscribe to messages arriving at this address."""
         self._handlers[address] = handler
-        assert self._sub is not None
+        if self._sub is None:
+            raise RuntimeError("ZMQTransport not started")
         self._sub.subscribe(address.encode() + _TOPIC_SEP)
 
     async def publish(self, address: str, data: bytes) -> None:
@@ -194,7 +196,8 @@ class ZMQTransport:
             await self._reply_queues[address].put(data)
             return
 
-        assert self._pub is not None
+        if self._pub is None:
+            raise RuntimeError("ZMQTransport not started")
         topic = address.encode() + _TOPIC_SEP
         await self._pub.send_multipart([topic, data])
 
@@ -208,7 +211,8 @@ class ZMQTransport:
         reply_queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=1)
 
         # Subscribe to the reply topic
-        assert self._sub is not None
+        if self._sub is None:
+            raise RuntimeError("ZMQTransport not started")
         self._sub.subscribe(reply_address.encode() + _TOPIC_SEP)
         self._reply_queues[reply_address] = reply_queue
 
@@ -219,7 +223,8 @@ class ZMQTransport:
             data = self._serializer.serialize(message)
 
             # Publish the request
-            assert self._pub is not None
+            if self._pub is None:
+                raise RuntimeError("ZMQTransport not started")
             topic = address.encode() + _TOPIC_SEP
             await self._pub.send_multipart([topic, data])
 
@@ -233,7 +238,8 @@ class ZMQTransport:
 
     async def _receiver_loop(self) -> None:
         """Background task: receive from SUB socket and dispatch to handlers."""
-        assert self._sub is not None
+        if self._sub is None:
+            raise RuntimeError("ZMQTransport not started")
         while True:
             try:
                 frames = await self._sub.recv_multipart()
