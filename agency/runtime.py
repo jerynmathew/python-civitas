@@ -124,6 +124,10 @@ class Runtime:
                 agent_cfg = node["agent"]
                 agent_cls = _resolve_class(agent_cfg["type"])
                 return agent_cls(name=agent_cfg["name"])
+            elif "type" in node and "name" in node:
+                # Flat format: {type: "module.Class", name: "agent_name"}
+                agent_cls = _resolve_class(node["type"])
+                return agent_cls(name=node["name"])
             else:
                 raise ValueError(f"Unknown node type in config: {node}")
 
