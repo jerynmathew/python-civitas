@@ -52,9 +52,11 @@ def _collect_processes(config: dict[str, Any]) -> dict[str, list[dict[str, str]]
     return processes
 
 
-def _generate_dockerfile() -> str:
+def _generate_dockerfile(transport_type: str = "in_process") -> str:
     """Generate a Dockerfile for Agency containers."""
-    return """\
+    extras = {"nats": "nats", "zmq": "zmq"}.get(transport_type, "")
+    install_target = f'".[{extras}]"' if extras else '"."'
+    return f"""\
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -63,7 +65,7 @@ COPY pyproject.toml .
 COPY agency/ agency/
 COPY examples/ examples/
 
-RUN pip install --no-cache-dir -e ".[nats]"
+RUN pip install --no-cache-dir -e {install_target}
 
 ENTRYPOINT ["agency", "run"]
 """
@@ -88,7 +90,7 @@ def _generate_docker_compose(
             "command": "--jetstream" if transport_cfg.get("jetstream") else "",
             "restart": "unless-stopped",
             "healthcheck": {
-                "test": ["CMD", "nats-server", "--signal", "ldm"],
+                "test": ["CMD-SHELL", "wget -qO- http://localhost:8222/healthz || exit 1"],
                 "interval": "5s",
                 "timeout": "3s",
                 "retries": 3,
@@ -227,7 +229,8 @@ def docker_compose(
     (output_dir / topology_filename).write_text(topology_path.read_text())
 
     # Dockerfile
-    dockerfile_content = _generate_dockerfile()
+    transport_type = config.get("transport", {}).get("type", "in_process")
+    dockerfile_content = _generate_dockerfile(transport_type)
     (output_dir / "Dockerfile").write_text(dockerfile_content)
 
     # docker-compose.yml

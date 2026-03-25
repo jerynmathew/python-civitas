@@ -15,6 +15,7 @@ class ModelResponse:
     tokens_in: int
     tokens_out: int
     cost_usd: float
+    tool_calls: list[dict[str, Any]] | None = None
 
 
 class ModelProvider(Protocol):
