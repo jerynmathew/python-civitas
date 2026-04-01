@@ -250,7 +250,7 @@ async def test_runtime_nats_hello_agent(nats_url):
     )
     await runtime.start()
     try:
-        agent = await runtime._registry.lookup("greeter")
+        agent = runtime.get_agent("greeter")
         assert agent is not None
         assert agent.status == ProcessStatus.RUNNING
 
@@ -297,8 +297,8 @@ async def test_runtime_nats_shutdown_clean(nats_url):
         nats_servers=nats_url,
     )
     await runtime.start()
-    greeter = await runtime._registry.lookup("greeter")
-    adder = await runtime._registry.lookup("adder")
+    greeter = runtime.get_agent("greeter")
+    adder = runtime.get_agent("adder")
 
     await runtime.stop()
     assert greeter.status == ProcessStatus.STOPPED

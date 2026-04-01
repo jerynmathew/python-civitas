@@ -37,7 +37,7 @@ from agency.config import settings
 from agency.observability.tracer import Tracer
 from agency.plugins.state import InMemoryStateStore
 from agency.process import AgentProcess, ProcessStatus
-from agency.registry import Registry
+from agency.registry import LocalRegistry, Registry
 from agency.serializer import JsonSerializer, MsgpackSerializer, Serializer
 
 
@@ -118,7 +118,7 @@ class Worker:
             )
 
         # Registry and bus
-        self._registry = Registry()
+        self._registry = LocalRegistry()
         self._bus = MessageBus(
             transport=self._transport,
             registry=self._registry,
@@ -137,7 +137,7 @@ class Worker:
             agent.llm = self._model_provider
             agent.tools = self._tool_registry
             agent.store = self._state_store
-            self._registry.register(agent.name, agent)
+            self._registry.register(agent.name)
 
         # Start transport
         await self._transport.start()
@@ -176,7 +176,7 @@ class Worker:
                 agent._status = ProcessStatus.INITIALIZING
                 if self._registry is not None:
                     self._registry.deregister(agent.name)
-                    self._registry.register(agent.name, agent)
+                    self._registry.register(agent.name)
                 if self._bus is not None:
                     await self._bus.setup_agent(agent)
                 # Restart

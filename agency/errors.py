@@ -33,5 +33,9 @@ class MessageValidationError(AgencyError):
     """A message failed validation (e.g. reserved type prefix, non-serializable payload)."""
 
 
+class MessageRoutingError(AgencyError):
+    """A message could not be routed (e.g. unknown recipient)."""
+
+
 class ConfigurationError(AgencyError):
     """Invalid or missing runtime configuration."""

@@ -17,7 +17,6 @@ def test_msgpack_roundtrip():
         parent_span_id="parent789",
         attempt=1,
         priority=1,
-        ttl=60.0,
         correlation_id="corr001",
         reply_to="agent_a",
     )
@@ -34,7 +33,6 @@ def test_msgpack_roundtrip():
     assert restored.parent_span_id == original.parent_span_id
     assert restored.attempt == original.attempt
     assert restored.priority == original.priority
-    assert restored.ttl == original.ttl
     assert restored.correlation_id == original.correlation_id
     assert restored.reply_to == original.reply_to
     assert restored.id == original.id
@@ -89,10 +87,8 @@ def test_none_optional_fields_roundtrip():
             correlation_id=None,
             reply_to=None,
             parent_span_id=None,
-            ttl=None,
         )
         restored = ser.deserialize(ser.serialize(msg))
         assert restored.correlation_id is None
         assert restored.reply_to is None
         assert restored.parent_span_id is None
-        assert restored.ttl is None

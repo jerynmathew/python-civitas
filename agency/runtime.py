@@ -13,7 +13,7 @@ from agency.config import settings
 from agency.messages import Message, _uuid7
 from agency.observability.tracer import Tracer, _new_span_id
 from agency.process import AgentProcess
-from agency.registry import Registry
+from agency.registry import LocalRegistry, Registry
 from agency.serializer import JsonSerializer, MsgpackSerializer, Serializer
 from agency.supervisor import Supervisor
 from agency.transport.inprocess import InProcessTransport
@@ -246,7 +246,7 @@ class Runtime:
             self._transport = InProcessTransport(self._serializer)
 
         # 5. Create Registry
-        self._registry = Registry()
+        self._registry = LocalRegistry()
 
         # 6. Create MessageBus
         self._bus = MessageBus(
@@ -283,7 +283,7 @@ class Runtime:
 
         # 9. Register all AgentProcesses in Registry
         for agent in all_agents:
-            self._registry.register(agent.name, agent)
+            self._registry.register(agent.name)
 
         # 10. Start Transport
         await self._transport.start()
@@ -326,8 +326,21 @@ class Runtime:
         self._started = False
 
     # ------------------------------------------------------------------
-    # Public API — send and ask from outside the agent tree
+    # Public API — process lookup, send, and ask
     # ------------------------------------------------------------------
+
+    def get_agent(self, name: str) -> AgentProcess | None:
+        """Return the live AgentProcess instance by name, or None.
+
+        Use this when you need to inspect process state (e.g. status).
+        For routing messages use the registry or runtime.send/ask instead.
+        """
+        if self._root_supervisor is None:
+            return None
+        for agent in self._root_supervisor.all_agents():
+            if agent.name == name:
+                return agent
+        return None
 
     async def ask(
         self, agent_name: str, payload: dict[str, Any], timeout: float = 30.0

@@ -1,66 +1,116 @@
-"""Registry — named lookup for running AgentProcesses."""
+"""Registry — name-to-address routing table for the message bus."""
 
 from __future__ import annotations
 
+import dataclasses
 import fnmatch
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    pass
-
-# Use Any for process type to avoid circular import with process.py.
-# At runtime, values are AgentProcess instances.
+from typing import Protocol, runtime_checkable
 
 
-class _RemoteStub:
-    """Lightweight stand-in for an agent running in another process."""
+@dataclasses.dataclass(frozen=True)
+class RoutingEntry:
+    """Routing metadata for a registered agent.
 
-    def __init__(self, name: str) -> None:
-        self.name = name
+    ``address`` is the transport-level identifier used by the bus when
+    calling ``transport.publish()``.  For in-process and NATS deployments
+    this equals the agent name.  For ZMQ point-to-point it is the endpoint
+    string (e.g. ``tcp://host:5555``).
+
+    ``is_local`` is True when the agent runs inside this process, False for
+    agents registered via cross-process discovery.
+    """
+
+    name: str
+    address: str
+    is_local: bool
 
 
-class Registry:
-    """Process registry with support for both local and remote agents.
+@runtime_checkable
+class Registry(Protocol):
+    """Interface for agent routing tables.
 
-    Level 1 (single-process): all entries are AgentProcess instances.
-    Level 2+ (multi-process): remote agents are registered as stubs
-    so that pattern-based lookups (broadcast) work across processes.
+    Reads are always synchronous — implementations keep an in-memory cache.
+    How entries are *populated* (locally on start, or synced from a cluster
+    discovery service) is an implementation detail hidden behind this interface.
+    """
+
+    def register(self, name: str, address: str | None = None, *, is_local: bool = True) -> None: ...
+    def deregister(self, name: str) -> None: ...
+    def lookup(self, name: str) -> RoutingEntry | None: ...
+    def lookup_all(self, pattern: str) -> list[RoutingEntry]: ...
+    def has(self, name: str) -> bool: ...
+    def all_names(self) -> list[str]: ...
+
+
+class LocalRegistry:
+    """Single-node in-memory registry.
+
+    Default implementation for single-process and same-node deployments.
+    All reads are O(1) dict lookups — no I/O, no async.
+
+    Remote agents can be registered via ``register_remote()`` so that
+    pattern-based broadcast works across process boundaries; they are
+    represented as ``RoutingEntry(is_local=False)`` and carry no object
+    reference.
     """
 
     def __init__(self) -> None:
-        self._processes: dict[str, Any] = {}
+        self._entries: dict[str, RoutingEntry] = {}
 
-    def register(self, name: str, process: Any) -> None:
-        """Register a process under the given name."""
-        if name in self._processes:
-            raise ValueError(f"Process already registered: {name}")
-        self._processes[name] = process
+    def register(
+        self, name: str, address: str | None = None, *, is_local: bool = True
+    ) -> None:
+        """Register an agent.
+
+        ``address`` defaults to ``name`` when not given, which is correct
+        for in-process and NATS transports.  Pass an explicit address for
+        ZMQ TCP endpoints.
+
+        Raises ``ValueError`` if the name is already registered.
+        """
+        if name in self._entries:
+            raise ValueError(f"Process already registered: {name!r}")
+        self._entries[name] = RoutingEntry(
+            name=name,
+            address=address if address is not None else name,
+            is_local=is_local,
+        )
 
     def deregister(self, name: str) -> None:
-        """Remove a process from the registry."""
-        self._processes.pop(name, None)
+        """Remove an agent. No-op if not registered."""
+        self._entries.pop(name, None)
 
-    async def lookup(self, name: str) -> Any | None:
-        """Look up a process by exact name. Returns None if not found."""
-        return self._processes.get(name)
+    def lookup(self, name: str) -> RoutingEntry | None:
+        """Return the RoutingEntry for ``name``, or None if not registered."""
+        return self._entries.get(name)
 
-    async def lookup_all(self, pattern: str) -> list[Any]:
-        """Look up all processes matching a glob pattern (e.g. 'tool_agents.*')."""
+    def lookup_all(self, pattern: str) -> list[RoutingEntry]:
+        """Return all entries whose name matches a glob pattern."""
         return [
-            proc
-            for name, proc in self._processes.items()
+            entry
+            for name, entry in self._entries.items()
             if fnmatch.fnmatch(name, pattern)
         ]
 
-    def register_remote(self, name: str) -> None:
-        """Register a remote agent by name (for cross-process pattern matching)."""
-        if name not in self._processes:
-            self._processes[name] = _RemoteStub(name)
-
     def has(self, name: str) -> bool:
-        """Check if a process is registered under the given name."""
-        return name in self._processes
+        """Return True if the name is registered."""
+        return name in self._entries
 
     def all_names(self) -> list[str]:
-        """Return all registered process names."""
-        return list(self._processes.keys())
+        """Return all registered names."""
+        return list(self._entries.keys())
+
+    def register_remote(self, name: str) -> None:
+        """Register a remote agent for cross-process pattern matching.
+
+        Idempotent for repeated announcements of the same remote agent.
+        Raises ``ValueError`` if the name is already registered as local.
+        """
+        existing = self._entries.get(name)
+        if existing is not None:
+            if existing.is_local:
+                raise ValueError(
+                    f"Cannot register {name!r} as remote: already registered as local"
+                )
+            return  # idempotent re-announcement
+        self._entries[name] = RoutingEntry(name=name, address=name, is_local=False)

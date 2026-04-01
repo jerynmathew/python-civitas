@@ -253,7 +253,7 @@ async def test_runtime_zmq_hello_agent(zmq_addrs):
     )
     await runtime.start()
     try:
-        agent = await runtime._registry.lookup("greeter")
+        agent = runtime.get_agent("greeter")
         assert agent is not None
         assert agent.status == ProcessStatus.RUNNING
 
@@ -306,8 +306,8 @@ async def test_runtime_zmq_shutdown_clean(zmq_addrs):
         zmq_start_proxy=True,
     )
     await runtime.start()
-    greeter = await runtime._registry.lookup("greeter")
-    adder = await runtime._registry.lookup("adder")
+    greeter = runtime.get_agent("greeter")
+    adder = runtime.get_agent("adder")
 
     await runtime.stop()
     assert greeter.status == ProcessStatus.STOPPED
@@ -568,20 +568,22 @@ async def test_supervisor_remote_child_registration(zmq_addrs):
 
 
 async def test_registry_remote_stub():
-    """Registry supports remote agent stubs for cross-process lookup."""
-    from agency.registry import Registry
+    """Registry supports remote agent entries for cross-process lookup."""
+    from agency.registry import LocalRegistry
 
-    reg = Registry()
+    reg = LocalRegistry()
     reg.register_remote("remote_1")
     reg.register_remote("remote_2")
 
     assert reg.has("remote_1")
     assert reg.has("remote_2")
-    result = await reg.lookup("remote_1")
+    result = reg.lookup("remote_1")
+    assert result is not None
     assert result.name == "remote_1"
+    assert result.is_local is False
 
-    # Pattern matching works with remote stubs
-    matches = await reg.lookup_all("remote_*")
+    # Pattern matching works with remote entries
+    matches = reg.lookup_all("remote_*")
     assert len(matches) == 2
 
 

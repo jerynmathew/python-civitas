@@ -110,6 +110,10 @@ class AgentProcess:
     def status(self) -> ProcessStatus:
         return self._status
 
+    async def receive(self, message: Message) -> None:
+        """Deliver an inbound message to this agent's mailbox."""
+        await self._mailbox.put(message)
+
     # ------------------------------------------------------------------
     # Lifecycle hooks — override in subclasses
     # ------------------------------------------------------------------
@@ -212,7 +216,7 @@ class AgentProcess:
 
         # Access registry through the bus
         registry: Registry = self._bus._registry
-        targets = await registry.lookup_all(pattern)
+        targets = registry.lookup_all(pattern)
         for target in targets:
             await self.send(target.name, payload)
 
@@ -265,13 +269,13 @@ class AgentProcess:
                         correlation_id=message.correlation_id,
                         trace_id=message.trace_id,
                     )
-                    await self._bus.route(ack)
+                    await self._bus.route_reply(ack)
                 continue
             self._current_message = message
             try:
                 result = await self.handle(message)
                 if result is not None and message.correlation_id and self._bus is not None:
-                    await self._bus.route(result)
+                    await self._bus.route_reply(result)
             except Exception as exc:
                 action = await self.on_error(exc, message)
                 await self._apply_error_action(action, exc, message)

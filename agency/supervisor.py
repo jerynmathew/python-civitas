@@ -291,7 +291,7 @@ class Supervisor:
         agent.id = agent.id  # keep same ID for now
         if self._registry is not None:
             self._registry.deregister(name)
-            self._registry.register(name, agent)
+            self._registry.register(name)
         await self._start_child(agent)
 
     async def _restart_remote_child(self, name: str) -> None:
@@ -323,7 +323,7 @@ class Supervisor:
                 child._status = ProcessStatus.INITIALIZING
                 if self._registry is not None:
                     self._registry.deregister(child.name)
-                    self._registry.register(child.name, child)
+                    self._registry.register(child.name)
                 await self._start_child(child)
 
     async def _restart_rest_for_one(self, name: str) -> None:
@@ -353,7 +353,7 @@ class Supervisor:
                 child._status = ProcessStatus.INITIALIZING
                 if self._registry is not None:
                     self._registry.deregister(child.name)
-                    self._registry.register(child.name, child)
+                    self._registry.register(child.name)
                 await self._start_child(child)
 
     async def _escalate(self, name: str, exc: Exception) -> None:

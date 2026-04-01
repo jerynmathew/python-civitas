@@ -3,11 +3,11 @@
 import pytest
 
 from agency.bus import MessageBus
-from agency.errors import MessageValidationError
-from agency.messages import Message
+from agency.errors import MessageRoutingError, MessageValidationError
+from agency.messages import Message, _uuid7
 from agency.observability.tracer import Tracer
 from agency.process import AgentProcess
-from agency.registry import Registry
+from agency.registry import LocalRegistry
 from agency.serializer import MsgpackSerializer
 from agency.transport.inprocess import InProcessTransport
 
@@ -28,7 +28,7 @@ class CollectorAgent(AgentProcess):
 def components():
     serializer = MsgpackSerializer()
     transport = InProcessTransport(serializer)
-    registry = Registry()
+    registry = LocalRegistry()
     tracer = Tracer()
     bus = MessageBus(transport, registry, serializer, tracer)
     return bus, transport, registry, serializer, tracer
@@ -41,7 +41,7 @@ async def test_route_delivers_to_agent(components):
 
     agent = CollectorAgent("agent_a")
     agent._bus = bus
-    registry.register("agent_a", agent)
+    registry.register("agent_a")
     await bus.setup_agent(agent)
 
     msg = Message(
@@ -56,6 +56,52 @@ async def test_route_delivers_to_agent(components):
     received = await agent._mailbox.get()
     assert received.type == "test"
     assert received.payload == {"data": 1}
+
+    await transport.stop()
+
+
+async def test_route_span_closed_on_serialize_error(components):
+    """Span is closed even when serializer raises."""
+    bus, transport, registry, _, tracer = components
+    await transport.start()
+
+    registry.register("agent_a")
+
+    # Spy on tracer to capture the span before it's returned
+    captured: list = []
+    original_start = tracer.start_send_span
+
+    def spy(message):
+        span = original_start(message)
+        captured.append(span)
+        return span
+
+    tracer.start_send_span = spy
+    bus._serializer.serialize = lambda _: (_ for _ in ()).throw(RuntimeError("bad serializer"))
+
+    msg = Message(type="test", sender="s", recipient="agent_a")
+    with pytest.raises(RuntimeError, match="bad serializer"):
+        await bus.route(msg)
+
+    assert len(captured) == 1
+    assert captured[0].end_time is not None  # span was closed despite exception
+
+    await transport.stop()
+
+
+async def test_route_raises_on_unknown_recipient(components):
+    """route() raises MessageRoutingError when recipient is not registered."""
+    bus, transport, _, _, _ = components
+    await transport.start()
+
+    msg = Message(
+        type="test",
+        sender="sender",
+        recipient="nobody",
+        payload={},
+    )
+    with pytest.raises(MessageRoutingError, match="nobody"):
+        await bus.route(msg)
 
     await transport.stop()
 
@@ -83,7 +129,7 @@ async def test_route_allows_valid_system_message(components):
 
     agent = CollectorAgent("agent_a")
     agent._bus = bus
-    registry.register("agent_a", agent)
+    registry.register("agent_a")
     await bus.setup_agent(agent)
 
     msg = Message(
@@ -101,6 +147,31 @@ async def test_route_allows_valid_system_message(components):
     await transport.stop()
 
 
+async def test_request_returns_reply(components):
+    """request() sends a message and returns the agent's reply."""
+    bus, transport, registry, _, _ = components
+    await transport.start()
+
+    agent = CollectorAgent("agent_a")
+    agent._bus = bus
+    registry.register("agent_a")
+    await bus.setup_agent(agent)
+    await agent._start()  # spawns message loop task, waits until RUNNING
+
+    msg = Message(
+        type="ping",
+        sender="caller",
+        recipient="agent_a",
+        payload={"x": 1},
+        correlation_id=_uuid7(),  # required: message loop only routes reply when set
+    )
+    reply = await bus.request(msg, timeout=2.0)
+    assert reply.payload["ack"] is True
+
+    await agent._stop()
+    await transport.stop()
+
+
 async def test_route_allows_application_message(components):
     """route() accepts any message type that doesn't start with '_agency.'."""
     bus, transport, registry, _, _ = components
@@ -108,7 +179,7 @@ async def test_route_allows_application_message(components):
 
     agent = CollectorAgent("agent_a")
     agent._bus = bus
-    registry.register("agent_a", agent)
+    registry.register("agent_a")
     await bus.setup_agent(agent)
 
     msg = Message(

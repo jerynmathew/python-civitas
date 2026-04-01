@@ -1,5 +1,7 @@
 """Tests for Message construction, serialization round-trip, and UUID7 generation."""
 
+import pytest
+
 from agency.messages import SYSTEM_MESSAGE_TYPES, Message, _uuid7
 
 
@@ -18,7 +20,7 @@ def test_uuid7_time_sortable():
     import time
 
     a = _uuid7()
-    time.sleep(0.002)  # ensure different millisecond
+    time.sleep(0.01)  # 10ms — reliably advances wall clock by at least 1ms
     b = _uuid7()
     assert a < b
 
@@ -32,7 +34,6 @@ def test_message_defaults():
     assert msg.payload == {}
     assert msg.attempt == 0
     assert msg.priority == 0
-    assert msg.ttl is None
     assert msg.correlation_id is None
     assert msg.reply_to is None
     assert len(msg.id) == 36  # UUID7
@@ -77,7 +78,6 @@ def test_message_from_dict_roundtrip():
         span_id="def456",
         attempt=2,
         priority=1,
-        ttl=30.0,
     )
     restored = Message.from_dict(original.to_dict())
     assert restored.type == original.type
@@ -88,7 +88,6 @@ def test_message_from_dict_roundtrip():
     assert restored.span_id == original.span_id
     assert restored.attempt == original.attempt
     assert restored.priority == original.priority
-    assert restored.ttl == original.ttl
     assert restored.id == original.id
 
 
@@ -98,6 +97,20 @@ def test_from_dict_ignores_unknown_keys():
     d["unknown_field"] = "should be ignored"
     msg = Message.from_dict(d)
     assert not hasattr(msg, "unknown_field")
+
+
+def test_payload_with_non_serializable_raises():
+    """Message raises ValueError when payload contains non-JSON-serializable values."""
+    import datetime
+
+    with pytest.raises(ValueError, match="JSON-serializable"):
+        Message(payload={"dt": datetime.datetime.now()})
+
+
+def test_payload_serializable_types_accepted():
+    """Message accepts payloads with all JSON-native types."""
+    msg = Message(payload={"s": "x", "n": 1, "f": 1.5, "b": True, "none": None, "list": [1, 2]})
+    assert msg.payload["s"] == "x"
 
 
 def test_system_message_types():

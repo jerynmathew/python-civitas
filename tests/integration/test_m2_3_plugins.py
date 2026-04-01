@@ -335,7 +335,7 @@ supervision:
 
     await runtime.start()
     try:
-        agent = await runtime._registry.lookup("echo")
+        agent = runtime.get_agent("echo")
         assert agent is not None
         # Verify the model provider was injected
         assert isinstance(agent.llm, MockModelProvider)

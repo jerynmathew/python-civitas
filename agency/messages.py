@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+import json
 import os
 import time
 from dataclasses import dataclass, field
@@ -67,8 +69,16 @@ class Message:
     span_id: str = ""
     parent_span_id: str | None = None
     attempt: int = 0
-    ttl: float | None = None
     priority: int = 0
+    # ttl: planned — discard expired messages at Mailbox.get()
+
+    def __post_init__(self) -> None:
+        try:
+            json.dumps(self.payload)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Message payload must contain only JSON-serializable values: {exc}"
+            ) from exc
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to a plain dict for serialization."""
@@ -85,14 +95,17 @@ class Message:
             "span_id": self.span_id,
             "parent_span_id": self.parent_span_id,
             "attempt": self.attempt,
-            "ttl": self.ttl,
             "priority": self.priority,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Message:
         """Reconstruct a Message from a plain dict."""
-        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+        return cls(**{k: v for k, v in data.items() if k in _MESSAGE_FIELDS})
+
+
+# Computed once at import time — used by Message.from_dict to filter unknown keys.
+_MESSAGE_FIELDS: frozenset[str] = frozenset(f.name for f in dataclasses.fields(Message))
 
 
 # System message types reserved for runtime internals.

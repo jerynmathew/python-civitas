@@ -22,7 +22,7 @@ async def test_agent_starts_and_enters_running_state():
     )
     await runtime.start()
     try:
-        agent = await runtime._registry.lookup("greeter")
+        agent = runtime.get_agent("greeter")
         assert agent is not None
         assert agent.status == ProcessStatus.RUNNING
     finally:
@@ -63,7 +63,7 @@ async def test_process_shuts_down_cleanly():
         supervisor=Supervisor("root", children=[Greeter("greeter")])
     )
     await runtime.start()
-    agent = await runtime._registry.lookup("greeter")
+    agent = runtime.get_agent("greeter")
     assert agent.status == ProcessStatus.RUNNING
 
     await runtime.stop()

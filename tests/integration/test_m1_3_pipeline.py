@@ -64,7 +64,7 @@ async def test_three_agents_start_and_register():
     await runtime.start()
     try:
         for name in ("agent_1", "agent_2", "agent_3"):
-            agent = await runtime._registry.lookup(name)
+            agent = runtime.get_agent(name)
             assert agent is not None
             assert agent.status == ProcessStatus.RUNNING
     finally:
@@ -202,13 +202,13 @@ async def test_registry_lookup_by_name_and_pattern():
     await runtime.start()
     try:
         # Lookup by exact name
-        agent = await runtime._registry.lookup("svc.alpha")
-        assert agent is not None
-        assert agent.name == "svc.alpha"
+        entry = runtime._registry.lookup("svc.alpha")
+        assert entry is not None
+        assert entry.name == "svc.alpha"
 
         # Lookup by pattern
-        matches = await runtime._registry.lookup_all("svc.*")
-        names = [a.name for a in matches]
+        matches = runtime._registry.lookup_all("svc.*")
+        names = [e.name for e in matches]
         assert "svc.alpha" in names
         assert "svc.beta" in names
         assert "other" not in names
