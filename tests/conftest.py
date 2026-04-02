@@ -6,6 +6,27 @@ import pytest
 
 from agency import AgentProcess, Runtime, Supervisor
 from agency.messages import Message
+from agency.process import ProcessStatus
+
+
+async def wait_for_status(
+    agent: AgentProcess,
+    status: ProcessStatus,
+    timeout: float = 2.0,
+) -> None:
+    """Poll until agent reaches the expected status or timeout expires.
+
+    Replaces asyncio.sleep() waits in supervision tests — responds as soon as
+    the status changes rather than waiting a fixed duration.
+    """
+    deadline = asyncio.get_event_loop().time() + timeout
+    while agent.status != status:
+        if asyncio.get_event_loop().time() > deadline:
+            raise TimeoutError(
+                f"{agent.name!r} did not reach {status.value} within {timeout}s "
+                f"(current: {agent.status.value})"
+            )
+        await asyncio.sleep(0.01)
 
 
 class EchoAgent(AgentProcess):

@@ -190,3 +190,7 @@ class NATSTransport:
         finally:
             self._reply_queues.pop(reply_address, None)
             await sub.unsubscribe()
+
+    def has_reply_address(self, address: str) -> bool:
+        """Return True if address is an active ephemeral reply queue."""
+        return address in self._reply_queues

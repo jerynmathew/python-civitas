@@ -34,3 +34,12 @@ class Transport(Protocol):
     async def request(self, address: str, data: bytes, timeout: float) -> bytes:
         """Send a message and await a reply (request-reply)."""
         ...
+
+    def has_reply_address(self, address: str) -> bool:
+        """Return True if address is an active ephemeral reply endpoint.
+
+        Ephemeral reply addresses are created by transport.request() and are not
+        registered agents. The bus uses this to route reply messages without
+        going through the Registry.
+        """
+        ...

@@ -10,6 +10,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
+def _new_span_id() -> str:
+    """Generate a 16-hex-char span ID."""
+    return os.urandom(8).hex()
+
+
 def _uuid7() -> str:
     """Generate a UUID7 (time-sortable) as a hex string.
 

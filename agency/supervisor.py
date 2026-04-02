@@ -9,8 +9,7 @@ import time
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from agency.messages import Message, _uuid7
-from agency.observability.tracer import _new_span_id
+from agency.messages import Message, _new_span_id, _uuid7
 from agency.process import AgentProcess, ProcessStatus
 
 logger = logging.getLogger(__name__)

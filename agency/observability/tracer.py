@@ -3,6 +3,9 @@
 Uses OpenTelemetry SDK when installed; falls back to a built-in print-based
 ConsoleExporter when OTEL is not available. The rest of the runtime does not
 know which backend is active.
+
+When a SpanQueue is provided, completed spans are also pushed to it for
+consumption by OTELAgent (async export without blocking the message loop).
 """
 
 from __future__ import annotations
@@ -10,10 +13,13 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from agency.config import settings
-from agency.messages import Message
+from agency.messages import Message, _new_span_id
+
+if TYPE_CHECKING:
+    from agency.observability.span_queue import SpanData, SpanQueue
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +38,7 @@ class Span:
         span_id: str,
         parent_span_id: str | None = None,
         attributes: dict[str, Any] | None = None,
+        _span_queue: SpanQueue | None = None,
     ) -> None:
         self.name = name
         self.trace_id = trace_id
@@ -41,6 +48,7 @@ class Span:
         self.start_time = time.time()
         self.end_time: float | None = None
         self._otel_span: Any = None  # holds real OTEL span if available
+        self._span_queue = _span_queue
 
     def set_attribute(self, key: str, value: Any) -> None:
         """Set an attribute on this span."""
@@ -48,11 +56,41 @@ class Span:
         if self._otel_span is not None:
             self._otel_span.set_attribute(key, value)
 
+    def set_error(self, exc: BaseException) -> None:
+        """Record an exception on this span."""
+        self.attributes["error"] = True
+        self.attributes["error.type"] = type(exc).__name__
+        self.attributes["error.message"] = str(exc)
+        if self._otel_span is not None:
+            self._otel_span.record_exception(exc)
+
     def end(self) -> None:
         """Mark this span as finished."""
         self.end_time = time.time()
         if self._otel_span is not None:
             self._otel_span.end()
+        if self._span_queue is not None:
+            self._push_to_queue()
+
+    def _push_to_queue(self) -> None:
+        """Push completed span to SpanQueue for async export."""
+        from agency.observability.span_queue import SpanData
+
+        status = "error" if self.attributes.get("error") else "ok"
+        error_msg = self.attributes.get("error.message") if status == "error" else None
+        self._span_queue.put_nowait(  # type: ignore[union-attr]
+            SpanData(
+                name=self.name,
+                trace_id=self.trace_id,
+                span_id=self.span_id,
+                parent_span_id=self.parent_span_id,
+                start_time=self.start_time,
+                end_time=self.end_time or time.time(),
+                attributes=dict(self.attributes),
+                status=status,
+                error_message=error_msg,
+            )
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -76,11 +114,6 @@ except ImportError:
     pass
 
 
-def _new_span_id() -> str:
-    """Generate a 16-hex-char span ID."""
-    return os.urandom(8).hex()
-
-
 class Tracer:
     """Creates and enriches spans for Agency operations.
 
@@ -88,9 +121,13 @@ class Tracer:
     - opentelemetry-sdk installed + OTEL_EXPORTER_OTLP_ENDPOINT set -> OTLP exporter
     - opentelemetry-sdk installed, no endpoint -> OTEL ConsoleSpanExporter
     - opentelemetry-sdk not installed -> built-in print-based console output
+
+    When span_queue is provided, completed spans are additionally pushed to the
+    queue for consumption by OTELAgent (async, non-blocking export path).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, span_queue: SpanQueue | None = None) -> None:
+        self._span_queue = span_queue
         self._use_otel = False
         self._otel_tracer: Any = None
         self._console_fallback = True
@@ -108,7 +145,6 @@ class Tracer:
                     exporter = OTLPSpanExporter(endpoint=endpoint)
                     provider.add_span_processor(SimpleSpanProcessor(exporter))
                 except ImportError:
-                    # OTLP exporter not installed — fall back to OTEL console
                     provider.add_span_processor(
                         SimpleSpanProcessor(OTELConsoleSpanExporter())
                     )
@@ -123,12 +159,37 @@ class Tracer:
             self._console_fallback = False
 
     # ------------------------------------------------------------------
+    # Internal — span factory
+    # ------------------------------------------------------------------
+
+    def _make_span(
+        self,
+        name: str,
+        trace_id: str,
+        span_id: str,
+        parent_span_id: str | None,
+        attributes: dict[str, Any] | None,
+    ) -> Span:
+        span = Span(
+            name=name,
+            trace_id=trace_id,
+            span_id=span_id,
+            parent_span_id=parent_span_id,
+            attributes=attributes or {},
+            _span_queue=self._span_queue,
+        )
+        if self._use_otel and self._otel_tracer is not None:
+            otel_span = self._otel_tracer.start_span(name, attributes=span.attributes)
+            span._otel_span = otel_span
+        return span
+
+    # ------------------------------------------------------------------
     # Span creation
     # ------------------------------------------------------------------
 
     def start_send_span(self, message: Message) -> Span:
         """Create a span for an outbound message send."""
-        span = Span(
+        span = self._make_span(
             name=f"send {message.type}",
             trace_id=message.trace_id,
             span_id=message.span_id,
@@ -140,18 +201,18 @@ class Tracer:
                 "agency.message_id": message.id,
             },
         )
-        if self._use_otel and self._otel_tracer is not None:
-            otel_span = self._otel_tracer.start_span(span.name, attributes=span.attributes)
-            span._otel_span = otel_span
-        elif self._console_fallback:
+        if self._console_fallback:
             ts = time.strftime("%H:%M:%S", time.localtime(span.start_time))
             ms = f"{span.start_time % 1:.3f}"[1:]
-            logger.info("[%s%s] %s -> %s: %s", ts, ms, message.sender, message.recipient, message.type)
+            logger.info(
+                "[%s%s] %s -> %s: %s",
+                ts, ms, message.sender, message.recipient, message.type,
+            )
         return span
 
     def start_receive_span(self, message: Message) -> Span:
         """Create a span for an inbound message receive."""
-        span = Span(
+        return self._make_span(
             name=f"recv {message.type}",
             trace_id=message.trace_id,
             span_id=_new_span_id(),
@@ -163,10 +224,6 @@ class Tracer:
                 "agency.message_id": message.id,
             },
         )
-        if self._use_otel and self._otel_tracer is not None:
-            otel_span = self._otel_tracer.start_span(span.name, attributes=span.attributes)
-            span._otel_span = otel_span
-        return span
 
     def start_span(
         self,
@@ -175,18 +232,14 @@ class Tracer:
         parent_span_id: str | None = None,
         attributes: dict[str, Any] | None = None,
     ) -> Span:
-        """Create a general-purpose span (for LLM calls, tool invocations, etc)."""
-        span = Span(
+        """Create a general-purpose span (for agent lifecycle, LLM calls, etc)."""
+        return self._make_span(
             name=name,
             trace_id=trace_id or os.urandom(16).hex(),
             span_id=_new_span_id(),
             parent_span_id=parent_span_id,
             attributes=attributes or {},
         )
-        if self._use_otel and self._otel_tracer is not None:
-            otel_span = self._otel_tracer.start_span(name, attributes=span.attributes)
-            span._otel_span = otel_span
-        return span
 
     def start_llm_span(
         self,
@@ -195,13 +248,12 @@ class Tracer:
         parent_span_id: str | None = None,
     ) -> Span:
         """Create a span for an LLM call. Call end_llm_span() after the call completes."""
-        span = self.start_span(
+        return self.start_span(
             name=f"llm.chat {model}",
             trace_id=trace_id,
             parent_span_id=parent_span_id,
             attributes={"llm.model": model},
         )
-        return span
 
     def end_llm_span(
         self,
@@ -232,13 +284,12 @@ class Tracer:
         parent_span_id: str | None = None,
     ) -> Span:
         """Create a span for a tool invocation."""
-        span = self.start_span(
+        return self.start_span(
             name=f"tool.execute {tool_name}",
             trace_id=trace_id,
             parent_span_id=parent_span_id,
             attributes={"tool.name": tool_name},
         )
-        return span
 
     def end_tool_span(
         self,

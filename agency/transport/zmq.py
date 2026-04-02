@@ -236,6 +236,10 @@ class ZMQTransport:
             self._reply_queues.pop(reply_address, None)
             self._sub.unsubscribe(reply_address.encode() + _TOPIC_SEP)
 
+    def has_reply_address(self, address: str) -> bool:
+        """Return True if address is an active ephemeral reply queue."""
+        return address in self._reply_queues
+
     async def _receiver_loop(self) -> None:
         """Background task: receive from SUB socket and dispatch to handlers."""
         if self._sub is None:

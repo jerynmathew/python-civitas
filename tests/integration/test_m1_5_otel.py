@@ -9,8 +9,8 @@ from typing import Any
 
 import pytest
 
-from agency.messages import Message
-from agency.observability.tracer import Tracer, _new_span_id
+from agency.messages import Message, _new_span_id
+from agency.observability.tracer import Tracer
 
 # Try to import OTEL test utilities
 _HAS_OTEL = False
@@ -120,6 +120,7 @@ async def test_tool_span_error_status():
 def _make_console_tracer() -> Tracer:
     """Create a Tracer with console fallback (no OTEL)."""
     tracer = Tracer.__new__(Tracer)
+    tracer._span_queue = None
     tracer._use_otel = False
     tracer._otel_tracer = None
     tracer._console_fallback = True

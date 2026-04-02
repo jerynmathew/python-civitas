@@ -75,3 +75,7 @@ class InProcessTransport:
             return reply_data
         finally:
             self._reply_queues.pop(reply_address, None)
+
+    def has_reply_address(self, address: str) -> bool:
+        """Return True if address is an active ephemeral reply queue."""
+        return address in self._reply_queues

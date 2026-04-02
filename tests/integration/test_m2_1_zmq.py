@@ -426,7 +426,7 @@ async def test_heartbeat_response(zmq_addrs):
 
     try:
         # Send a heartbeat via the bus and expect an ack
-        from agency.observability.tracer import _new_span_id
+        from agency.messages import _new_span_id
 
         heartbeat = Message(
             type="_agency.heartbeat",

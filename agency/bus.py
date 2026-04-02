@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from agency.errors import MessageRoutingError, MessageValidationError
 from agency.messages import SYSTEM_MESSAGE_TYPES, Message
 from agency.observability.tracer import Tracer
-from agency.registry import Registry
+from agency.registry import Registry, RoutingEntry
 from agency.serializer import Serializer
 from agency.transport import Transport
 
@@ -21,6 +21,11 @@ class MessageBus:
     Routes messages from sender to recipient by name, delegates physical
     delivery to the Transport, applies serialization via the Serializer,
     and generates tracing spans for every send/receive.
+
+    Routing precedence in route():
+    1. Registry lookup by recipient name → use RoutingEntry.address
+    2. Transport ephemeral reply address → publish directly (for request-reply)
+    3. Neither → raise MessageRoutingError
     """
 
     def __init__(
@@ -56,16 +61,30 @@ class MessageBus:
                 f"Application messages must not use the '_agency.' prefix."
             )
 
+    def lookup_all(self, pattern: str) -> list[RoutingEntry]:
+        """Return all registered agents matching a glob pattern."""
+        return self._registry.lookup_all(pattern)
+
     async def route(self, message: Message) -> None:
-        """Route a message to its recipient via the transport.
+        """Route a message to its recipient.
 
         Validates system message types, creates a send span, serializes the
-        message, and publishes it through the transport.
+        message, and publishes through the transport.
+
+        Routing order:
+        1. Registry lookup → use RoutingEntry.address
+        2. Transport ephemeral reply address (has_reply_address) → publish directly
+        3. Neither → raise MessageRoutingError
         """
         self._validate_message_type(message)
 
         entry = self._registry.lookup(message.recipient)
-        if entry is None:
+        if entry is not None:
+            address = entry.address
+        elif self._transport.has_reply_address(message.recipient):
+            # Ephemeral reply endpoint created by transport.request()
+            address = message.recipient
+        else:
             raise MessageRoutingError(
                 f"No agent registered with name: {message.recipient!r}"
             )
@@ -73,20 +92,7 @@ class MessageBus:
         span = self._tracer.start_send_span(message)
         try:
             data = self._serializer.serialize(message)
-            await self._transport.publish(entry.address, data)
-        finally:
-            span.end()
-
-    async def route_reply(self, message: Message) -> None:
-        """Route a reply to an ephemeral transport address.
-
-        Bypasses the registry — reply addresses are temporary endpoints
-        created by transport.request(), not registered agents.
-        """
-        span = self._tracer.start_send_span(message)
-        try:
-            data = self._serializer.serialize(message)
-            await self._transport.publish(message.recipient, data)
+            await self._transport.publish(address, data)
         finally:
             span.end()
 

@@ -10,8 +10,8 @@ import yaml
 
 from agency.bus import MessageBus
 from agency.config import settings
-from agency.messages import Message, _uuid7
-from agency.observability.tracer import Tracer, _new_span_id
+from agency.messages import Message, _new_span_id, _uuid7
+from agency.observability.tracer import Tracer
 from agency.process import AgentProcess
 from agency.registry import LocalRegistry, Registry
 from agency.serializer import JsonSerializer, MsgpackSerializer, Serializer

@@ -404,7 +404,7 @@ async def test_worker_nats_heartbeat_response(nats_url):
     await worker.start()
 
     try:
-        from agency.observability.tracer import _new_span_id
+        from agency.messages import _new_span_id
 
         heartbeat = Message(
             type="_agency.heartbeat",
