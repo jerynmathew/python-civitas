@@ -33,13 +33,10 @@ import asyncio
 import logging
 from typing import Any
 
-from agency.bus import MessageBus
-from agency.config import settings
-from agency.observability.tracer import Tracer
-from agency.plugins.state import InMemoryStateStore
+from agency.components import ComponentSet, build_component_set
+from agency.errors import ConfigurationError
 from agency.process import AgentProcess, ProcessStatus
-from agency.registry import LocalRegistry, Registry
-from agency.serializer import JsonSerializer, MsgpackSerializer, Serializer
+from agency.serializer import Serializer
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +66,7 @@ class Worker:
         tool_registry: Any = None,
         state_store: Any = None,
         max_restarts: int = 3,
+        components: ComponentSet | None = None,
     ) -> None:
         self._transport_type = transport
         self._zmq_pub_addr = zmq_pub_addr
@@ -80,69 +78,50 @@ class Worker:
         self._tool_registry = tool_registry
         self._state_store = state_store
         self._max_restarts = max_restarts
+        self._components = components
 
         # O(1) agent lookup by name (F02-8)
         self._agents: dict[str, AgentProcess] = {a.name: a for a in agents}
         self._restart_counts: dict[str, int] = {a.name: 0 for a in agents}
 
+        # Set during start()
         self._serializer: Serializer | None = None
-        self._tracer: Tracer | None = None
         self._transport: Any = None
-        self._registry: Registry | None = None
-        self._bus: MessageBus | None = None
+        self._registry: Any = None
+        self._bus: Any = None
         self._started = False
         self._stop_event = asyncio.Event()
 
     async def start(self) -> None:
         """Start the worker: connect to proxy, wire agents, start loops."""
-        if self._transport_type not in ("zmq", "nats"):
-            from agency.errors import ConfigurationError
+        # Workers never use in-process transport — they connect to an existing broker
+        if self._components is None and self._transport_type not in ("zmq", "nats"):
             raise ConfigurationError(
                 f"Unknown transport: {self._transport_type!r}. Expected 'zmq' or 'nats'."
             )
 
-        # Serializer
-        if self._custom_serializer is not None:
-            self._serializer = self._custom_serializer
-        elif settings.serializer == "json":
-            self._serializer = JsonSerializer()
+        # Build or use provided ComponentSet
+        if self._components is not None:
+            cs = self._components
         else:
-            self._serializer = MsgpackSerializer()
-
-        # Tracer
-        self._tracer = Tracer()
-
-        # Transport — connect to existing broker
-        if self._transport_type == "nats":
-            from agency.transport.nats import NATSTransport
-
-            self._transport = NATSTransport(
-                self._serializer,
-                servers=self._nats_servers,
-                jetstream=self._nats_jetstream,
-            )
-        else:
-            from agency.transport.zmq import ZMQTransport
-
-            self._transport = ZMQTransport(
-                self._serializer,
-                pub_addr=self._zmq_pub_addr,
-                sub_addr=self._zmq_sub_addr,
-                start_proxy=False,
+            cs = build_component_set(
+                transport_type=self._transport_type,
+                serializer=self._custom_serializer,
+                model_provider=self._model_provider,
+                tool_registry=self._tool_registry,
+                state_store=self._state_store,
+                zmq_pub_addr=self._zmq_pub_addr,
+                zmq_sub_addr=self._zmq_sub_addr,
+                zmq_start_proxy=False,  # Workers connect to an existing proxy
+                nats_servers=self._nats_servers,
+                nats_jetstream=self._nats_jetstream,
             )
 
-        # Registry and bus
-        self._registry = LocalRegistry()
-        self._bus = MessageBus(
-            transport=self._transport,
-            registry=self._registry,
-            serializer=self._serializer,
-            tracer=self._tracer,
-        )
-
-        # State store
-        if self._state_store is None:
-            self._state_store = InMemoryStateStore()
+        # Expose on self for _on_restart_command and stop()
+        self._serializer = cs.serializer
+        self._transport = cs.transport
+        self._registry = cs.registry
+        self._bus = cs.bus
 
         # Start transport first — must be running before setup_agent (F02-16)
         await self._transport.start()
@@ -153,7 +132,7 @@ class Worker:
 
         # Wire and subscribe agents
         for agent in self._agents.values():
-            self._wire_agent(agent)
+            cs.inject(agent)
             self._registry.register(agent.name)
             await self._bus.setup_agent(agent)
 
@@ -167,14 +146,6 @@ class Worker:
             await agent._start()
 
         self._started = True
-
-    def _wire_agent(self, agent: AgentProcess) -> None:
-        """Inject dependencies into an agent."""
-        agent._bus = self._bus
-        agent._tracer = self._tracer
-        agent.llm = self._model_provider
-        agent.tools = self._tool_registry
-        agent.store = self._state_store
 
     async def _on_restart_command(self, data: bytes) -> None:
         """Handle restart commands from the supervisor."""
@@ -223,9 +194,6 @@ class Worker:
 
         if self._transport is not None:
             await self._transport.stop()
-
-        if self._tracer is not None:
-            self._tracer.flush()
 
         self._started = False
         self._stop_event.set()

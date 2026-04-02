@@ -8,15 +8,11 @@ from typing import Any
 
 import yaml
 
-from agency.bus import MessageBus
-from agency.config import settings
+from agency.components import ComponentSet, build_component_set
 from agency.messages import Message, _new_span_id, _uuid7
-from agency.observability.tracer import Tracer
 from agency.process import AgentProcess
-from agency.registry import LocalRegistry, Registry
-from agency.serializer import JsonSerializer, MsgpackSerializer, Serializer
+from agency.serializer import Serializer
 from agency.supervisor import Supervisor
-from agency.transport.inprocess import InProcessTransport
 
 
 class Runtime:
@@ -52,6 +48,7 @@ class Runtime:
         nats_servers: str | list[str] = "nats://localhost:4222",
         nats_jetstream: bool = False,
         nats_stream_name: str = "AGENCY",
+        components: ComponentSet | None = None,
     ) -> None:
         self._root_supervisor = supervisor
         self._transport_type = transport
@@ -59,6 +56,7 @@ class Runtime:
         self._model_provider = model_provider
         self._tool_registry = tool_registry
         self._state_store = state_store
+        self._components = components
 
         # ZMQ-specific config
         self._zmq_pub_addr = zmq_pub_addr
@@ -70,12 +68,12 @@ class Runtime:
         self._nats_jetstream = nats_jetstream
         self._nats_stream_name = nats_stream_name
 
-        # Built during start()
+        # Set during start() — exposed for stop() and ask()/send()
         self._serializer: Serializer | None = None
-        self._tracer: Tracer | None = None
-        self._transport: Any = None  # Transport protocol (InProcess or ZMQ)
-        self._registry: Registry | None = None
-        self._bus: MessageBus | None = None
+        self._tracer: Any = None
+        self._transport: Any = None
+        self._registry: Any = None
+        self._bus: Any = None
         self._started = False
 
     @classmethod
@@ -210,86 +208,55 @@ class Runtime:
         if self._started:
             return
 
-        # 1. Configuration is already read (constructor args)
-
-        # 2. Create Serializer
-        if self._custom_serializer is not None:
-            self._serializer = self._custom_serializer
-        elif settings.serializer == "json":
-            self._serializer = JsonSerializer()
+        # Steps 2–6: build or use provided ComponentSet
+        if self._components is not None:
+            cs = self._components
         else:
-            self._serializer = MsgpackSerializer()
-
-        # 3. Create Tracer
-        self._tracer = Tracer()
-
-        # 4. Create Transport
-        if self._transport_type == "zmq":
-            from agency.transport.zmq import ZMQTransport
-
-            self._transport = ZMQTransport(
-                self._serializer,
-                pub_addr=self._zmq_pub_addr,
-                sub_addr=self._zmq_sub_addr,
-                start_proxy=self._zmq_start_proxy,
+            cs = build_component_set(
+                transport_type=self._transport_type,
+                serializer=self._custom_serializer,
+                model_provider=self._model_provider,
+                tool_registry=self._tool_registry,
+                state_store=self._state_store,
+                zmq_pub_addr=self._zmq_pub_addr,
+                zmq_sub_addr=self._zmq_sub_addr,
+                zmq_start_proxy=self._zmq_start_proxy,
+                nats_servers=self._nats_servers,
+                nats_jetstream=self._nats_jetstream,
+                nats_stream_name=self._nats_stream_name,
             )
-        elif self._transport_type == "nats":
-            from agency.transport.nats import NATSTransport
 
-            self._transport = NATSTransport(
-                self._serializer,
-                servers=self._nats_servers,
-                jetstream=self._nats_jetstream,
-                stream_name=self._nats_stream_name,
-            )
-        else:
-            self._transport = InProcessTransport(self._serializer)
-
-        # 5. Create Registry
-        self._registry = LocalRegistry()
-
-        # 6. Create MessageBus
-        self._bus = MessageBus(
-            transport=self._transport,
-            registry=self._registry,
-            serializer=self._serializer,
-            tracer=self._tracer,
-        )
+        # Expose on self for stop(), ask(), send(), and get_agent()
+        self._serializer = cs.serializer
+        self._tracer = cs.tracer
+        self._transport = cs.transport
+        self._registry = cs.registry
+        self._bus = cs.bus
+        self._state_store = cs.store
 
         if self._root_supervisor is None:
             self._started = True
             return
 
-        # 7. Create plugin instances (use provided or defaults)
-        if self._state_store is None:
-            from agency.plugins.state import InMemoryStateStore
-
-            self._state_store = InMemoryStateStore()
-
         # 8. Inject dependencies into all AgentProcesses
-        all_agents = self._root_supervisor.all_agents()
-        for agent in all_agents:
-            agent._bus = self._bus
-            agent._tracer = self._tracer
-            agent.llm = self._model_provider
-            agent.tools = self._tool_registry
-            agent.store = self._state_store
+        for agent in self._root_supervisor.all_agents():
+            cs.inject(agent)
 
-        # Inject into supervisors
+        # Inject into supervisors (supervisor-specific wiring, not via ComponentSet)
         for sup in self._root_supervisor.all_supervisors():
-            sup._bus = self._bus
-            sup._registry = self._registry
-            sup._tracer = self._tracer
+            sup._bus = cs.bus
+            sup._registry = cs.registry
+            sup._tracer = cs.tracer
 
         # 9. Register all AgentProcesses in Registry
-        for agent in all_agents:
+        for agent in self._root_supervisor.all_agents():
             self._registry.register(agent.name)
 
         # 10. Start Transport
         await self._transport.start()
 
         # Set up transport subscriptions for each agent
-        for agent in all_agents:
+        for agent in self._root_supervisor.all_agents():
             await self._bus.setup_agent(agent)
 
         # Wait for subscriptions to propagate (ZMQ slow joiner mitigation)

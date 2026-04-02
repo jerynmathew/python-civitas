@@ -1,0 +1,155 @@
+"""ComponentSet — shared wiring for Runtime and Worker.
+
+Both Runtime (single-process orchestrator) and Worker (multi-process agent host)
+need the same core wiring: transport, registry, serializer, tracer, bus, and
+state store. ComponentSet extracts this into a single place.
+
+Usage (pre-built):
+    cs = ComponentSet(
+        transport=InProcessTransport(serializer),
+        registry=LocalRegistry(),
+        serializer=MsgpackSerializer(),
+        tracer=Tracer(),
+        store=InMemoryStateStore(),
+    )
+    runtime = Runtime(supervisor=..., components=cs)
+
+Usage (from config strings, the common case):
+    # Runtime and Worker call build_component_set() internally when no
+    # ComponentSet is provided. Direct use is for advanced wiring only.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
+
+from agency.bus import MessageBus
+from agency.config import settings
+from agency.observability.tracer import Tracer
+from agency.registry import LocalRegistry, Registry
+from agency.serializer import JsonSerializer, MsgpackSerializer, Serializer
+
+if TYPE_CHECKING:
+    from agency.process import AgentProcess
+    from agency.transport import Transport
+
+
+@dataclass
+class ComponentSet:
+    """Assembled infrastructure wiring for a single Runtime or Worker.
+
+    MessageBus is derived automatically from the other four fields in
+    __post_init__ — callers should not construct it separately.
+
+    Attributes:
+        transport:      Transport layer (InProcess, ZMQ, or NATS).
+        registry:       LocalRegistry for agent name → address mapping.
+        serializer:     Serializer used by transport and bus.
+        tracer:         Tracer instance for span emission.
+        store:          StateStore for agent checkpoint/restore. None means
+                        no persistence; callers should default to
+                        InMemoryStateStore when appropriate.
+        model_provider: Injected into agent.llm at startup.
+        tool_registry:  Injected into agent.tools at startup.
+        bus:            MessageBus built from the other four fields.
+    """
+
+    transport: Any  # Transport protocol
+    registry: Registry
+    serializer: Serializer
+    tracer: Tracer
+    store: Any = None           # StateStore | None
+    model_provider: Any = None
+    tool_registry: Any = None
+    bus: MessageBus = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.bus = MessageBus(
+            transport=self.transport,
+            registry=self.registry,
+            serializer=self.serializer,
+            tracer=self.tracer,
+        )
+
+    def inject(self, agent: AgentProcess) -> None:
+        """Inject bus and plugin references into an agent process."""
+        agent._bus = self.bus
+        agent._tracer = self.tracer
+        agent.llm = self.model_provider
+        agent.tools = self.tool_registry
+        agent.store = self.store
+
+
+def build_component_set(
+    transport_type: str = "in_process",
+    serializer: Serializer | None = None,
+    model_provider: Any = None,
+    tool_registry: Any = None,
+    state_store: Any = None,
+    zmq_pub_addr: str = "tcp://127.0.0.1:5559",
+    zmq_sub_addr: str = "tcp://127.0.0.1:5560",
+    zmq_start_proxy: bool = True,
+    nats_servers: str | list[str] = "nats://localhost:4222",
+    nats_jetstream: bool = False,
+    nats_stream_name: str = "AGENCY",
+) -> ComponentSet:
+    """Build a ComponentSet from primitive configuration values.
+
+    Called by Runtime.start() and Worker.start() when no pre-built
+    ComponentSet is provided. Handles serializer selection, transport
+    construction, and store defaulting.
+    """
+    # Serializer
+    if serializer is not None:
+        built_serializer = serializer
+    elif settings.serializer == "json":
+        built_serializer = JsonSerializer()
+    else:
+        built_serializer = MsgpackSerializer()
+
+    # Tracer
+    built_tracer = Tracer()
+
+    # Transport
+    if transport_type == "zmq":
+        from agency.transport.zmq import ZMQTransport
+
+        built_transport = ZMQTransport(
+            built_serializer,
+            pub_addr=zmq_pub_addr,
+            sub_addr=zmq_sub_addr,
+            start_proxy=zmq_start_proxy,
+        )
+    elif transport_type == "nats":
+        from agency.transport.nats import NATSTransport
+
+        built_transport = NATSTransport(
+            built_serializer,
+            servers=nats_servers,
+            jetstream=nats_jetstream,
+            stream_name=nats_stream_name,
+        )
+    else:
+        from agency.transport.inprocess import InProcessTransport
+
+        built_transport = InProcessTransport(built_serializer)
+
+    # Registry
+    built_registry = LocalRegistry()
+
+    # State store default
+    if state_store is None:
+        from agency.plugins.state import InMemoryStateStore
+
+        state_store = InMemoryStateStore()
+
+    return ComponentSet(
+        transport=built_transport,
+        registry=built_registry,
+        serializer=built_serializer,
+        tracer=built_tracer,
+        store=state_store,
+        model_provider=model_provider,
+        tool_registry=tool_registry,
+    )
