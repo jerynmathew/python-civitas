@@ -1,6 +1,7 @@
 """Shared test fixtures and reusable test agents."""
 
 import asyncio
+from typing import Callable
 
 import pytest
 
@@ -26,6 +27,19 @@ async def wait_for_status(
                 f"{agent.name!r} did not reach {status.value} within {timeout}s "
                 f"(current: {agent.status.value})"
             )
+        await asyncio.sleep(0.01)
+
+
+async def wait_for(
+    condition: Callable[[], bool],
+    timeout: float = 2.0,
+    msg: str = "condition",
+) -> None:
+    """Poll until condition() returns True or timeout expires."""
+    deadline = asyncio.get_event_loop().time() + timeout
+    while not condition():
+        if asyncio.get_event_loop().time() > deadline:
+            raise TimeoutError(f"{msg} not met within {timeout}s")
         await asyncio.sleep(0.01)
 
 

@@ -95,6 +95,12 @@ class Worker:
 
     async def start(self) -> None:
         """Start the worker: connect to proxy, wire agents, start loops."""
+        if self._transport_type not in ("zmq", "nats"):
+            from agency.errors import ConfigurationError
+            raise ConfigurationError(
+                f"Unknown transport: {self._transport_type!r}. Expected 'zmq' or 'nats'."
+            )
+
         # Serializer
         if self._custom_serializer is not None:
             self._serializer = self._custom_serializer

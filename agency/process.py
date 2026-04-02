@@ -13,6 +13,9 @@ from agency.messages import Message, _new_span_id, _uuid7
 if TYPE_CHECKING:
     from agency.bus import MessageBus
     from agency.observability.tracer import Span, Tracer
+    from agency.plugins.model import ModelProvider
+    from agency.plugins.state import StateStore
+    from agency.plugins.tools import ToolRegistry
 
 
 class ProcessStatus(Enum):
@@ -98,12 +101,12 @@ class AgentProcess:
         self._max_retries = max_retries
         self._shutdown_timeout = shutdown_timeout
 
-        # Injected by Runtime/Worker via ComponentSet during setup
+        # Injected by Runtime/Worker during setup
         self._bus: MessageBus | None = None
         self._tracer: Tracer | None = None
-        self.llm: Any = None
-        self.tools: Any = None
-        self.store: Any = None
+        self.llm: ModelProvider | None = None
+        self.tools: ToolRegistry | None = None
+        self.store: StateStore | None = None
 
         # Current message context for reply/tracing
         self._current_message: Message | None = None
