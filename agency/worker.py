@@ -35,6 +35,7 @@ from typing import Any
 
 from agency.components import ComponentSet, build_component_set
 from agency.errors import ConfigurationError
+from agency.messages import Message
 from agency.process import AgentProcess, ProcessStatus
 from agency.serializer import Serializer
 
@@ -126,7 +127,9 @@ class Worker:
         # Start transport first — must be running before setup_agent (F02-16)
         await self._transport.start()
 
-        # Wait for subscriptions to propagate (ZMQ slow joiner)
+        # Wait for ZMQ subscriptions to propagate (slow joiner).
+        # Also lets the worker's PUB socket establish its connection to the proxy
+        # before we publish registration announcements below.
         if hasattr(self._transport, "wait_ready"):
             await self._transport.wait_ready()
 
@@ -145,6 +148,20 @@ class Worker:
         # Start agent message loops
         for agent in self._agents.values():
             await agent._start()
+
+        # Announce agents (and the restart handler) to the runtime's registry for
+        # cross-process routing. Published AFTER wait_ready so the PUB socket
+        # connection is stable. The brief sleep gives the runtime's receiver loop
+        # time to process the announcements before worker.start() returns.
+        announce_names = list(self._agents) + ["_agency.worker.restart"]
+        for name in announce_names:
+            await self._transport.publish(
+                "_agency.register",
+                self._serializer.serialize(
+                    Message(type="_agency.register", payload={"name": name})
+                ),
+            )
+        await asyncio.sleep(0.1)
 
         self._started = True
 
@@ -192,6 +209,19 @@ class Worker:
 
         for agent in reversed(list(self._agents.values())):
             await agent._stop()
+
+        # Deregister agents from the runtime's registry before disconnecting
+        if self._serializer is not None and self._transport is not None:
+            for name in self._agents:
+                try:
+                    await self._transport.publish(
+                        "_agency.deregister",
+                        self._serializer.serialize(
+                            Message(type="_agency.deregister", payload={"name": name})
+                        ),
+                    )
+                except Exception:  # noqa: BLE001 — best-effort during shutdown
+                    pass
 
         if self._transport is not None:
             await self._transport.stop()

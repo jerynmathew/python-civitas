@@ -35,6 +35,15 @@ class Transport(Protocol):
         """Send a message and await a reply (request-reply)."""
         ...
 
+    async def wait_ready(self) -> None:
+        """Wait for connections and subscriptions to stabilize. No-op by default.
+
+        Transports with slow-joiner problems (e.g. ZMQ PUB/SUB) should override
+        this to sleep or poll until messages will be reliably delivered. Callers
+        invoke this after all subscribe() calls are done but before publishing.
+        """
+        ...
+
     def has_reply_address(self, address: str) -> bool:
         """Return True if address is an active ephemeral reply endpoint.
 

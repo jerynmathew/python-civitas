@@ -82,7 +82,11 @@ class MessageBus:
         if entry is not None:
             address = entry.address
         elif self._transport.has_reply_address(message.recipient):
-            # Ephemeral reply endpoint created by transport.request()
+            # Ephemeral reply endpoint — same-process request-reply short-circuit
+            address = message.recipient
+        elif message.recipient.startswith("_reply."):
+            # Cross-process reply: the runtime's transport owns this ephemeral topic.
+            # Route by address directly — ZMQ/NATS delivery handles it.
             address = message.recipient
         else:
             raise MessageRoutingError(

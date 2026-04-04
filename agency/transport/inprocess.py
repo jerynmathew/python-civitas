@@ -25,6 +25,8 @@ class InProcessTransport:
         self._started = False
 
     async def start(self) -> None:
+        if self._started:
+            return
         self._started = True
 
     async def stop(self) -> None:

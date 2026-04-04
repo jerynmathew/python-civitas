@@ -19,6 +19,7 @@ Architecture:
 from __future__ import annotations
 
 import asyncio
+import logging
 import threading
 from collections.abc import Awaitable, Callable
 
@@ -27,6 +28,8 @@ import zmq.asyncio
 
 from agency.messages import _uuid7
 from agency.serializer import Serializer
+
+logger = logging.getLogger(__name__)
 
 # Null-byte topic separator prevents prefix collisions
 # (e.g., subscribing to "foo" won't match "foobar")
@@ -56,7 +59,12 @@ class ZMQProxy:
         self._ctx = zmq.Context()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
-        self._ready.wait(timeout=5.0)
+        ready = self._ready.wait(timeout=5.0)
+        if not ready:
+            raise RuntimeError(
+                f"ZMQProxy failed to start within 5 seconds "
+                f"(frontend={self._frontend_addr}, backend={self._backend_addr})"
+            )
 
     def _run(self) -> None:
         if self._ctx is None:
@@ -122,11 +130,17 @@ class ZMQTransport:
 
     async def start(self) -> None:
         """Initialize sockets and connect to the proxy."""
+        if self._started:
+            return
+
         if self._start_proxy:
             self._proxy = ZMQProxy(
                 frontend=self._pub_addr, backend=self._sub_addr
             )
-            self._proxy.start()
+            # Run blocking proxy start in a thread executor to avoid blocking
+            # the event loop during the ready-wait.
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self._proxy.start)
 
         self._context = zmq.asyncio.Context()
 
@@ -180,9 +194,9 @@ class ZMQTransport:
         self, address: str, handler: Callable[[bytes], Awaitable[None]]
     ) -> None:
         """Subscribe to messages arriving at this address."""
-        self._handlers[address] = handler
         if self._sub is None:
             raise RuntimeError("ZMQTransport not started")
+        self._handlers[address] = handler
         self._sub.subscribe(address.encode() + _TOPIC_SEP)
 
     async def publish(self, address: str, data: bytes) -> None:
@@ -234,7 +248,8 @@ class ZMQTransport:
             return reply_data
         finally:
             self._reply_queues.pop(reply_address, None)
-            self._sub.unsubscribe(reply_address.encode() + _TOPIC_SEP)
+            if self._sub is not None:
+                self._sub.unsubscribe(reply_address.encode() + _TOPIC_SEP)
 
     def has_reply_address(self, address: str) -> bool:
         """Return True if address is an active ephemeral reply queue."""
@@ -251,8 +266,8 @@ class ZMQTransport:
                     continue
 
                 topic_raw, data = frames
-                # Strip topic separator to recover the address
-                address = topic_raw.rstrip(b"\x00").decode()
+                # Strip exactly the topic separator to recover the address
+                address = topic_raw.removesuffix(_TOPIC_SEP).decode()
 
                 # Reply queue takes priority (for cross-process request-reply)
                 if address in self._reply_queues:
@@ -266,5 +281,7 @@ class ZMQTransport:
 
             except asyncio.CancelledError:
                 break
-            except zmq.ZMQError:
+            except zmq.ZMQError as exc:
+                if self._started:
+                    logger.error("[ZMQTransport] receiver loop terminated: %s", exc)
                 break

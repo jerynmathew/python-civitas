@@ -20,6 +20,7 @@ NATS subject mapping:
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Awaitable, Callable
 
 import nats
@@ -28,6 +29,8 @@ from nats.aio.msg import Msg
 
 from agency.messages import _uuid7
 from agency.serializer import Serializer
+
+logger = logging.getLogger(__name__)
 
 # Subject prefix to namespace all Agency messages
 _SUBJECT_PREFIX = "agency.agent."
@@ -53,11 +56,13 @@ class NATSTransport:
         servers: str | list[str] = "nats://localhost:4222",
         jetstream: bool = False,
         stream_name: str = "AGENCY",
+        create_stream_if_missing: bool = True,
     ) -> None:
         self._serializer = serializer
         self._servers = servers if isinstance(servers, list) else [servers]
         self._use_jetstream = jetstream
         self._stream_name = stream_name
+        self._create_stream_if_missing = create_stream_if_missing
 
         self._nc: NATSClient | None = None
         self._js: nats.js.JetStreamContext | None = None
@@ -72,7 +77,24 @@ class NATSTransport:
 
     async def start(self) -> None:
         """Connect to the NATS server."""
-        self._nc = await nats.connect(servers=self._servers)
+        if self._started:
+            return
+
+        async def _on_disconnected() -> None:
+            logger.warning("[NATSTransport] disconnected from server")
+
+        async def _on_reconnected() -> None:
+            logger.info("[NATSTransport] reconnected to server")
+
+        async def _on_error(exc: Exception) -> None:
+            logger.error("[NATSTransport] error: %s", exc)
+
+        self._nc = await nats.connect(
+            servers=self._servers,
+            disconnected_cb=_on_disconnected,
+            reconnected_cb=_on_reconnected,
+            error_cb=_on_error,
+        )
 
         if self._use_jetstream:
             self._js = self._nc.jetstream()
@@ -81,6 +103,16 @@ class NATSTransport:
                     f"{_SUBJECT_PREFIX}>"
                 )
             except nats.js.errors.NotFoundError:
+                if not self._create_stream_if_missing:
+                    raise RuntimeError(
+                        f"JetStream stream '{self._stream_name}' not found and "
+                        f"create_stream_if_missing=False"
+                    )
+                logger.warning(
+                    "[NATSTransport] auto-creating JetStream stream '%s' — "
+                    "set create_stream_if_missing=False in production",
+                    self._stream_name,
+                )
                 await self._js.add_stream(
                     name=self._stream_name,
                     subjects=[f"{_SUBJECT_PREFIX}>"],
@@ -128,6 +160,7 @@ class NATSTransport:
             sub = await self._js.subscribe(
                 subject,
                 durable=address.replace(".", "_").replace("-", "_"),
+                cb=_on_msg,
             )
         else:
             sub = await self._nc.subscribe(subject, cb=_on_msg)

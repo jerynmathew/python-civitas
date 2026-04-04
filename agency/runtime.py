@@ -285,6 +285,29 @@ class Runtime:
         for agent in all_agents:
             await self._bus.setup_agent(agent)
 
+        # Subscribe to cross-process agent announcements from Worker processes.
+        # Workers publish _agency.register on startup so this runtime's bus can
+        # route messages to remote agents without a shared registry service.
+        async def _on_remote_register(data: bytes) -> None:
+            msg = cs.serializer.deserialize(data)
+            name: str = msg.payload.get("name", "")
+            if name:
+                try:
+                    self._registry.register_remote(name)
+                except ValueError:
+                    pass  # already registered locally — ignore
+
+        async def _on_remote_deregister(data: bytes) -> None:
+            msg = cs.serializer.deserialize(data)
+            name: str = msg.payload.get("name", "")
+            if name:
+                entry = self._registry.lookup(name)
+                if entry is not None and not entry.is_local:
+                    self._registry.deregister(name)
+
+        await self._transport.subscribe("_agency.register", _on_remote_register)
+        await self._transport.subscribe("_agency.deregister", _on_remote_deregister)
+
         # Wait for subscriptions to propagate (ZMQ slow joiner mitigation)
         if hasattr(self._transport, "wait_ready"):
             await self._transport.wait_ready()
