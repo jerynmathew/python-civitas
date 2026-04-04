@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import importlib
+import logging
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 from agency.components import ComponentSet, build_component_set
 from agency.messages import Message, _new_span_id, _uuid7
@@ -68,12 +71,13 @@ class Runtime:
         self._nats_jetstream = nats_jetstream
         self._nats_stream_name = nats_stream_name
 
-        # Set during start() — exposed for stop() and ask()/send()
+        # Set during start() — exposed for stop(), ask()/send(), and get_agent()
         self._serializer: Serializer | None = None
         self._tracer: Any = None
         self._transport: Any = None
         self._registry: Any = None
         self._bus: Any = None
+        self._agents_by_name: dict[str, AgentProcess] = {}   # F04-10: O(1) live process lookup
         self._started = False
 
     @classmethod
@@ -101,8 +105,15 @@ class Runtime:
                     f"Cannot resolve agent type '{type_str}'. "
                     f"Provide it in agent_classes or use a dotted path."
                 )
-            module = importlib.import_module(module_path)
-            return getattr(module, class_name)
+            try:
+                module = importlib.import_module(module_path)
+                return getattr(module, class_name)
+            except (ImportError, AttributeError) as exc:
+                from agency.errors import ConfigurationError
+                raise ConfigurationError(
+                    f"Cannot load agent type '{type_str}': {exc}. "
+                    f"Check that the module is installed and the class name is correct."
+                ) from exc
 
         def _build_node(node: dict[str, Any]) -> AgentProcess | Supervisor:
             if "supervisor" in node:
@@ -129,7 +140,12 @@ class Runtime:
             else:
                 raise ValueError(f"Unknown node type in config: {node}")
 
-        sup_cfg = config.get("supervision", config.get("supervisor", {}))
+        sup_cfg = config.get("supervision") or config.get("supervisor")
+        if not sup_cfg:
+            from agency.errors import ConfigurationError
+            raise ConfigurationError(
+                "YAML topology must define a top-level 'supervision' key."
+            )
         # Top-level is always a supervisor
         children = [_build_node(c) for c in sup_cfg.get("children", [])]
         root = Supervisor(
@@ -169,7 +185,11 @@ class Runtime:
 
             loaded = load_plugins_from_config(config)
             if loaded["model_providers"]:
-                # Use first model provider as the primary
+                if len(loaded["model_providers"]) > 1:
+                    logger.warning(
+                        "Multiple model providers found in YAML; using the first one. "
+                        "Additional providers are ignored."
+                    )
                 kwargs["model_provider"] = loaded["model_providers"][0]
             if loaded["state_store"] is not None:
                 kwargs["state_store"] = loaded["state_store"]
@@ -210,7 +230,9 @@ class Runtime:
         if self._started:
             return
 
-        # Steps 2–6: build or use provided ComponentSet
+        # Steps 2–6: build or use provided ComponentSet.
+        # Note: if a pre-built ComponentSet is provided, its transport must support
+        # being started by this call — transport.start() is always called below. (F04-11)
         if self._components is not None:
             cs = self._components
         else:
@@ -241,7 +263,8 @@ class Runtime:
             return
 
         # 8. Inject dependencies into all AgentProcesses
-        for agent in self._root_supervisor.all_agents():
+        all_agents = self._root_supervisor.all_agents()
+        for agent in all_agents:
             cs.inject(agent)
 
         # Inject into supervisors (supervisor-specific wiring, not via ComponentSet)
@@ -250,15 +273,16 @@ class Runtime:
             sup._registry = cs.registry
             sup._tracer = cs.tracer
 
-        # 9. Register all AgentProcesses in Registry
-        for agent in self._root_supervisor.all_agents():
+        # 9. Register all AgentProcesses in Registry; build O(1) name→process map (F04-10)
+        for agent in all_agents:
             self._registry.register(agent.name)
+        self._agents_by_name = {a.name: a for a in all_agents}
 
         # 10. Start Transport
         await self._transport.start()
 
         # Set up transport subscriptions for each agent
-        for agent in self._root_supervisor.all_agents():
+        for agent in all_agents:
             await self._bus.setup_agent(agent)
 
         # Wait for subscriptions to propagate (ZMQ slow joiner mitigation)
@@ -276,22 +300,23 @@ class Runtime:
         if not self._started:
             return
 
-        # 1-2. Stop supervision tree (sends shutdown, awaits on_stop)
+        # 1. Stop supervision tree (sends shutdown, awaits on_stop for each agent)
         if self._root_supervisor is not None:
             await self._root_supervisor.stop()
 
-        # 4. Stop Transport
+        # 2. Stop Transport
         if self._transport is not None:
             await self._transport.stop()
 
-        # 5. Close StateStore
+        # 3. Close StateStore
         if self._state_store is not None and hasattr(self._state_store, "close"):
             await self._state_store.close()
 
-        # 6. Flush Tracer
+        # 4. Flush Tracer
         if self._tracer is not None:
             self._tracer.flush()
 
+        self._agents_by_name.clear()
         self._started = False
 
     # ------------------------------------------------------------------
@@ -301,15 +326,11 @@ class Runtime:
     def get_agent(self, name: str) -> AgentProcess | None:
         """Return the live AgentProcess instance by name, or None.
 
+        O(1) lookup via the agents-by-name dict built during start().
         Use this when you need to inspect process state (e.g. status).
-        For routing messages use the registry or runtime.send/ask instead.
+        For routing messages use runtime.send/ask instead.
         """
-        if self._root_supervisor is None:
-            return None
-        for agent in self._root_supervisor.all_agents():
-            if agent.name == name:
-                return agent
-        return None
+        return self._agents_by_name.get(name)
 
     async def ask(
         self,
