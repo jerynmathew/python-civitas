@@ -369,3 +369,141 @@ async def test_custom_plugin_via_dotted_path():
     assert isinstance(provider, MockModelProvider)
     response = await provider.chat(model="test", messages=[])
     assert response.content == "mock response"
+
+
+# ---------------------------------------------------------------------------
+# F07-5: InMemoryStateStore copy-on-set
+# ---------------------------------------------------------------------------
+
+
+async def test_in_memory_state_store_set_copies_dict():
+    """InMemoryStateStore.set() stores a copy, not the original reference."""
+    from agency.plugins.state import InMemoryStateStore
+
+    store = InMemoryStateStore()
+    state = {"key": "value"}
+    await store.set("agent1", state)
+
+    # Mutate original after storing
+    state["key"] = "mutated"
+
+    restored = await store.get("agent1")
+    assert restored is not None
+    assert restored["key"] == "value"  # stored copy is unchanged
+
+
+# ---------------------------------------------------------------------------
+# F07-6: ToolRegistry.register() raises on duplicate
+# ---------------------------------------------------------------------------
+
+
+async def test_tool_registry_duplicate_raises():
+    """ToolRegistry.register() raises ValueError on duplicate tool name."""
+    from agency.plugins.tools import ToolRegistry
+
+    class FakeTool:
+        name = "search"
+        schema: dict = {}
+
+        async def execute(self, **kwargs):
+            return {}
+
+    registry = ToolRegistry()
+    registry.register(FakeTool())
+
+    with pytest.raises(ValueError, match="already registered"):
+        registry.register(FakeTool())
+
+
+async def test_tool_registry_deregister_allows_reregister():
+    """Deregistering a tool allows re-registering with the same name."""
+    from agency.plugins.tools import ToolRegistry
+
+    class FakeTool:
+        name = "search"
+        schema: dict = {}
+
+        async def execute(self, **kwargs):
+            return {}
+
+    registry = ToolRegistry()
+    registry.register(FakeTool())
+    registry.deregister("search")
+    registry.register(FakeTool())  # should not raise
+    assert registry.get("search") is not None
+
+
+async def test_tool_registry_list_tools():
+    """ToolRegistry.list_tools() returns all registered tools."""
+    from agency.plugins.tools import ToolRegistry
+
+    class FakeToolA:
+        name = "tool_a"
+        schema: dict = {}
+
+        async def execute(self, **kwargs):
+            return {}
+
+    class FakeToolB:
+        name = "tool_b"
+        schema: dict = {}
+
+        async def execute(self, **kwargs):
+            return {}
+
+    registry = ToolRegistry()
+    registry.register(FakeToolA())
+    registry.register(FakeToolB())
+    tools = registry.list_tools()
+    assert len(tools) == 2
+    assert {t.name for t in tools} == {"tool_a", "tool_b"}
+
+
+# ---------------------------------------------------------------------------
+# F07-7: PluginError in AgencyError hierarchy
+# ---------------------------------------------------------------------------
+
+
+async def test_plugin_error_is_agency_error():
+    """PluginError is a subclass of AgencyError."""
+    from agency.errors import AgencyError, PluginError as AgencyPluginError
+
+    assert issubclass(AgencyPluginError, AgencyError)
+
+    err = AgencyPluginError("model", "fake", "not found")
+    assert isinstance(err, AgencyError)
+
+
+async def test_plugin_error_importable_from_loader():
+    """PluginError is still importable from agency.plugins.loader."""
+    from agency.plugins.loader import PluginError as LoaderPluginError
+    from agency.errors import PluginError as ErrorsPluginError
+
+    assert LoaderPluginError is ErrorsPluginError
+
+
+# ---------------------------------------------------------------------------
+# F07-10: missing 'type' field in plugin config raises clear error
+# ---------------------------------------------------------------------------
+
+
+async def test_load_plugins_missing_type_raises():
+    """Config entry missing 'type' field raises PluginError with clear message."""
+    config = {
+        "plugins": {
+            "models": [{"config": {"model": "gpt-4"}}],  # no 'type'
+        }
+    }
+    with pytest.raises(PluginError, match="missing a 'type' field"):
+        load_plugins_from_config(config)
+
+
+async def test_load_plugins_missing_exporter_type_raises():
+    """Exporter config missing 'type' field raises PluginError."""
+    config = {
+        "plugins": {
+            "exporters": [{"config": {}}],  # no 'type'
+        }
+    }
+    with pytest.raises(PluginError, match="missing a 'type' field"):
+        load_plugins_from_config(config)

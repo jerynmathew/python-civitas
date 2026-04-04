@@ -47,3 +47,20 @@ class DeserializationError(AgencyError):
     Provides a stable exception contract regardless of whether msgpack or JSON
     is in use — callers never need to catch library-specific exceptions.
     """
+
+
+class PluginError(AgencyError):
+    """Raised when a plugin cannot be loaded or instantiated.
+
+    Inherits from AgencyError so callers catching the Agency error hierarchy
+    also catch plugin load failures.
+    """
+
+    def __init__(self, plugin_type: str, name: str, reason: str) -> None:
+        self.plugin_type = plugin_type
+        self.name = name
+        self.reason = reason
+        super().__init__(
+            f"Failed to load {plugin_type} plugin '{name}': {reason}\n"
+            f"  Hint: pip install python-agency[{name}]"
+        )

@@ -32,8 +32,12 @@ class InMemoryStateStore:
         return self._data.get(agent_name)
 
     async def set(self, agent_name: str, state: dict[str, Any]) -> None:
-        """Store state for an agent in memory."""
-        self._data[agent_name] = state
+        """Store state for an agent in memory (shallow copy to prevent aliasing).
+
+        Without copying, subsequent mutations to the caller's dict would also
+        mutate the stored checkpoint, making restore-from-checkpoint a no-op.
+        """
+        self._data[agent_name] = dict(state)
 
     async def delete(self, agent_name: str) -> None:
         """Remove state for an agent from memory."""

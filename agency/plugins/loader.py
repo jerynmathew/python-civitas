@@ -18,18 +18,11 @@ import importlib
 from importlib.metadata import entry_points
 from typing import Any
 
+# PluginError lives in agency.errors (AgencyError subclass) — re-exported here
+# for backward compatibility so existing imports from this module still work.
+from agency.errors import PluginError
 
-class PluginError(Exception):
-    """Raised when a plugin cannot be loaded."""
-
-    def __init__(self, plugin_type: str, name: str, reason: str) -> None:
-        self.plugin_type = plugin_type
-        self.name = name
-        self.reason = reason
-        super().__init__(
-            f"Failed to load {plugin_type} plugin '{name}': {reason}\n"
-            f"  Hint: pip install python-agency[{name}]"
-        )
+__all__ = ["PluginError", "resolve_plugin_class", "load_plugin", "load_plugins_from_config"]
 
 
 # Built-in plugin mappings (name → dotted import path)
@@ -144,14 +137,18 @@ def load_plugins_from_config(config: dict[str, Any]) -> dict[str, Any]:
 
     # Models
     for model_cfg in plugins_cfg.get("models", []):
-        name = model_cfg.get("type", "")
+        name = model_cfg.get("type")
+        if not name:
+            raise PluginError("model", "<missing>", "Plugin config entry is missing a 'type' field.")
         plugin_config = model_cfg.get("config", {})
         provider = load_plugin("model", name, plugin_config)
         result["model_providers"].append(provider)
 
     # Exporters
     for exp_cfg in plugins_cfg.get("exporters", []):
-        name = exp_cfg.get("type", "")
+        name = exp_cfg.get("type")
+        if not name:
+            raise PluginError("exporter", "<missing>", "Plugin config entry is missing a 'type' field.")
         plugin_config = exp_cfg.get("config", {})
         exporter = load_plugin("exporter", name, plugin_config)
         result["exporters"].append(exporter)

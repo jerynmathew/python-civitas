@@ -30,14 +30,27 @@ class ToolRegistry:
         self._tools: dict[str, ToolProvider] = {}
 
     def register(self, tool: ToolProvider) -> None:
-        """Register a tool by its name."""
+        """Register a tool by its name.
+
+        Raises ``ValueError`` on duplicate name — silent overwrite would cause
+        the wrong implementation to be called since names are used by the model.
+        """
+        if tool.name in self._tools:
+            raise ValueError(
+                f"Tool already registered: {tool.name!r}. "
+                f"Deregister the existing tool first."
+            )
         self._tools[tool.name] = tool
+
+    def deregister(self, name: str) -> None:
+        """Remove a tool by name. No-op if not registered."""
+        self._tools.pop(name, None)
 
     def get(self, name: str) -> ToolProvider | None:
         """Look up a tool by name."""
         return self._tools.get(name)
 
-    def all(self) -> list[ToolProvider]:
+    def list_tools(self) -> list[ToolProvider]:
         """Return all registered tools."""
         return list(self._tools.values())
 
