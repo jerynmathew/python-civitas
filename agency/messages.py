@@ -86,8 +86,13 @@ class Message:
             ) from exc
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to a plain dict for serialization."""
+        """Convert to a plain dict for serialization.
+
+        Includes ``schema_version`` so receivers can detect and handle schema
+        evolution. Unknown keys in received dicts are filtered by ``from_dict``.
+        """
         return {
+            "schema_version": 1,
             "id": self.id,
             "type": self.type,
             "sender": self.sender,

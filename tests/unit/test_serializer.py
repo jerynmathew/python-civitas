@@ -1,5 +1,8 @@
 """Tests for Serializer protocol and msgpack/json implementations."""
 
+import pytest
+
+from agency.errors import DeserializationError
 from agency.messages import Message
 from agency.serializer import JsonSerializer, MsgpackSerializer
 
@@ -92,3 +95,65 @@ def test_none_optional_fields_roundtrip():
         assert restored.correlation_id is None
         assert restored.reply_to is None
         assert restored.parent_span_id is None
+
+
+# F05-4: corrupt bytes raise DeserializationError
+
+
+def test_msgpack_deserialize_corrupt_bytes():
+    """MsgpackSerializer raises DeserializationError on corrupt bytes."""
+    ser = MsgpackSerializer()
+    with pytest.raises(DeserializationError):
+        ser.deserialize(b"not valid msgpack \xff\xfe")
+
+
+def test_json_deserialize_corrupt_bytes():
+    """JsonSerializer raises DeserializationError on corrupt bytes."""
+    ser = JsonSerializer()
+    with pytest.raises(DeserializationError):
+        ser.deserialize(b"not valid json {{{")
+
+
+def test_json_deserialize_invalid_utf8():
+    """JsonSerializer raises DeserializationError on non-UTF-8 bytes."""
+    ser = JsonSerializer()
+    with pytest.raises(DeserializationError):
+        ser.deserialize(b"\xff\xfe invalid utf-8")
+
+
+# F05-5: cross-serializer format mismatch raises DeserializationError
+
+
+def test_json_bytes_fed_to_msgpack_raises():
+    """JSON bytes fed to MsgpackSerializer raises DeserializationError."""
+    json_bytes = JsonSerializer().serialize(Message(type="test"))
+    with pytest.raises(DeserializationError):
+        MsgpackSerializer().deserialize(json_bytes)
+
+
+def test_msgpack_bytes_fed_to_json_raises():
+    """Msgpack bytes fed to JsonSerializer raises DeserializationError."""
+    msgpack_bytes = MsgpackSerializer().serialize(Message(type="test"))
+    with pytest.raises(DeserializationError):
+        JsonSerializer().deserialize(msgpack_bytes)
+
+
+# F05-2: schema_version present in serialized output
+
+
+def test_schema_version_in_msgpack_output():
+    """Msgpack-serialized bytes include schema_version field."""
+    import msgpack  # type: ignore[import-untyped]
+
+    msg = Message(type="test")
+    raw = msgpack.unpackb(MsgpackSerializer().serialize(msg), raw=False)
+    assert raw["schema_version"] == 1
+
+
+def test_schema_version_in_json_output():
+    """JSON-serialized bytes include schema_version field."""
+    import json
+
+    msg = Message(type="test")
+    raw = json.loads(JsonSerializer().serialize(msg).decode("utf-8"))
+    assert raw["schema_version"] == 1

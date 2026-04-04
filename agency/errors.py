@@ -39,3 +39,11 @@ class MessageRoutingError(AgencyError):
 
 class ConfigurationError(AgencyError):
     """Invalid or missing runtime configuration."""
+
+
+class DeserializationError(AgencyError):
+    """Raised when incoming bytes cannot be decoded into a Message.
+
+    Provides a stable exception contract regardless of whether msgpack or JSON
+    is in use — callers never need to catch library-specific exceptions.
+    """

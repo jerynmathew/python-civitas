@@ -7,6 +7,7 @@ from typing import Any, Protocol
 
 import msgpack  # type: ignore[import-untyped]
 
+from agency.errors import DeserializationError
 from agency.messages import Message
 
 
@@ -18,7 +19,12 @@ class Serializer(Protocol):
         ...
 
     def deserialize(self, data: bytes) -> Message:
-        """Decode bytes back into a Message."""
+        """Decode bytes back into a Message.
+
+        Raises:
+            DeserializationError: if the bytes are corrupt, malformed, or in the
+                wrong format. Callers never need to catch library-specific exceptions.
+        """
         ...
 
 
@@ -30,9 +36,18 @@ class MsgpackSerializer:
         return msgpack.packb(message.to_dict(), use_bin_type=True)  # type: ignore[no-any-return]
 
     def deserialize(self, data: bytes) -> Message:
-        """Decode MessagePack bytes into a Message."""
-        raw: dict[str, Any] = msgpack.unpackb(data, raw=False)
-        return Message.from_dict(raw)
+        """Decode MessagePack bytes into a Message.
+
+        Raises:
+            DeserializationError: on corrupt or malformed bytes.
+        """
+        try:
+            raw: dict[str, Any] = msgpack.unpackb(data, raw=False)
+            return Message.from_dict(raw)
+        except Exception as exc:
+            raise DeserializationError(
+                f"Failed to deserialize msgpack data: {exc}"
+            ) from exc
 
 
 class JsonSerializer:
@@ -43,6 +58,15 @@ class JsonSerializer:
         return json.dumps(message.to_dict()).encode("utf-8")
 
     def deserialize(self, data: bytes) -> Message:
-        """Decode JSON bytes into a Message."""
-        raw: dict[str, Any] = json.loads(data.decode("utf-8"))
-        return Message.from_dict(raw)
+        """Decode JSON bytes into a Message.
+
+        Raises:
+            DeserializationError: on corrupt, malformed, or non-UTF-8 bytes.
+        """
+        try:
+            raw: dict[str, Any] = json.loads(data.decode("utf-8"))
+            return Message.from_dict(raw)
+        except Exception as exc:
+            raise DeserializationError(
+                f"Failed to deserialize JSON data: {exc}"
+            ) from exc
