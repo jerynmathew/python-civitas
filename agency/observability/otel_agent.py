@@ -49,8 +49,12 @@ async def run_otel_agent(
             except TimeoutError:
                 await _flush()
     except asyncio.CancelledError:
-        # Drain whatever is left in the queue before returning
+        # F08-6: drain remaining spans with a 2s deadline to avoid stalling shutdown
+        deadline = asyncio.get_event_loop().time() + 2.0
         while not queue.empty():
+            if asyncio.get_event_loop().time() > deadline:
+                logger.warning("OTELAgent: drain timeout — %d spans dropped", queue.qsize())
+                break
             try:
                 pending.append(queue.get_nowait())
             except asyncio.QueueEmpty:

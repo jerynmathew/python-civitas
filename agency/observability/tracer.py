@@ -49,6 +49,7 @@ class Span:
         self.end_time: float | None = None
         self._otel_span: Any = None  # holds real OTEL span if available
         self._span_queue = _span_queue
+        self._ended = False  # F08-4: guard against double-end
 
     def set_attribute(self, key: str, value: Any) -> None:
         """Set an attribute on this span."""
@@ -65,7 +66,10 @@ class Span:
             self._otel_span.record_exception(exc)
 
     def end(self) -> None:
-        """Mark this span as finished."""
+        """Mark this span as finished. Idempotent — safe to call multiple times."""
+        if self._ended:
+            return
+        self._ended = True
         self.end_time = time.time()
         if self._otel_span is not None:
             self._otel_span.end()
@@ -100,13 +104,13 @@ class Span:
 # Try to import OTEL; set a flag for runtime use
 _HAS_OTEL = False
 try:
-    from opentelemetry import trace as otel_trace
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import (
-        ConsoleSpanExporter as OTELConsoleSpanExporter,
+        BatchSpanProcessor,  # F08-2: for OTLP
+        SimpleSpanProcessor,  # for console fallback
     )
     from opentelemetry.sdk.trace.export import (
-        SimpleSpanProcessor,
+        ConsoleSpanExporter as OTELConsoleSpanExporter,
     )
 
     _HAS_OTEL = True
@@ -130,6 +134,7 @@ class Tracer:
         self._span_queue = span_queue
         self._use_otel = False
         self._otel_tracer: Any = None
+        self._provider: Any = None  # F08-1/F08-5: instance-scoped provider
         self._console_fallback = True
 
         if _HAS_OTEL:
@@ -143,16 +148,25 @@ class Tracer:
                     )
 
                     exporter = OTLPSpanExporter(endpoint=endpoint)
-                    provider.add_span_processor(SimpleSpanProcessor(exporter))
+                    # F08-2: BatchSpanProcessor exports in background thread —
+                    # avoids blocking the event loop during OTLP network I/O.
+                    provider.add_span_processor(BatchSpanProcessor(exporter))
                 except ImportError:
                     provider.add_span_processor(SimpleSpanProcessor(OTELConsoleSpanExporter()))
             else:
                 provider.add_span_processor(SimpleSpanProcessor(OTELConsoleSpanExporter()))
 
-            otel_trace.set_tracer_provider(provider)
-            self._otel_tracer = otel_trace.get_tracer("agency", "0.1.0")
+            # F08-1: store provider as instance attr; do NOT set the global
+            self._provider = provider
+            self._otel_tracer = provider.get_tracer("agency", "0.1.0")
             self._use_otel = True
             self._console_fallback = False
+        else:
+            # F08-7: warn at startup if OTEL not available so operators notice
+            logger.warning(
+                "[Tracer] opentelemetry-sdk not installed — using console fallback; "
+                "install opentelemetry-sdk for structured tracing"
+            )
 
     # ------------------------------------------------------------------
     # Internal — span factory
@@ -200,7 +214,7 @@ class Tracer:
         if self._console_fallback:
             ts = time.strftime("%H:%M:%S", time.localtime(span.start_time))
             ms = f"{span.start_time % 1:.3f}"[1:]
-            logger.info(
+            logger.debug(  # F08-7: debug so operators can opt in
                 "[%s%s] %s -> %s: %s",
                 ts,
                 ms,
@@ -244,7 +258,7 @@ class Tracer:
     def start_llm_span(
         self,
         model: str,
-        trace_id: str = "",
+        trace_id: str,  # F08-3: required — callers must supply a trace_id
         parent_span_id: str | None = None,
     ) -> Span:
         """Create a span for an LLM call. Call end_llm_span() after the call completes."""
@@ -272,7 +286,7 @@ class Tracer:
         span.end()
         if self._console_fallback:
             model = span.attributes.get("llm.model", "?")
-            logger.info(
+            logger.debug(  # F08-7
                 "  [llm] %s: %din/%dout $%.4f %.0fms",
                 model,
                 tokens_in,
@@ -308,7 +322,7 @@ class Tracer:
         span.end()
         if self._console_fallback:
             tool_name = span.attributes.get("tool.name", "?")
-            logger.info("  [tool] %s: %s %.0fms", tool_name, status, latency_ms)
+            logger.debug("  [tool] %s: %s %.0fms", tool_name, status, latency_ms)  # F08-7
 
     def new_trace_id(self) -> str:
         """Generate a new trace ID (32-hex-char)."""
@@ -319,8 +333,6 @@ class Tracer:
         return _new_span_id()
 
     def flush(self) -> None:
-        """Force-export any pending spans."""
-        if self._use_otel:
-            provider = otel_trace.get_tracer_provider()
-            if hasattr(provider, "force_flush"):
-                provider.force_flush()
+        """Force-export any pending spans via this tracer's provider."""
+        if self._use_otel and self._provider is not None:  # F08-5: use instance provider
+            self._provider.force_flush()

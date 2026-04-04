@@ -37,6 +37,7 @@ def create_test_tracer() -> tuple[Any, Any]:
     tracer._span_queue = None
     tracer._use_otel = True
     tracer._console_fallback = False
+    tracer._provider = provider
     tracer._otel_tracer = provider.get_tracer("agency.test", "0.1.0")
 
     return tracer, exporter

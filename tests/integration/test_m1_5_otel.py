@@ -122,6 +122,7 @@ def _make_console_tracer() -> Tracer:
     tracer._span_queue = None
     tracer._use_otel = False
     tracer._otel_tracer = None
+    tracer._provider = None
     tracer._console_fallback = True
     return tracer
 
@@ -137,7 +138,7 @@ async def test_console_fallback_send_format(caplog):
         trace_id="abc123",
         span_id=_new_span_id(),
     )
-    with caplog.at_level("INFO", logger="agency.observability.tracer"):
+    with caplog.at_level("DEBUG", logger="agency.observability.tracer"):
         span = tracer.start_send_span(msg)
         span.end()
 
@@ -148,8 +149,8 @@ async def test_console_fallback_llm_format(caplog):
     """Console exporter logs LLM summary line."""
     tracer = _make_console_tracer()
 
-    with caplog.at_level("INFO", logger="agency.observability.tracer"):
-        span = tracer.start_llm_span("claude-test")
+    with caplog.at_level("DEBUG", logger="agency.observability.tracer"):
+        span = tracer.start_llm_span("claude-test", trace_id="trace123")
         tracer.end_llm_span(span, tokens_in=100, tokens_out=50, cost_usd=0.005)
 
     assert "[llm]" in caplog.text
@@ -163,7 +164,7 @@ async def test_console_fallback_tool_format(caplog):
     """Console exporter logs tool summary line."""
     tracer = _make_console_tracer()
 
-    with caplog.at_level("INFO", logger="agency.observability.tracer"):
+    with caplog.at_level("DEBUG", logger="agency.observability.tracer"):
         span = tracer.start_tool_span("web_search")
         tracer.end_tool_span(span, status="ok")
 
