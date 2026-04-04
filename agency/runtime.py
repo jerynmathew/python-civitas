@@ -139,6 +139,8 @@ class Runtime:
             max_restarts=sup_cfg.get("max_restarts", 3),
             restart_window=sup_cfg.get("restart_window", 60.0),
             backoff=sup_cfg.get("backoff", "CONSTANT").upper(),
+            backoff_base=sup_cfg.get("backoff_base", 1.0),
+            backoff_max=sup_cfg.get("backoff_max", 60.0),
         )
 
         # Transport config
@@ -310,7 +312,11 @@ class Runtime:
         return None
 
     async def ask(
-        self, agent_name: str, payload: dict[str, Any], timeout: float = 30.0
+        self,
+        agent_name: str,
+        payload: dict[str, Any],
+        timeout: float = 30.0,
+        message_type: str = "message",
     ) -> Message:
         """Send a message to an agent and await a reply."""
         if self._bus is None or self._tracer is None:
@@ -318,7 +324,7 @@ class Runtime:
 
         trace_id = self._tracer.new_trace_id()
         message = Message(
-            type=payload.get("type", "message"),
+            type=message_type,
             sender="_runtime",
             recipient=agent_name,
             payload=payload,
@@ -328,14 +334,19 @@ class Runtime:
         )
         return await self._bus.request(message, timeout=timeout)
 
-    async def send(self, agent_name: str, payload: dict[str, Any]) -> None:
+    async def send(
+        self,
+        agent_name: str,
+        payload: dict[str, Any],
+        message_type: str = "message",
+    ) -> None:
         """Fire-and-forget: send a message to an agent."""
         if self._bus is None or self._tracer is None:
             raise RuntimeError("Runtime not started")
 
         trace_id = self._tracer.new_trace_id()
         message = Message(
-            type=payload.get("type", "message"),
+            type=message_type,
             sender="_runtime",
             recipient=agent_name,
             payload=payload,

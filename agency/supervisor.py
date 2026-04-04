@@ -6,6 +6,7 @@ import asyncio
 import logging
 import random
 import time
+from collections import deque
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -74,9 +75,13 @@ class Supervisor:
         self.backoff_max = backoff_max
 
         # Internal state
-        self._restart_timestamps: list[float] = []
+        self._restart_timestamps: deque[float] = deque()   # F03-10: deque for O(1) sliding window
         self._restart_counts: dict[str, int] = {}
         self._child_tasks: dict[str, asyncio.Task[None]] = {}
+        self._children_by_name: dict[str, AgentProcess | Supervisor] = {   # F03-11: O(1) lookup
+            c.name: c for c in self.children
+        }
+        self._pending_crash_tasks: set[asyncio.Task[None]] = set()         # F03-4: track handlers
         self._running = False
         self._parent: Supervisor | None = None
 
@@ -88,10 +93,8 @@ class Supervisor:
         # Heartbeat monitoring for remote agents
         self._remote_children: set[str] = set()
         self._heartbeat_task: asyncio.Task[None] | None = None
-        self._heartbeat_interval: float = 5.0
-        self._heartbeat_timeout: float = 2.0
-        self._missed_heartbeats_threshold: int = 3
         self._missed_heartbeats: dict[str, int] = {}
+        self._remote_child_config: dict[str, dict[str, float | int]] = {}  # F03-3: per-child config
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -119,6 +122,13 @@ class Supervisor:
     async def stop(self) -> None:
         """Stop all children gracefully."""
         self._running = False
+
+        # Cancel pending crash handlers before tearing down children (F03-4)
+        for t in list(self._pending_crash_tasks):
+            t.cancel()
+        if self._pending_crash_tasks:
+            await asyncio.gather(*self._pending_crash_tasks, return_exceptions=True)
+
         await self._stop_heartbeat_monitor()
         for child in reversed(self.children):
             if isinstance(child, Supervisor):
@@ -143,7 +153,9 @@ class Supervisor:
             return
         exc = task.exception()
         if exc is not None:
-            asyncio.create_task(self._handle_crash(name, exc))
+            t = asyncio.create_task(self._handle_crash(name, exc))   # F03-4
+            self._pending_crash_tasks.add(t)
+            t.add_done_callback(self._pending_crash_tasks.discard)
 
     # ------------------------------------------------------------------
     # Remote child / heartbeat support
@@ -163,9 +175,12 @@ class Supervisor:
         """
         self._remote_children.add(name)
         self._missed_heartbeats[name] = 0
-        self._heartbeat_interval = heartbeat_interval
-        self._heartbeat_timeout = heartbeat_timeout
-        self._missed_heartbeats_threshold = missed_heartbeats_threshold
+        # F03-3: per-child config stored in dict, not shared scalars
+        self._remote_child_config[name] = {
+            "interval": heartbeat_interval,
+            "timeout": heartbeat_timeout,
+            "threshold": missed_heartbeats_threshold,
+        }
 
     async def _start_heartbeat_monitor(self) -> None:
         """Start the heartbeat monitoring loop for remote children."""
@@ -176,9 +191,19 @@ class Supervisor:
     async def _heartbeat_loop(self) -> None:
         """Periodically ping remote children and detect crashes."""
         while self._running:
+            # Compute sleep interval before the loop — minimum across all children
+            sleep_interval = min(
+                (float(cfg.get("interval", 5.0)) for cfg in self._remote_child_config.values()),
+                default=5.0,
+            )
+
             for name in list(self._remote_children):
                 if not self._running:
                     break
+                cfg = self._remote_child_config.get(name, {})
+                timeout = float(cfg.get("timeout", 2.0))
+                threshold = int(cfg.get("threshold", 3))
+
                 try:
                     heartbeat = Message(
                         type="_agency.heartbeat",
@@ -189,10 +214,8 @@ class Supervisor:
                     )
                     if self._bus is None:
                         break
-                    await asyncio.wait_for(
-                        self._bus.request(heartbeat, timeout=self._heartbeat_timeout),
-                        timeout=self._heartbeat_timeout + 1.0,
-                    )
+                    # F03-14: rely on bus.request timeout, no redundant wait_for wrapper
+                    await self._bus.request(heartbeat, timeout=timeout)
                     # Got ack — reset missed counter
                     self._missed_heartbeats[name] = 0
                 except TimeoutError:
@@ -200,13 +223,19 @@ class Supervisor:
                         self._missed_heartbeats.get(name, 0) + 1
                     )
                     missed = self._missed_heartbeats[name]
-                    if missed >= self._missed_heartbeats_threshold:
+                    if missed >= threshold:
                         await self._handle_crash(
                             name, HeartbeatTimeout(name, missed)
                         )
                         self._missed_heartbeats[name] = 0
+                except asyncio.CancelledError:
+                    raise  # propagate to stop the task cleanly (F03-7)
+                except Exception as exc:
+                    logger.warning(  # F03-7: don't crash loop on unexpected errors
+                        "[%s] heartbeat error for %s: %s", self.name, name, exc
+                    )
 
-            await asyncio.sleep(self._heartbeat_interval)
+            await asyncio.sleep(sleep_interval)
 
     async def _stop_heartbeat_monitor(self) -> None:
         """Stop the heartbeat monitor task."""
@@ -230,11 +259,11 @@ class Supervisor:
         self._restart_counts.setdefault(name, 0)
         self._restart_counts[name] += 1
 
-        # Track timestamps for rate limiting
-        self._restart_timestamps.append(now)
-        # Prune old timestamps outside the window
+        # F03-10: deque-based sliding window — O(1) append and popleft
         cutoff = now - self.restart_window
-        self._restart_timestamps = [t for t in self._restart_timestamps if t > cutoff]
+        self._restart_timestamps.append(now)
+        while self._restart_timestamps and self._restart_timestamps[0] <= cutoff:
+            self._restart_timestamps.popleft()
 
         # Check if we've exceeded max restarts
         if len(self._restart_timestamps) > self.max_restarts:
@@ -287,7 +316,6 @@ class Supervisor:
 
         # Re-initialize the agent
         agent._status = ProcessStatus.INITIALIZING
-        agent.id = agent.id  # keep same ID for now
         if self._registry is not None:
             self._registry.deregister(name)
             self._registry.register(name)
@@ -307,11 +335,13 @@ class Supervisor:
 
     async def _restart_all_children(self) -> None:
         """Stop and restart all children (ONE_FOR_ALL)."""
-        # Stop all non-crashed children first
+        # F03-5: stop all children that are not already stopped/stopping/crashed
         for child in self.children:
             if isinstance(child, Supervisor):
                 await child.stop()
-            elif child._status == ProcessStatus.RUNNING:
+            elif child._status not in (
+                ProcessStatus.STOPPED, ProcessStatus.STOPPING, ProcessStatus.CRASHED
+            ):
                 await child._stop()
 
         # Restart all
@@ -337,11 +367,13 @@ class Supervisor:
             if found:
                 to_restart.append(child)
 
-        # Stop downstream children (reverse order)
+        # F03-5: stop downstream children that are not already stopped/stopping/crashed
         for child in reversed(to_restart):
             if isinstance(child, Supervisor):
                 await child.stop()
-            elif child._status == ProcessStatus.RUNNING:
+            elif child._status not in (
+                ProcessStatus.STOPPED, ProcessStatus.STOPPING, ProcessStatus.CRASHED
+            ):
                 await child._stop()
 
         # Restart in order
@@ -365,10 +397,14 @@ class Supervisor:
             # Escalate: parent treats this supervisor as crashed
             await self._parent._handle_crash(self.name, exc)
         else:
-            # Top-level: stop the crashed child permanently
+            # F03-6: agent is already CRASHED (task done); don't mutate status directly.
+            # Log the permanent failure — agent stays CRASHED, no further restarts.
             agent = self._find_child(name)
             if agent is not None and not isinstance(agent, Supervisor):
-                agent._status = ProcessStatus.STOPPED
+                logger.error(
+                    "[%s] Agent %r permanently stopped after exceeding max_restarts (%d).",
+                    self.name, name, self.max_restarts,
+                )
 
     # ------------------------------------------------------------------
     # Backoff
@@ -394,11 +430,8 @@ class Supervisor:
     # ------------------------------------------------------------------
 
     def _find_child(self, name: str) -> AgentProcess | Supervisor | None:
-        """Find a child by name."""
-        for child in self.children:
-            if child.name == name:
-                return child
-        return None
+        """Find a child by name — O(1) via supplementary dict (F03-11)."""
+        return self._children_by_name.get(name)
 
     def all_agents(self) -> list[AgentProcess]:
         """Recursively collect all AgentProcess instances in the tree."""

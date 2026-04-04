@@ -243,9 +243,9 @@ async def test_max_restarts_triggers_escalation():
             except TimeoutError:
                 break  # agent hit max_restarts and stopped — expected
 
-        # After exceeding max_restarts, agent should be stopped permanently
-        await wait_for_status(agent, ProcessStatus.STOPPED)
-        assert agent.status == ProcessStatus.STOPPED
+        # After exceeding max_restarts, agent stays CRASHED (no more restarts)
+        await wait_for_status(agent, ProcessStatus.CRASHED)
+        assert agent.status == ProcessStatus.CRASHED
     finally:
         await runtime.stop()
 

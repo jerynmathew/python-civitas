@@ -136,10 +136,11 @@ class Worker:
             self._registry.register(agent.name)
             await self._bus.setup_agent(agent)
 
-        # Subscribe to restart commands for this worker
+        # Subscribe to restart commands and register in registry so bus.route() can find it (F03-2)
         await self._transport.subscribe(
             "_agency.worker.restart", self._on_restart_command
         )
+        self._registry.register("_agency.worker.restart")
 
         # Start agent message loops
         for agent in self._agents.values():
