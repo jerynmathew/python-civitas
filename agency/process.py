@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterator
 from contextlib import contextmanager
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING, Any
 
 from agency.errors import ErrorAction
 from agency.messages import Message, _new_span_id, _uuid7
@@ -91,7 +92,13 @@ class AgentProcess:
     - tool_span(tool_name, **attrs): context manager for tool call spans
     """
 
-    def __init__(self, name: str, mailbox_size: int = 1000, max_retries: int = 3, shutdown_timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        name: str,
+        mailbox_size: int = 1000,
+        max_retries: int = 3,
+        shutdown_timeout: float = 30.0,
+    ) -> None:
         self.name = name
         self.id: str = _uuid7()
         self.state: dict[str, Any] = {}
@@ -266,6 +273,7 @@ class AgentProcess:
         """
         if self._tracer is None:
             from agency.observability.tracer import Span
+
             dummy = Span(name="llm", trace_id="", span_id="")
             yield dummy
             return
@@ -277,7 +285,7 @@ class AgentProcess:
         )
         trace_id = self._current_message.trace_id if self._current_message else ""
         span = self._tracer.start_span(
-            f"agency.llm.chat",
+            "agency.llm.chat",
             trace_id=trace_id,
             parent_span_id=parent_span_id,
             attributes={"agency.llm.model": model, **attributes},
@@ -301,6 +309,7 @@ class AgentProcess:
         """
         if self._tracer is None:
             from agency.observability.tracer import Span
+
             dummy = Span(name="tool", trace_id="", span_id="")
             yield dummy
             return
@@ -312,7 +321,7 @@ class AgentProcess:
         )
         trace_id = self._current_message.trace_id if self._current_message else ""
         span = self._tracer.start_span(
-            f"agency.tool.invoke",
+            "agency.tool.invoke",
             trace_id=trace_id,
             parent_span_id=parent_span_id,
             attributes={"agency.tool.name": tool_name, **attributes},
@@ -345,7 +354,7 @@ class AgentProcess:
         await self.on_start()
 
         if self._tracer is not None:
-            start_span.end()  # type: ignore[possibly-undefined]
+            start_span.end()
 
         self._task = asyncio.create_task(self._message_loop(), name=self.name)
         # Wait until the message loop has entered RUNNING
@@ -399,7 +408,7 @@ class AgentProcess:
             await self.on_stop()
 
             if self._tracer is not None:
-                stop_span.end()  # type: ignore[possibly-undefined]
+                stop_span.end()
 
             if not crashed:
                 self._status = ProcessStatus.STOPPED
@@ -433,9 +442,7 @@ class AgentProcess:
                 handle_span.set_attribute("agency.handle.result", "error")
             action = await self.on_error(exc, message)
             if handle_span is not None:
-                handle_span.set_attribute(
-                    "agency.handle.result", f"error.{action.value.lower()}"
-                )
+                handle_span.set_attribute("agency.handle.result", f"error.{action.value.lower()}")
             await self._apply_error_action(action, exc, message)
         finally:
             if handle_span is not None:

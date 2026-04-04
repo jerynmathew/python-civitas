@@ -6,7 +6,7 @@ Loads a topology from YAML and prints the tree structure.
 import asyncio
 from pathlib import Path
 
-from agency import AgentProcess, Runtime, Supervisor
+from agency import AgentProcess, Runtime
 from agency.messages import Message
 
 

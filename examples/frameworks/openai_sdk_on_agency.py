@@ -25,9 +25,12 @@ assistant = Agent(
 
 async def main():
     runtime = Runtime(
-        supervisor=Supervisor("root", children=[
-            OpenAIAgent("assistant", agent=assistant),  # <-- that's it
-        ])
+        supervisor=Supervisor(
+            "root",
+            children=[
+                OpenAIAgent("assistant", agent=assistant),  # <-- that's it
+            ],
+        )
     )
     await runtime.start()
     result = await runtime.ask("assistant", {"input": "What is RLHF?"})

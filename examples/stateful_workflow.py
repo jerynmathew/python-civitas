@@ -25,8 +25,10 @@ class WorkflowAgent(AgentProcess):
     async def on_start(self) -> None:
         step = self.state.get("current_step", 0)
         if step > 0:
-            print(f"Resuming workflow from step {step} of {TOTAL_STEPS} "
-                  f"(restored from agency_state.db)")
+            print(
+                f"Resuming workflow from step {step} of {TOTAL_STEPS} "
+                f"(restored from agency_state.db)"
+            )
         else:
             print(f"Starting fresh workflow ({TOTAL_STEPS} steps)")
 
@@ -50,11 +52,13 @@ class WorkflowAgent(AgentProcess):
         self.state = {}
         await self.checkpoint()
 
-        return self.reply({
-            "status": "complete",
-            "steps": TOTAL_STEPS,
-            "results": final_results,
-        })
+        return self.reply(
+            {
+                "status": "complete",
+                "steps": TOTAL_STEPS,
+                "results": final_results,
+            }
+        )
 
 
 async def main():

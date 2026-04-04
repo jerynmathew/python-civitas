@@ -24,7 +24,6 @@ from agency.process import ProcessStatus
 from agency.serializer import MsgpackSerializer
 from agency.transport.nats import NATSTransport
 
-
 # ---------------------------------------------------------------------------
 # NATS server fixture — start/stop a local nats-server per test session
 # ---------------------------------------------------------------------------
@@ -86,9 +85,7 @@ class Forwarder(AgentProcess):
     """Forwards to another agent, proving multi-hop routing works."""
 
     async def handle(self, message: Message) -> Message | None:
-        result = await self.ask(
-            message.payload["target"], {"name": message.payload["name"]}
-        )
+        result = await self.ask(message.payload["target"], {"name": message.payload["name"]})
         return self.reply(result.payload)
 
 
@@ -290,9 +287,7 @@ async def test_runtime_nats_multiple_agents(nats_url):
 async def test_runtime_nats_shutdown_clean(nats_url):
     """NATS runtime shuts down cleanly — all agents STOPPED."""
     runtime = Runtime(
-        supervisor=Supervisor(
-            "root", children=[Greeter("greeter"), Adder("adder")]
-        ),
+        supervisor=Supervisor("root", children=[Greeter("greeter"), Adder("adder")]),
         transport="nats",
         nats_servers=nats_url,
     )
@@ -484,9 +479,7 @@ async def test_agent_code_identical_across_transports(nats_url):
     Validates M2.2 criterion: 'Agent code is byte-for-byte identical to M1.7 and M2.1'.
     """
     # Run on InProcess
-    rt_inproc = Runtime(
-        supervisor=Supervisor("root", children=[Greeter("greeter")])
-    )
+    rt_inproc = Runtime(supervisor=Supervisor("root", children=[Greeter("greeter")]))
     await rt_inproc.start()
     r_inproc = await rt_inproc.ask("greeter", {"name": "Test"})
     await rt_inproc.stop()

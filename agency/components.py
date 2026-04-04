@@ -29,10 +29,10 @@ from agency.config import settings
 from agency.observability.tracer import Tracer
 from agency.registry import LocalRegistry, Registry
 from agency.serializer import JsonSerializer, MsgpackSerializer, Serializer
+from agency.transport import Transport
 
 if TYPE_CHECKING:
     from agency.process import AgentProcess
-    from agency.transport import Transport
 
 
 @dataclass
@@ -59,7 +59,7 @@ class ComponentSet:
     registry: Registry
     serializer: Serializer
     tracer: Tracer
-    store: Any = None           # StateStore | None
+    store: Any = None  # StateStore | None
     model_provider: Any = None
     tool_registry: Any = None
     bus: MessageBus = field(init=False)
@@ -112,6 +112,7 @@ def build_component_set(
     built_tracer = Tracer()
 
     # Transport
+    built_transport: Transport
     if transport_type == "zmq":
         from agency.transport.zmq import ZMQTransport
 

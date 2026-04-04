@@ -37,14 +37,20 @@ MOCK_RESPONSES = {
 class MockLLM:
     async def chat(self, model=None, messages=None, tools=None) -> ModelResponse:
         content = (messages or [{}])[-1].get("content", "").lower()
-        for key, text in MOCK_RESPONSES.items():
-            if key in content or ("combin" in content and key == "synthesis"):
-                break
-        else:
-            text = f"Analysis of: {content[:100]}"
+        matched_key = next(
+            (
+                key
+                for key in MOCK_RESPONSES
+                if key in content or ("combin" in content and key == "synthesis")
+            ),
+            None,
+        )
+        text = MOCK_RESPONSES[matched_key] if matched_key else f"Analysis of: {content[:100]}"
         return ModelResponse(
-            content=text, model=model or "mock-claude",
-            tokens_in=len(content.split()) * 2, tokens_out=len(text.split()) * 2,
+            content=text,
+            model=model or "mock-claude",
+            tokens_in=len(content.split()) * 2,
+            tokens_out=len(text.split()) * 2,
             cost_usd=round(random.uniform(0.001, 0.01), 4),
         )
 
@@ -55,8 +61,13 @@ class WebSearchTool:
 
     name = "web_search"
     schema: dict[str, Any] = {
-        "name": "web_search", "description": "Search the web",
-        "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+        "name": "web_search",
+        "description": "Search the web",
+        "input_schema": {
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"],
+        },
     }
 
     async def execute(self, **kwargs: Any) -> Any:
@@ -69,6 +80,7 @@ class WebSearchTool:
 
 # -- Agents --
 
+
 class Orchestrator(AgentProcess):
     """Plans research and fans out tasks to WebResearchers."""
 
@@ -78,8 +90,12 @@ class Orchestrator(AgentProcess):
 
         # Plan with LLM
         span = tracer.start_llm_span("mock-claude", trace_id=message.trace_id)
-        plan = await self.llm.chat(messages=[{"role": "user", "content": f"Plan research on: {query}"}])
-        tracer.end_llm_span(span, tokens_in=plan.tokens_in, tokens_out=plan.tokens_out, cost_usd=plan.cost_usd)
+        plan = await self.llm.chat(
+            messages=[{"role": "user", "content": f"Plan research on: {query}"}]
+        )
+        tracer.end_llm_span(
+            span, tokens_in=plan.tokens_in, tokens_out=plan.tokens_out, cost_usd=plan.cost_usd
+        )
 
         # Fan out to researcher
         findings = []
@@ -119,8 +135,17 @@ class Synthesizer(AgentProcess):
         findings, query = message.payload.get("findings", []), message.payload.get("query", "")
         tracer = self._tracer
         span = tracer.start_llm_span("mock-claude", trace_id=message.trace_id)
-        r = await self.llm.chat(messages=[{"role": "user", "content": f"Synthesize and combine on '{query}':\n" + "\n".join(findings)}])
-        tracer.end_llm_span(span, tokens_in=r.tokens_in, tokens_out=r.tokens_out, cost_usd=r.cost_usd)
+        r = await self.llm.chat(
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Synthesize and combine on '{query}':\n" + "\n".join(findings),
+                }
+            ]
+        )
+        tracer.end_llm_span(
+            span, tokens_in=r.tokens_in, tokens_out=r.tokens_out, cost_usd=r.cost_usd
+        )
         return self.reply({"synthesis": r.content, "query": query})
 
 
@@ -130,14 +155,23 @@ class Writer(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
         synthesis, query = message.payload.get("synthesis", {}), message.payload.get("query", "")
         tracer = self._tracer
-        content = synthesis.get("synthesis", str(synthesis)) if isinstance(synthesis, dict) else str(synthesis)
+        content = (
+            synthesis.get("synthesis", str(synthesis))
+            if isinstance(synthesis, dict)
+            else str(synthesis)
+        )
         span = tracer.start_llm_span("mock-claude", trace_id=message.trace_id)
-        r = await self.llm.chat(messages=[{"role": "user", "content": f"Write a report on '{query}' from:\n{content}"}])
-        tracer.end_llm_span(span, tokens_in=r.tokens_in, tokens_out=r.tokens_out, cost_usd=r.cost_usd)
+        r = await self.llm.chat(
+            messages=[{"role": "user", "content": f"Write a report on '{query}' from:\n{content}"}]
+        )
+        tracer.end_llm_span(
+            span, tokens_in=r.tokens_in, tokens_out=r.tokens_out, cost_usd=r.cost_usd
+        )
         return self.reply({"report": r.content})
 
 
 # -- Main --
+
 
 async def main() -> None:
     query = " ".join(sys.argv[1:]).replace("--live", "").strip()
@@ -147,6 +181,7 @@ async def main() -> None:
 
     if use_live:
         from agency.plugins.anthropic import AnthropicProvider
+
         llm = AnthropicProvider()
     else:
         llm = MockLLM()
@@ -155,21 +190,33 @@ async def main() -> None:
     tools.register(WebSearchTool())
 
     runtime = Runtime(
-        supervisor=Supervisor("root", strategy="ONE_FOR_ONE", max_restarts=5, children=[
-            Supervisor("research_sup", strategy="ONE_FOR_ONE", max_restarts=3,
-                       backoff="CONSTANT", backoff_base=0.1, children=[WebResearcher("web_researcher")]),
-            Orchestrator("orchestrator"),
-            Synthesizer("synthesizer"),
-            Writer("writer"),
-        ]),
-        model_provider=llm, tool_registry=tools,
+        supervisor=Supervisor(
+            "root",
+            strategy="ONE_FOR_ONE",
+            max_restarts=5,
+            children=[
+                Supervisor(
+                    "research_sup",
+                    strategy="ONE_FOR_ONE",
+                    max_restarts=3,
+                    backoff="CONSTANT",
+                    backoff_base=0.1,
+                    children=[WebResearcher("web_researcher")],
+                ),
+                Orchestrator("orchestrator"),
+                Synthesizer("synthesizer"),
+                Writer("writer"),
+            ],
+        ),
+        model_provider=llm,
+        tool_registry=tools,
     )
 
-    print(f"\n{'='*60}")
-    print(f"  Agency Research Assistant — M1.7 Hero Demo")
+    print(f"\n{'=' * 60}")
+    print("  Agency Research Assistant — M1.7 Hero Demo")
     print(f"  Query: {query}")
     print(f"  LLM: {'AnthropicProvider' if use_live else 'MockLLM (no API key needed)'}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
     print("=== Supervision Tree ===")
     print(runtime.print_tree())
     print()
@@ -177,11 +224,11 @@ async def main() -> None:
     await runtime.start()
     result = await runtime.ask("orchestrator", {"query": query})
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  RESEARCH REPORT")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(result.payload.get("report", ""))
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     await runtime.stop()
 

@@ -1,11 +1,9 @@
 """Shared test fixtures and reusable test agents."""
 
 import asyncio
-from typing import Callable
+from collections.abc import Callable
 
-import pytest
-
-from agency import AgentProcess, Runtime, Supervisor
+from agency import AgentProcess
 from agency.messages import Message
 from agency.process import ProcessStatus
 

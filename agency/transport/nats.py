@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
+from typing import Any
 
 import nats
 from nats.aio.client import Client as NATSClient
@@ -67,7 +68,7 @@ class NATSTransport:
         self._nc: NATSClient | None = None
         self._js: nats.js.JetStreamContext | None = None
         self._handlers: dict[str, Callable[[bytes], Awaitable[None]]] = {}
-        self._subscriptions: dict[str, nats.aio.subscription.Subscription] = {}
+        self._subscriptions: dict[str, Any] = {}  # Subscription or PushSubscription
         self._reply_queues: dict[str, asyncio.Queue[bytes]] = {}
         self._started = False
 
@@ -99,15 +100,13 @@ class NATSTransport:
         if self._use_jetstream:
             self._js = self._nc.jetstream()
             try:
-                await self._js.find_stream_name_by_subject(
-                    f"{_SUBJECT_PREFIX}>"
-                )
-            except nats.js.errors.NotFoundError:
+                await self._js.find_stream_name_by_subject(f"{_SUBJECT_PREFIX}>")
+            except nats.js.errors.NotFoundError as exc:
                 if not self._create_stream_if_missing:
                     raise RuntimeError(
                         f"JetStream stream '{self._stream_name}' not found and "
                         f"create_stream_if_missing=False"
-                    )
+                    ) from exc
                 logger.warning(
                     "[NATSTransport] auto-creating JetStream stream '%s' — "
                     "set create_stream_if_missing=False in production",
@@ -119,6 +118,9 @@ class NATSTransport:
                 )
 
         self._started = True
+
+    async def wait_ready(self) -> None:
+        """No-op for NATS — connection is established synchronously in start()."""
 
     async def stop(self) -> None:
         """Disconnect from NATS, clean up subscriptions."""
@@ -138,9 +140,7 @@ class NATSTransport:
         self._handlers.clear()
         self._reply_queues.clear()
 
-    async def subscribe(
-        self, address: str, handler: Callable[[bytes], Awaitable[None]]
-    ) -> None:
+    async def subscribe(self, address: str, handler: Callable[[bytes], Awaitable[None]]) -> None:
         """Subscribe to messages arriving at this address."""
         if self._nc is None:
             raise RuntimeError("NATSTransport not started")
@@ -156,6 +156,7 @@ class NATSTransport:
             if h is not None:
                 await h(msg.data)
 
+        sub: Any
         if self._use_jetstream and self._js is not None:
             sub = await self._js.subscribe(
                 subject,

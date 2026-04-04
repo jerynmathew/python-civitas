@@ -4,8 +4,7 @@ Uses InMemorySpanExporter to capture and validate OTEL spans.
 Console fallback tests use capsys to verify print output.
 """
 
-import time
-from typing import Any
+import asyncio
 
 import pytest
 
@@ -67,7 +66,7 @@ async def test_llm_span_has_token_counts():
     tracer, exporter = create_test_tracer()
 
     span = tracer.start_llm_span("test-model", trace_id="trace1")
-    time.sleep(0.01)  # ensure measurable latency
+    await asyncio.sleep(0.01)  # ensure measurable latency
     tracer.end_llm_span(span, tokens_in=10, tokens_out=20, cost_usd=0.001)
 
     spans = exporter.get_finished_spans()

@@ -4,12 +4,10 @@ Tests validate that the Typer+Rich CLI scaffolds projects, runs topologies,
 manages state, and switches transports via flags.
 """
 
-import json
 import os
 import tempfile
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 from agency.cli import app
@@ -133,8 +131,9 @@ def test_state_list_shows_agents():
         db_path = f.name
 
     try:
-        from agency.plugins.sqlite_store import SQLiteStateStore
         import asyncio
+
+        from agency.plugins.sqlite_store import SQLiteStateStore
 
         store = SQLiteStateStore(db_path)
         asyncio.run(store.set("agent_a", {"count": 42}))
@@ -156,8 +155,9 @@ def test_state_clear_specific_agent():
         db_path = f.name
 
     try:
-        from agency.plugins.sqlite_store import SQLiteStateStore
         import asyncio
+
+        from agency.plugins.sqlite_store import SQLiteStateStore
 
         store = SQLiteStateStore(db_path)
         asyncio.run(store.set("agent_a", {"v": 1}))
@@ -183,8 +183,9 @@ def test_state_clear_all():
         db_path = f.name
 
     try:
-        from agency.plugins.sqlite_store import SQLiteStateStore
         import asyncio
+
+        from agency.plugins.sqlite_store import SQLiteStateStore
 
         store = SQLiteStateStore(db_path)
         asyncio.run(store.set("agent_a", {"v": 1}))

@@ -39,7 +39,7 @@ class OpenAIAgent(AgentProcess):
 
     async def handle(self, message: Message) -> Message | None:
         """Run the OpenAI agent and map handoffs to Agency messages."""
-        from agents import Runner  # noqa: E402 — optional OpenAI Agents SDK
+        from agents import Runner  # type: ignore[import-not-found]  # optional OpenAI Agents SDK
 
         result = await Runner.run(self._agent, input=message.payload.get("input", ""))
         # Map handoffs to Agency messages

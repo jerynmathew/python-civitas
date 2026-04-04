@@ -34,7 +34,7 @@ def state_list(
 
     if not agents:
         warn("No persisted agent states found.")
-        store.close()
+        asyncio.run(store.close())
         return
 
     table = Table(title="Persisted Agent States", show_lines=True)
@@ -47,7 +47,7 @@ def state_list(
         table.add_row(agent_name, state_str)
 
     console.print(table)
-    store.close()
+    asyncio.run(store.close())
 
 
 @state_app.command("clear")
@@ -68,7 +68,7 @@ def state_clear(
         state = asyncio.run(store.get(agent_name))
         if state is None:
             warn(f"No state found for agent '{agent_name}'.")
-            store.close()
+            asyncio.run(store.close())
             return
         if not force:
             confirm = typer.confirm(f"Clear state for agent '{agent_name}'?")
@@ -80,7 +80,7 @@ def state_clear(
         agents = asyncio.run(store.list_agents())
         if not agents:
             warn("No persisted agent states found.")
-            store.close()
+            asyncio.run(store.close())
             return
         if not force:
             confirm = typer.confirm(f"Clear state for ALL {len(agents)} agents?")
@@ -90,4 +90,4 @@ def state_clear(
             asyncio.run(store.delete(name))
         success(f"Cleared state for {len(agents)} agents.")
 
-    store.close()
+    asyncio.run(store.close())

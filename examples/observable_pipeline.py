@@ -45,11 +45,16 @@ class ResearchAgent(AgentProcess):
         # Traced LLM call
         tracer = self._tracer
         llm_span = tracer.start_llm_span("demo", trace_id=message.trace_id)
-        response = await self.llm.chat(model="demo", messages=[
-            {"role": "user", "content": message.payload.get("question", "")}
-        ])
-        tracer.end_llm_span(llm_span, tokens_in=response.tokens_in,
-                            tokens_out=response.tokens_out, cost_usd=response.cost_usd)
+        response = await self.llm.chat(
+            model="demo",
+            messages=[{"role": "user", "content": message.payload.get("question", "")}],
+        )
+        tracer.end_llm_span(
+            llm_span,
+            tokens_in=response.tokens_in,
+            tokens_out=response.tokens_out,
+            cost_usd=response.cost_usd,
+        )
 
         # Traced tool call
         tool = self.tools.get("fact_check")
@@ -57,10 +62,12 @@ class ResearchAgent(AgentProcess):
         result = await tool.execute(claim=response.content)
         tracer.end_tool_span(tool_span, status="ok")
 
-        return self.reply({
-            "answer": response.content,
-            "verified": result["verified"],
-        })
+        return self.reply(
+            {
+                "answer": response.content,
+                "verified": result["verified"],
+            }
+        )
 
 
 async def main():

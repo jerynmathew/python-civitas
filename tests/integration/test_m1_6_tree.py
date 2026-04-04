@@ -6,12 +6,8 @@ Tests YAML config loading and ASCII tree output.
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from agency import AgentProcess, Runtime, Supervisor
 from agency.messages import Message
-from agency.process import ProcessStatus
-
 
 # ------------------------------------------------------------------
 # Test agents
@@ -158,9 +154,7 @@ async def test_print_tree_ascii():
 
 async def test_print_tree_shows_agent_status():
     """print_tree() shows agent status after start."""
-    runtime = Runtime(
-        supervisor=Supervisor("root", children=[WorkerAgent("w1")])
-    )
+    runtime = Runtime(supervisor=Supervisor("root", children=[WorkerAgent("w1")]))
     await runtime.start()
     try:
         tree = runtime.print_tree()

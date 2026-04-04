@@ -53,11 +53,13 @@ class SmartAgent(AgentProcess):
         else:
             search_results = None
 
-        return self.reply({
-            "answer": response.content,
-            "search": search_results,
-            "tokens": response.tokens_in + response.tokens_out,
-        })
+        return self.reply(
+            {
+                "answer": response.content,
+                "search": search_results,
+                "tokens": response.tokens_in + response.tokens_out,
+            }
+        )
 
 
 async def main():

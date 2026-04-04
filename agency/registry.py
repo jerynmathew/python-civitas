@@ -57,9 +57,7 @@ class LocalRegistry:
     def __init__(self) -> None:
         self._entries: dict[str, RoutingEntry] = {}
 
-    def register(
-        self, name: str, address: str | None = None, *, is_local: bool = True
-    ) -> None:
+    def register(self, name: str, address: str | None = None, *, is_local: bool = True) -> None:
         """Register an agent.
 
         ``address`` defaults to ``name`` when not given, which is correct
@@ -86,11 +84,7 @@ class LocalRegistry:
 
     def lookup_all(self, pattern: str) -> list[RoutingEntry]:
         """Return all entries whose name matches a glob pattern."""
-        return [
-            entry
-            for name, entry in self._entries.items()
-            if fnmatch.fnmatch(name, pattern)
-        ]
+        return [entry for name, entry in self._entries.items() if fnmatch.fnmatch(name, pattern)]
 
     def has(self, name: str) -> bool:
         """Return True if the name is registered."""
@@ -109,8 +103,6 @@ class LocalRegistry:
         existing = self._entries.get(name)
         if existing is not None:
             if existing.is_local:
-                raise ValueError(
-                    f"Cannot register {name!r} as remote: already registered as local"
-                )
+                raise ValueError(f"Cannot register {name!r} as remote: already registered as local")
             return  # idempotent re-announcement
         self._entries[name] = RoutingEntry(name=name, address=name, is_local=False)

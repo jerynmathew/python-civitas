@@ -220,11 +220,17 @@ def test_deploy_command_generates_files():
         topo_path.write_text(yaml.dump(_NATS_TOPOLOGY))
 
         out_dir = Path(tmpdir) / "deploy"
-        result = runner.invoke(app, [
-            "deploy", "docker-compose",
-            "--topology", str(topo_path),
-            "--output", str(out_dir),
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "deploy",
+                "docker-compose",
+                "--topology",
+                str(topo_path),
+                "--output",
+                str(out_dir),
+            ],
+        )
         assert result.exit_code == 0
         assert (out_dir / "docker-compose.yml").exists()
         assert (out_dir / "Dockerfile").exists()
@@ -234,10 +240,15 @@ def test_deploy_command_generates_files():
 
 def test_deploy_command_missing_topology():
     """Missing topology file shows error."""
-    result = runner.invoke(app, [
-        "deploy", "docker-compose",
-        "--topology", "/nonexistent.yaml",
-    ])
+    result = runner.invoke(
+        app,
+        [
+            "deploy",
+            "docker-compose",
+            "--topology",
+            "/nonexistent.yaml",
+        ],
+    )
     assert result.exit_code == 1
 
 
@@ -248,11 +259,17 @@ def test_deploy_dockerfile_content():
         topo_path.write_text(yaml.dump(_SIMPLE_TOPOLOGY))
 
         out_dir = Path(tmpdir) / "deploy"
-        runner.invoke(app, [
-            "deploy", "docker-compose",
-            "--topology", str(topo_path),
-            "--output", str(out_dir),
-        ])
+        runner.invoke(
+            app,
+            [
+                "deploy",
+                "docker-compose",
+                "--topology",
+                str(topo_path),
+                "--output",
+                str(out_dir),
+            ],
+        )
         dockerfile = (out_dir / "Dockerfile").read_text()
         assert "python:3.12-slim" in dockerfile
         assert "agency" in dockerfile

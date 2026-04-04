@@ -17,8 +17,6 @@ from agency.adapters.langgraph import LangGraphAgent
 from agency.adapters.openai import OpenAIAgent
 from agency.errors import ErrorAction
 from agency.messages import Message
-from agency.process import ProcessStatus
-
 
 # ---------------------------------------------------------------------------
 # Mock LangGraph compiled graph
@@ -82,9 +80,12 @@ async def test_langgraph_agent_runs_graph():
     """LangGraph compiled graph runs inside an Agency AgentProcess."""
     graph = MockCompiledGraph()
     runtime = Runtime(
-        supervisor=Supervisor("root", children=[
-            LangGraphAgent("lg_agent", graph=graph),
-        ])
+        supervisor=Supervisor(
+            "root",
+            children=[
+                LangGraphAgent("lg_agent", graph=graph),
+            ],
+        )
     )
     await runtime.start()
     try:
@@ -100,9 +101,12 @@ async def test_langgraph_agent_multiple_invocations():
     """LangGraph agent handles multiple messages correctly."""
     graph = MockCompiledGraph()
     runtime = Runtime(
-        supervisor=Supervisor("root", children=[
-            LangGraphAgent("lg_agent", graph=graph),
-        ])
+        supervisor=Supervisor(
+            "root",
+            children=[
+                LangGraphAgent("lg_agent", graph=graph),
+            ],
+        )
     )
     await runtime.start()
     try:
@@ -159,9 +163,12 @@ async def test_langgraph_non_dict_output():
             return "plain string result"
 
     runtime = Runtime(
-        supervisor=Supervisor("root", children=[
-            LangGraphAgent("lg_str", graph=StringGraph()),
-        ])
+        supervisor=Supervisor(
+            "root",
+            children=[
+                LangGraphAgent("lg_str", graph=StringGraph()),
+            ],
+        )
     )
     await runtime.start()
     try:
@@ -179,10 +186,13 @@ async def test_langgraph_wrapper_under_10_lines():
     source += inspect.getsource(LangGraphAgent.on_error)
     # Count non-empty, non-comment, non-decorator lines
     lines = [
-        l.strip()
-        for l in source.split("\n")
-        if l.strip() and not l.strip().startswith("#") and not l.strip().startswith("@")
-        and not l.strip().startswith('"""') and not l.strip().startswith("'''")
+        line.strip()
+        for line in source.split("\n")
+        if line.strip()
+        and not line.strip().startswith("#")
+        and not line.strip().startswith("@")
+        and not line.strip().startswith('"""')
+        and not line.strip().startswith("'''")
     ]
     assert len(lines) <= 10, f"Core logic is {len(lines)} lines, expected ≤10"
 
@@ -201,7 +211,9 @@ async def test_openai_agent_runs():
     agents_module = MagicMock()
     mock_runner = MagicMock()
     mock_runner.run = AsyncMock(
-        return_value=MockRunResult(final_output="RLHF is reinforcement learning from human feedback.")
+        return_value=MockRunResult(
+            final_output="RLHF is reinforcement learning from human feedback."
+        )
     )
     agents_module.Runner = mock_runner
     sys.modules["agents"] = agents_module
@@ -209,9 +221,12 @@ async def test_openai_agent_runs():
     try:
         mock_agent = MockAgent(name="assistant", instructions="Be helpful")
         runtime = Runtime(
-            supervisor=Supervisor("root", children=[
-                OpenAIAgent("oai_agent", agent=mock_agent),
-            ])
+            supervisor=Supervisor(
+                "root",
+                children=[
+                    OpenAIAgent("oai_agent", agent=mock_agent),
+                ],
+            )
         )
         await runtime.start()
         try:
@@ -254,10 +269,13 @@ async def test_openai_agent_handoff_maps_to_send():
     try:
         mock_agent = MockAgent(name="router")
         runtime = Runtime(
-            supervisor=Supervisor("root", children=[
-                OpenAIAgent("oai_router", agent=mock_agent),
-                Specialist("specialist"),
-            ])
+            supervisor=Supervisor(
+                "root",
+                children=[
+                    OpenAIAgent("oai_router", agent=mock_agent),
+                    Specialist("specialist"),
+                ],
+            )
         )
         await runtime.start()
         try:
@@ -289,11 +307,14 @@ async def test_openai_wrapper_under_10_lines():
     source = inspect.getsource(OpenAIAgent.handle)
     source += inspect.getsource(OpenAIAgent.on_error)
     lines = [
-        l.strip()
-        for l in source.split("\n")
-        if l.strip() and not l.strip().startswith("#") and not l.strip().startswith("@")
-        and not l.strip().startswith('"""') and not l.strip().startswith("'''")
-        and not l.strip().startswith("from ")
+        line.strip()
+        for line in source.split("\n")
+        if line.strip()
+        and not line.strip().startswith("#")
+        and not line.strip().startswith("@")
+        and not line.strip().startswith('"""')
+        and not line.strip().startswith("'''")
+        and not line.strip().startswith("from ")
     ]
     assert len(lines) <= 10, f"Core logic is {len(lines)} lines, expected ≤10"
 
@@ -310,9 +331,7 @@ async def test_langgraph_and_openai_coexist():
 
     agents_module = MagicMock()
     mock_runner = MagicMock()
-    mock_runner.run = AsyncMock(
-        return_value=MockRunResult(final_output="OpenAI says hi")
-    )
+    mock_runner.run = AsyncMock(return_value=MockRunResult(final_output="OpenAI says hi"))
     agents_module.Runner = mock_runner
     sys.modules["agents"] = agents_module
 
@@ -320,10 +339,13 @@ async def test_langgraph_and_openai_coexist():
         graph = MockCompiledGraph()
         mock_agent = MockAgent(name="oai")
         runtime = Runtime(
-            supervisor=Supervisor("root", children=[
-                LangGraphAgent("lg", graph=graph),
-                OpenAIAgent("oai", agent=mock_agent),
-            ])
+            supervisor=Supervisor(
+                "root",
+                children=[
+                    LangGraphAgent("lg", graph=graph),
+                    OpenAIAgent("oai", agent=mock_agent),
+                ],
+            )
         )
         await runtime.start()
         try:

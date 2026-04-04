@@ -2,25 +2,22 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
 from collections import deque
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from agency.process import AgentProcess, ProcessStatus
 from agency.supervisor import (
-    BackoffPolicy,
     HeartbeatTimeout,
-    RestartStrategy,
     Supervisor,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class NullAgent(AgentProcess):
     async def handle(self, message):
@@ -36,6 +33,7 @@ def make_supervisor(**kwargs) -> Supervisor:
 # ---------------------------------------------------------------------------
 # _compute_backoff
 # ---------------------------------------------------------------------------
+
 
 class TestComputeBackoff:
     def test_constant_always_returns_base(self):
@@ -53,9 +51,9 @@ class TestComputeBackoff:
         sup = make_supervisor(backoff="EXPONENTIAL", backoff_base=1.0)
         # base * 2^(n-1), ignoring jitter
         with patch("agency.supervisor.random.random", return_value=0.0):
-            assert sup._compute_backoff(1) == 1.0   # 1 * 2^0
-            assert sup._compute_backoff(2) == 2.0   # 1 * 2^1
-            assert sup._compute_backoff(3) == 4.0   # 1 * 2^2
+            assert sup._compute_backoff(1) == 1.0  # 1 * 2^0
+            assert sup._compute_backoff(2) == 2.0  # 1 * 2^1
+            assert sup._compute_backoff(3) == 4.0  # 1 * 2^2
 
     def test_exponential_applies_jitter(self):
         sup = make_supervisor(backoff="EXPONENTIAL", backoff_base=1.0)
@@ -65,12 +63,13 @@ class TestComputeBackoff:
 
     def test_backoff_max_caps_result(self):
         sup = make_supervisor(backoff="LINEAR", backoff_base=10.0, backoff_max=15.0)
-        assert sup._compute_backoff(10) == 15.0   # 100.0 capped at 15.0
+        assert sup._compute_backoff(10) == 15.0  # 100.0 capped at 15.0
 
 
 # ---------------------------------------------------------------------------
 # Sliding window (_restart_timestamps)
 # ---------------------------------------------------------------------------
+
 
 class TestRestartWindow:
     def test_timestamps_stored_as_deque(self):
@@ -91,7 +90,7 @@ class TestRestartWindow:
         while sup._restart_timestamps and sup._restart_timestamps[0] <= cutoff:
             sup._restart_timestamps.popleft()
 
-        assert len(sup._restart_timestamps) == 2   # only the recent one + new
+        assert len(sup._restart_timestamps) == 2  # only the recent one + new
         assert all(t > cutoff for t in sup._restart_timestamps)
 
     def test_max_restarts_check_uses_window_length(self):
@@ -106,6 +105,7 @@ class TestRestartWindow:
 # ---------------------------------------------------------------------------
 # _find_child (O(1) dict lookup)
 # ---------------------------------------------------------------------------
+
 
 class TestFindChild:
     def test_find_returns_correct_agent(self):
@@ -135,6 +135,7 @@ class TestFindChild:
 # ---------------------------------------------------------------------------
 # _escalate — permanently failed agent stays CRASHED
 # ---------------------------------------------------------------------------
+
 
 class TestEscalate:
     @pytest.mark.asyncio
@@ -168,11 +169,16 @@ class TestEscalate:
 # add_remote_child — per-child heartbeat config (F03-3)
 # ---------------------------------------------------------------------------
 
+
 class TestRemoteChildConfig:
     def test_each_child_gets_independent_config(self):
         sup = make_supervisor()
-        sup.add_remote_child("fast", heartbeat_interval=1.0, heartbeat_timeout=0.5, missed_heartbeats_threshold=2)
-        sup.add_remote_child("slow", heartbeat_interval=10.0, heartbeat_timeout=5.0, missed_heartbeats_threshold=5)
+        sup.add_remote_child(
+            "fast", heartbeat_interval=1.0, heartbeat_timeout=0.5, missed_heartbeats_threshold=2
+        )
+        sup.add_remote_child(
+            "slow", heartbeat_interval=10.0, heartbeat_timeout=5.0, missed_heartbeats_threshold=5
+        )
 
         fast_cfg = sup._remote_child_config["fast"]
         slow_cfg = sup._remote_child_config["slow"]
@@ -202,6 +208,7 @@ class TestRemoteChildConfig:
 # HeartbeatTimeout
 # ---------------------------------------------------------------------------
 
+
 class TestHeartbeatTimeout:
     def test_attributes(self):
         exc = HeartbeatTimeout("my_agent", missed=4)
@@ -215,10 +222,13 @@ class TestHeartbeatTimeout:
 # Restart strategy dispatch
 # ---------------------------------------------------------------------------
 
+
 class TestStrategyDispatch:
     @pytest.mark.asyncio
     async def test_one_for_one_calls_restart_child(self):
-        sup = Supervisor("root", strategy="ONE_FOR_ONE", max_restarts=5, backoff="CONSTANT", backoff_base=0.0)
+        sup = Supervisor(
+            "root", strategy="ONE_FOR_ONE", max_restarts=5, backoff="CONSTANT", backoff_base=0.0
+        )
         sup._restart_counts["a"] = 0
 
         called = []
@@ -232,7 +242,9 @@ class TestStrategyDispatch:
 
     @pytest.mark.asyncio
     async def test_one_for_all_calls_restart_all(self):
-        sup = Supervisor("root", strategy="ONE_FOR_ALL", max_restarts=5, backoff="CONSTANT", backoff_base=0.0)
+        sup = Supervisor(
+            "root", strategy="ONE_FOR_ALL", max_restarts=5, backoff="CONSTANT", backoff_base=0.0
+        )
         sup._restart_counts["a"] = 0
 
         called = []
@@ -245,7 +257,9 @@ class TestStrategyDispatch:
 
     @pytest.mark.asyncio
     async def test_rest_for_one_calls_restart_rest(self):
-        sup = Supervisor("root", strategy="REST_FOR_ONE", max_restarts=5, backoff="CONSTANT", backoff_base=0.0)
+        sup = Supervisor(
+            "root", strategy="REST_FOR_ONE", max_restarts=5, backoff="CONSTANT", backoff_base=0.0
+        )
         sup._restart_counts["a"] = 0
 
         called = []
@@ -258,7 +272,14 @@ class TestStrategyDispatch:
 
     @pytest.mark.asyncio
     async def test_exceeding_max_restarts_calls_escalate(self):
-        sup = Supervisor("root", strategy="ONE_FOR_ONE", max_restarts=1, backoff="CONSTANT", backoff_base=0.0, restart_window=60.0)
+        sup = Supervisor(
+            "root",
+            strategy="ONE_FOR_ONE",
+            max_restarts=1,
+            backoff="CONSTANT",
+            backoff_base=0.0,
+            restart_window=60.0,
+        )
         sup._restart_counts["a"] = 0
 
         # Pre-fill 2 timestamps to exceed max_restarts=1
@@ -278,6 +299,7 @@ class TestStrategyDispatch:
 # ---------------------------------------------------------------------------
 # all_agents / all_supervisors
 # ---------------------------------------------------------------------------
+
 
 class TestTreeCollectors:
     def test_all_agents_flat(self):

@@ -6,14 +6,11 @@ Uses a mock ModelProvider — no real API calls.
 import asyncio
 from typing import Any
 
-import pytest
-
 from agency import AgentProcess, Runtime, Supervisor
 from agency.errors import ErrorAction
 from agency.messages import Message
-from agency.plugins.model import ModelProvider, ModelResponse
+from agency.plugins.model import ModelResponse
 from agency.plugins.tools import ToolRegistry
-
 
 # ------------------------------------------------------------------
 # Mock ModelProvider
@@ -83,12 +80,14 @@ class LLMAgent(AgentProcess):
             model="test-model",
             messages=[{"role": "user", "content": message.payload.get("prompt", "")}],
         )
-        return self.reply({
-            "content": response.content,
-            "model": response.model,
-            "tokens_in": response.tokens_in,
-            "tokens_out": response.tokens_out,
-        })
+        return self.reply(
+            {
+                "content": response.content,
+                "model": response.model,
+                "tokens_in": response.tokens_in,
+                "tokens_out": response.tokens_out,
+            }
+        )
 
 
 class ToolAgent(AgentProcess):

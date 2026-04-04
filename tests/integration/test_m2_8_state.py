@@ -15,8 +15,6 @@ from agency import AgentProcess, Runtime, Supervisor
 from agency.messages import Message
 from agency.plugins.sqlite_store import SQLiteStateStore
 from agency.plugins.state import InMemoryStateStore
-from agency.process import ProcessStatus
-
 
 # ---------------------------------------------------------------------------
 # Test agents
@@ -388,9 +386,7 @@ async def test_workflow_resumes_from_checkpoint():
             result = await runtime.ask("workflow", {"total_steps": 5})
             assert result.payload["completed"] is True
             # Should have steps 1-2 from checkpoint + 3-5 from this run
-            assert result.payload["results"] == [
-                "step_1", "step_2", "step_3", "step_4", "step_5"
-            ]
+            assert result.payload["results"] == ["step_1", "step_2", "step_3", "step_4", "step_5"]
         finally:
             await runtime.stop()
             store2.close()

@@ -7,6 +7,7 @@ import logging
 import random
 import time
 from collections import deque
+from collections.abc import Callable
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -75,13 +76,13 @@ class Supervisor:
         self.backoff_max = backoff_max
 
         # Internal state
-        self._restart_timestamps: deque[float] = deque()   # F03-10: deque for O(1) sliding window
+        self._restart_timestamps: deque[float] = deque()  # F03-10: deque for O(1) sliding window
         self._restart_counts: dict[str, int] = {}
         self._child_tasks: dict[str, asyncio.Task[None]] = {}
-        self._children_by_name: dict[str, AgentProcess | Supervisor] = {   # F03-11: O(1) lookup
+        self._children_by_name: dict[str, AgentProcess | Supervisor] = {  # F03-11: O(1) lookup
             c.name: c for c in self.children
         }
-        self._pending_crash_tasks: set[asyncio.Task[None]] = set()         # F03-4: track handlers
+        self._pending_crash_tasks: set[asyncio.Task[None]] = set()  # F03-4: track handlers
         self._running = False
         self._parent: Supervisor | None = None
 
@@ -141,9 +142,14 @@ class Supervisor:
         await agent._start()
         if agent._task is not None:
             self._child_tasks[agent.name] = agent._task
-            agent._task.add_done_callback(
-                lambda t, name=agent.name: self._on_child_done(name, t)
-            )
+
+            def _make_callback(n: str) -> Callable[[asyncio.Task[None]], None]:
+                def _cb(t: asyncio.Task[None]) -> None:
+                    self._on_child_done(n, t)
+
+                return _cb
+
+            agent._task.add_done_callback(_make_callback(agent.name))
 
     def _on_child_done(self, name: str, task: asyncio.Task[None]) -> None:
         """Callback when a child task completes (crash or normal exit)."""
@@ -153,7 +159,11 @@ class Supervisor:
             return
         exc = task.exception()
         if exc is not None:
-            t = asyncio.create_task(self._handle_crash(name, exc))   # F03-4
+            t = asyncio.create_task(
+                self._handle_crash(
+                    name, exc if isinstance(exc, Exception) else RuntimeError(str(exc))
+                )
+            )  # F03-4
             self._pending_crash_tasks.add(t)
             t.add_done_callback(self._pending_crash_tasks.discard)
 
@@ -219,14 +229,10 @@ class Supervisor:
                     # Got ack — reset missed counter
                     self._missed_heartbeats[name] = 0
                 except TimeoutError:
-                    self._missed_heartbeats[name] = (
-                        self._missed_heartbeats.get(name, 0) + 1
-                    )
+                    self._missed_heartbeats[name] = self._missed_heartbeats.get(name, 0) + 1
                     missed = self._missed_heartbeats[name]
                     if missed >= threshold:
-                        await self._handle_crash(
-                            name, HeartbeatTimeout(name, missed)
-                        )
+                        await self._handle_crash(name, HeartbeatTimeout(name, missed))
                         self._missed_heartbeats[name] = 0
                 except asyncio.CancelledError:
                     raise  # propagate to stop the task cleanly (F03-7)
@@ -287,7 +293,11 @@ class Supervisor:
         else:
             logger.info(
                 "[%s] Restart %d/%d: %s crashed (%s)",
-                self.name, restart_num, self.max_restarts, name, exc,
+                self.name,
+                restart_num,
+                self.max_restarts,
+                name,
+                exc,
             )
 
         # Apply backoff delay
@@ -340,7 +350,9 @@ class Supervisor:
             if isinstance(child, Supervisor):
                 await child.stop()
             elif child._status not in (
-                ProcessStatus.STOPPED, ProcessStatus.STOPPING, ProcessStatus.CRASHED
+                ProcessStatus.STOPPED,
+                ProcessStatus.STOPPING,
+                ProcessStatus.CRASHED,
             ):
                 await child._stop()
 
@@ -372,7 +384,9 @@ class Supervisor:
             if isinstance(child, Supervisor):
                 await child.stop()
             elif child._status not in (
-                ProcessStatus.STOPPED, ProcessStatus.STOPPING, ProcessStatus.CRASHED
+                ProcessStatus.STOPPED,
+                ProcessStatus.STOPPING,
+                ProcessStatus.CRASHED,
             ):
                 await child._stop()
 
@@ -391,7 +405,9 @@ class Supervisor:
         """Max restarts exceeded — escalate to parent or stop permanently."""
         logger.warning(
             "[%s] Max restarts (%d) exceeded for %s. Escalating.",
-            self.name, self.max_restarts, name,
+            self.name,
+            self.max_restarts,
+            name,
         )
         if self._parent is not None:
             # Escalate: parent treats this supervisor as crashed
@@ -403,7 +419,9 @@ class Supervisor:
             if agent is not None and not isinstance(agent, Supervisor):
                 logger.error(
                     "[%s] Agent %r permanently stopped after exceeding max_restarts (%d).",
-                    self.name, name, self.max_restarts,
+                    self.name,
+                    name,
+                    self.max_restarts,
                 )
 
     # ------------------------------------------------------------------

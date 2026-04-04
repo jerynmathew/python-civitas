@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import importlib
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import typer
 import yaml
@@ -41,7 +41,7 @@ def _resolve_agent_class(type_str: str) -> type:
     if not module_path:
         raise typer.Exit(code=1)
     module = importlib.import_module(module_path)
-    return getattr(module, class_name)
+    return cast(type, getattr(module, class_name))
 
 
 def _build_startup_tree(config: dict[str, Any]) -> Tree:

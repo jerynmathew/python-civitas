@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Protocol
 
-import msgpack  # type: ignore[import-untyped]
+import msgpack
 
 from agency.errors import DeserializationError
 from agency.messages import Message
@@ -33,7 +33,8 @@ class MsgpackSerializer:
 
     def serialize(self, message: Message) -> bytes:
         """Encode a Message to MessagePack bytes."""
-        return msgpack.packb(message.to_dict(), use_bin_type=True)  # type: ignore[no-any-return]
+        result: bytes = msgpack.packb(message.to_dict(), use_bin_type=True)
+        return result
 
     def deserialize(self, data: bytes) -> Message:
         """Decode MessagePack bytes into a Message.
@@ -45,9 +46,7 @@ class MsgpackSerializer:
             raw: dict[str, Any] = msgpack.unpackb(data, raw=False)
             return Message.from_dict(raw)
         except Exception as exc:
-            raise DeserializationError(
-                f"Failed to deserialize msgpack data: {exc}"
-            ) from exc
+            raise DeserializationError(f"Failed to deserialize msgpack data: {exc}") from exc
 
 
 class JsonSerializer:
@@ -67,6 +66,4 @@ class JsonSerializer:
             raw: dict[str, Any] = json.loads(data.decode("utf-8"))
             return Message.from_dict(raw)
         except Exception as exc:
-            raise DeserializationError(
-                f"Failed to deserialize JSON data: {exc}"
-            ) from exc
+            raise DeserializationError(f"Failed to deserialize JSON data: {exc}") from exc

@@ -46,12 +46,14 @@ def init(
         content = tmpl.substitute(project_name=name)
         (project_dir / filename).write_text(content)
 
-    console.print(Panel.fit(
-        f"[green]✔ Created {name}[/green]\n\n"
-        f"  Next steps:\n"
-        f"    cd {name}\n"
-        f"    pip install -e .\n"
-        f"    agency run\n",
-        title="agency init",
-        border_style="green",
-    ))
+    console.print(
+        Panel.fit(
+            f"[green]✔ Created {name}[/green]\n\n"
+            f"  Next steps:\n"
+            f"    cd {name}\n"
+            f"    pip install -e .\n"
+            f"    agency run\n",
+            title="agency init",
+            border_style="green",
+        )
+    )

@@ -37,9 +37,12 @@ compiled = graph.compile()
 
 async def main():
     runtime = Runtime(
-        supervisor=Supervisor("root", children=[
-            LangGraphAgent("researcher", graph=compiled),  # <-- that's it
-        ])
+        supervisor=Supervisor(
+            "root",
+            children=[
+                LangGraphAgent("researcher", graph=compiled),  # <-- that's it
+            ],
+        )
     )
     await runtime.start()
     result = await runtime.ask("researcher", {"query": "quantum computing"})

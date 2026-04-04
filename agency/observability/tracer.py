@@ -19,7 +19,7 @@ from agency.config import settings
 from agency.messages import Message, _new_span_id
 
 if TYPE_CHECKING:
-    from agency.observability.span_queue import SpanData, SpanQueue
+    from agency.observability.span_queue import SpanQueue
 
 logger = logging.getLogger(__name__)
 
@@ -145,13 +145,9 @@ class Tracer:
                     exporter = OTLPSpanExporter(endpoint=endpoint)
                     provider.add_span_processor(SimpleSpanProcessor(exporter))
                 except ImportError:
-                    provider.add_span_processor(
-                        SimpleSpanProcessor(OTELConsoleSpanExporter())
-                    )
+                    provider.add_span_processor(SimpleSpanProcessor(OTELConsoleSpanExporter()))
             else:
-                provider.add_span_processor(
-                    SimpleSpanProcessor(OTELConsoleSpanExporter())
-                )
+                provider.add_span_processor(SimpleSpanProcessor(OTELConsoleSpanExporter()))
 
             otel_trace.set_tracer_provider(provider)
             self._otel_tracer = otel_trace.get_tracer("agency", "0.1.0")
@@ -206,7 +202,11 @@ class Tracer:
             ms = f"{span.start_time % 1:.3f}"[1:]
             logger.info(
                 "[%s%s] %s -> %s: %s",
-                ts, ms, message.sender, message.recipient, message.type,
+                ts,
+                ms,
+                message.sender,
+                message.recipient,
+                message.type,
             )
         return span
 
@@ -274,7 +274,11 @@ class Tracer:
             model = span.attributes.get("llm.model", "?")
             logger.info(
                 "  [llm] %s: %din/%dout $%.4f %.0fms",
-                model, tokens_in, tokens_out, cost_usd, latency_ms,
+                model,
+                tokens_in,
+                tokens_out,
+                cost_usd,
+                latency_ms,
             )
 
     def start_tool_span(
@@ -319,4 +323,4 @@ class Tracer:
         if self._use_otel:
             provider = otel_trace.get_tracer_provider()
             if hasattr(provider, "force_flush"):
-                provider.force_flush()  # type: ignore[union-attr]
+                provider.force_flush()

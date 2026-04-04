@@ -5,12 +5,9 @@ Each test maps to one bullet in the M1.3 milestone.
 
 import asyncio
 
-import pytest
-
 from agency import AgentProcess, Runtime, Supervisor
 from agency.messages import Message
 from agency.process import ProcessStatus
-
 
 # ------------------------------------------------------------------
 # Test agents
@@ -58,9 +55,7 @@ class PipelineAgent(AgentProcess):
 async def test_three_agents_start_and_register():
     """Three agents start and register in Registry."""
     a1, a2, a3 = EchoAgent("agent_1"), EchoAgent("agent_2"), EchoAgent("agent_3")
-    runtime = Runtime(
-        supervisor=Supervisor("root", children=[a1, a2, a3])
-    )
+    runtime = Runtime(supervisor=Supervisor("root", children=[a1, a2, a3]))
     await runtime.start()
     try:
         for name in ("agent_1", "agent_2", "agent_3"):
@@ -75,9 +70,7 @@ async def test_messages_route_by_name():
     """Messages route correctly by name via MessageBus."""
     a1 = EchoAgent("alpha")
     a2 = EchoAgent("beta")
-    runtime = Runtime(
-        supervisor=Supervisor("root", children=[a1, a2])
-    )
+    runtime = Runtime(supervisor=Supervisor("root", children=[a1, a2]))
     await runtime.start()
     try:
         r1 = await runtime.ask("alpha", {"target": "alpha"})
@@ -91,9 +84,7 @@ async def test_messages_route_by_name():
 async def test_fire_and_forget_send():
     """Fire-and-forget (send) works."""
     collector = CollectorAgent("collector")
-    runtime = Runtime(
-        supervisor=Supervisor("root", children=[collector])
-    )
+    runtime = Runtime(supervisor=Supervisor("root", children=[collector]))
     await runtime.start()
     try:
         await runtime.send("collector", {"msg": "hello"})
@@ -111,9 +102,7 @@ async def test_fire_and_forget_send():
 async def test_request_reply_ask_with_timeout():
     """Request-reply (ask) works with timeout."""
     echo = EchoAgent("echo")
-    runtime = Runtime(
-        supervisor=Supervisor("root", children=[echo])
-    )
+    runtime = Runtime(supervisor=Supervisor("root", children=[echo]))
     await runtime.start()
     try:
         result = await runtime.ask("echo", {"key": "value"}, timeout=5.0)
@@ -136,9 +125,7 @@ async def test_broadcast_to_pattern():
             return self.reply({"sent": True})
 
     sender = BroadcastSender("sender")
-    runtime = Runtime(
-        supervisor=Supervisor("root", children=[t1, t2, other, sender])
-    )
+    runtime = Runtime(supervisor=Supervisor("root", children=[t1, t2, other, sender]))
     await runtime.start()
     try:
         await runtime.ask("sender", {"go": True})
@@ -170,9 +157,7 @@ async def test_backpressure_when_mailbox_full():
             return None
 
     slow = SlowAgent("slow")
-    runtime = Runtime(
-        supervisor=Supervisor("root", children=[slow])
-    )
+    runtime = Runtime(supervisor=Supervisor("root", children=[slow]))
     await runtime.start()
     try:
         # Send multiple messages — mailbox size is 2, so some will block
@@ -196,9 +181,7 @@ async def test_registry_lookup_by_name_and_pattern():
     a1 = EchoAgent("svc.alpha")
     a2 = EchoAgent("svc.beta")
     a3 = EchoAgent("other")
-    runtime = Runtime(
-        supervisor=Supervisor("root", children=[a1, a2, a3])
-    )
+    runtime = Runtime(supervisor=Supervisor("root", children=[a1, a2, a3]))
     await runtime.start()
     try:
         # Lookup by exact name

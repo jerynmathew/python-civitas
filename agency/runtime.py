@@ -5,17 +5,17 @@ from __future__ import annotations
 import importlib
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
-
-logger = logging.getLogger(__name__)
 
 from agency.components import ComponentSet, build_component_set
 from agency.messages import Message, _new_span_id, _uuid7
 from agency.process import AgentProcess
 from agency.serializer import Serializer
 from agency.supervisor import Supervisor
+
+logger = logging.getLogger(__name__)
 
 
 class Runtime:
@@ -77,7 +77,7 @@ class Runtime:
         self._transport: Any = None
         self._registry: Any = None
         self._bus: Any = None
-        self._agents_by_name: dict[str, AgentProcess] = {}   # F04-10: O(1) live process lookup
+        self._agents_by_name: dict[str, AgentProcess] = {}  # F04-10: O(1) live process lookup
         self._started = False
 
     @classmethod
@@ -107,9 +107,10 @@ class Runtime:
                 )
             try:
                 module = importlib.import_module(module_path)
-                return getattr(module, class_name)
+                return cast(type[AgentProcess], getattr(module, class_name))
             except (ImportError, AttributeError) as exc:
                 from agency.errors import ConfigurationError
+
                 raise ConfigurationError(
                     f"Cannot load agent type '{type_str}': {exc}. "
                     f"Check that the module is installed and the class name is correct."
@@ -143,9 +144,8 @@ class Runtime:
         sup_cfg = config.get("supervision") or config.get("supervisor")
         if not sup_cfg:
             from agency.errors import ConfigurationError
-            raise ConfigurationError(
-                "YAML topology must define a top-level 'supervision' key."
-            )
+
+            raise ConfigurationError("YAML topology must define a top-level 'supervision' key.")
         # Top-level is always a supervisor
         children = [_build_node(c) for c in sup_cfg.get("children", [])]
         root = Supervisor(
@@ -376,7 +376,7 @@ class Runtime:
             trace_id=trace_id,
             span_id=_new_span_id(),
         )
-        return await self._bus.request(message, timeout=timeout)
+        return cast(Message, await self._bus.request(message, timeout=timeout))
 
     async def send(
         self,

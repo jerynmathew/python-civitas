@@ -21,9 +21,7 @@ class Transport(Protocol):
         """Gracefully close connections, flush pending messages."""
         ...
 
-    async def subscribe(
-        self, address: str, handler: Callable[[bytes], Awaitable[None]]
-    ) -> None:
+    async def subscribe(self, address: str, handler: Callable[[bytes], Awaitable[None]]) -> None:
         """Register a handler for messages arriving at this address."""
         ...
 

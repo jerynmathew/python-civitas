@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+from typing import Any
 
 import typer
 import yaml
@@ -17,7 +18,7 @@ from agency.dashboard.renderer import render_dashboard
 
 async def _run_dashboard(
     topology_path: Path,
-    config: dict,
+    config: dict[str, Any],
     refresh_rate: float,
 ) -> None:
     """Start the runtime with metrics collection and render a live dashboard."""

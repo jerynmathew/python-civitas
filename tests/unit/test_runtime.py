@@ -8,15 +8,14 @@ from pathlib import Path
 import pytest
 
 from agency import AgentProcess, Runtime, Supervisor
-from agency.config import SecretStr, Settings
+from agency.config import Settings
 from agency.errors import ConfigurationError as AgencyConfigError
 from agency.messages import Message
-from agency.process import ProcessStatus
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class NullAgent(AgentProcess):
     async def handle(self, message: Message) -> None:
@@ -26,6 +25,7 @@ class NullAgent(AgentProcess):
 # ---------------------------------------------------------------------------
 # Settings — frozen at instantiation, validated, SecretStr
 # ---------------------------------------------------------------------------
+
 
 class TestSettings:
     def test_default_serializer_is_msgpack(self):
@@ -80,6 +80,7 @@ class TestSettings:
 # Runtime.print_tree
 # ---------------------------------------------------------------------------
 
+
 class TestPrintTree:
     def test_no_supervisor_returns_placeholder(self):
         rt = Runtime()
@@ -105,6 +106,7 @@ class TestPrintTree:
 # ---------------------------------------------------------------------------
 # Runtime.get_agent
 # ---------------------------------------------------------------------------
+
 
 class TestGetAgent:
     def test_returns_none_before_start(self):
@@ -147,6 +149,7 @@ class TestGetAgent:
 # Runtime.start / stop lifecycle guards
 # ---------------------------------------------------------------------------
 
+
 class TestLifecycleGuards:
     @pytest.mark.asyncio
     async def test_start_is_idempotent(self):
@@ -177,69 +180,82 @@ class TestLifecycleGuards:
 # Runtime.from_config — YAML parsing
 # ---------------------------------------------------------------------------
 
+
 class TestFromConfig:
     def test_missing_supervision_key_raises(self, tmp_path: Path):
         bad_yaml = tmp_path / "bad.yaml"
-        bad_yaml.write_text(textwrap.dedent("""\
+        bad_yaml.write_text(
+            textwrap.dedent("""\
             transport:
               type: in_process
-        """))
+        """)
+        )
         with pytest.raises(AgencyConfigError, match="supervision"):
             Runtime.from_config(bad_yaml)
 
     def test_typo_key_raises(self, tmp_path: Path):
         bad_yaml = tmp_path / "typo.yaml"
-        bad_yaml.write_text(textwrap.dedent("""\
+        bad_yaml.write_text(
+            textwrap.dedent("""\
             supervison:
               name: root
-        """))
+        """)
+        )
         with pytest.raises(AgencyConfigError, match="supervision"):
             Runtime.from_config(bad_yaml)
 
     def test_bad_agent_type_raises_configuration_error(self, tmp_path: Path):
         bad_yaml = tmp_path / "bad_type.yaml"
-        bad_yaml.write_text(textwrap.dedent("""\
+        bad_yaml.write_text(
+            textwrap.dedent("""\
             supervision:
               name: root
               children:
                 - type: "nonexistent.module.FakeAgent"
                   name: "fake"
-        """))
+        """)
+        )
         with pytest.raises(AgencyConfigError, match="Cannot load agent type"):
             Runtime.from_config(bad_yaml)
 
     def test_unresolvable_short_name_raises(self, tmp_path: Path):
         bad_yaml = tmp_path / "short.yaml"
-        bad_yaml.write_text(textwrap.dedent("""\
+        bad_yaml.write_text(
+            textwrap.dedent("""\
             supervision:
               name: root
               children:
                 - type: "NoModule"
                   name: "x"
-        """))
+        """)
+        )
         with pytest.raises((AgencyConfigError, ValueError)):
             Runtime.from_config(bad_yaml)
 
     def test_valid_minimal_config(self, tmp_path: Path):
         """A supervision key with no children produces a runtime without error."""
         yaml_file = tmp_path / "minimal.yaml"
-        yaml_file.write_text(textwrap.dedent("""\
+        yaml_file.write_text(
+            textwrap.dedent("""\
             supervision:
               name: root
-        """))
+        """)
+        )
         rt = Runtime.from_config(yaml_file)
         assert rt._root_supervisor is not None
         assert rt._root_supervisor.name == "root"
 
     def test_agent_classes_dict_resolution(self, tmp_path: Path):
         yaml_file = tmp_path / "agents.yaml"
-        yaml_file.write_text(textwrap.dedent("""\
+        yaml_file.write_text(
+            textwrap.dedent("""\
             supervision:
               name: root
               children:
                 - type: "NullAgent"
                   name: "worker"
-        """))
+        """)
+        )
         rt = Runtime.from_config(yaml_file, agent_classes={"NullAgent": NullAgent})
         agents = rt._root_supervisor.all_agents()
         assert len(agents) == 1

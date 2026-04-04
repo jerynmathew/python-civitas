@@ -31,7 +31,9 @@ class ConsoleBackend:
             if span.status == "error":
                 logger.info(
                     "[span] %s  %.1fms  ERROR: %s",
-                    span.name, duration_ms, span.error_message or "",
+                    span.name,
+                    duration_ms,
+                    span.error_message or "",
                 )
             else:
                 logger.info("[span] %s  %.1fms", span.name, duration_ms)

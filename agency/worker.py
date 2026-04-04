@@ -140,9 +140,7 @@ class Worker:
             await self._bus.setup_agent(agent)
 
         # Subscribe to restart commands and register in registry so bus.route() can find it (F03-2)
-        await self._transport.subscribe(
-            "_agency.worker.restart", self._on_restart_command
-        )
+        await self._transport.subscribe("_agency.worker.restart", self._on_restart_command)
         self._registry.register("_agency.worker.restart")
 
         # Start agent message loops
@@ -181,7 +179,8 @@ class Worker:
         if restart_count >= self._max_restarts:
             logger.error(
                 "Worker: agent %r exceeded max_restarts (%d), not restarting",
-                target_name, self._max_restarts,
+                target_name,
+                self._max_restarts,
             )
             return
 
@@ -197,7 +196,9 @@ class Worker:
             self._restart_counts[target_name] = restart_count + 1
             logger.info(
                 "Worker: restarted agent %r (attempt %d/%d)",
-                target_name, self._restart_counts[target_name], self._max_restarts,
+                target_name,
+                self._restart_counts[target_name],
+                self._max_restarts,
             )
         except Exception:
             logger.exception("Worker: failed to restart agent %r", target_name)

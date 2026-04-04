@@ -10,7 +10,6 @@ from agency.errors import ErrorAction
 from agency.messages import Message
 from agency.process import AgentProcess, Mailbox, ProcessStatus
 
-
 # ---------------------------------------------------------------------------
 # Mailbox tests
 # ---------------------------------------------------------------------------
@@ -161,7 +160,7 @@ async def test_on_stop_called_on_crash():
     if agent2._task is not None:
         try:
             await asyncio.wait_for(agent2._task, timeout=2.0)
-        except (RuntimeError, asyncio.TimeoutError):
+        except (TimeoutError, RuntimeError):
             pass
     assert agent2.stop_called, "on_stop must be called even when agent crashes"
     assert agent2.status == ProcessStatus.CRASHED
@@ -252,7 +251,7 @@ async def test_retry_limit_escalates_after_max():
     if agent._task is not None:
         try:
             await asyncio.wait_for(agent._task, timeout=2.0)
-        except (ValueError, asyncio.TimeoutError):
+        except (TimeoutError, ValueError):
             pass
     assert agent.status in (ProcessStatus.CRASHED, ProcessStatus.STOPPED)
 
@@ -322,7 +321,7 @@ async def test_escalate_crashes_process():
     if agent._task is not None:
         try:
             await asyncio.wait_for(agent._task, timeout=2.0)
-        except (RuntimeError, asyncio.TimeoutError):
+        except (TimeoutError, RuntimeError):
             pass
     assert agent.status == ProcessStatus.CRASHED
 

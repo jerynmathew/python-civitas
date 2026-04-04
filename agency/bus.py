@@ -89,9 +89,7 @@ class MessageBus:
             # Route by address directly — ZMQ/NATS delivery handles it.
             address = message.recipient
         else:
-            raise MessageRoutingError(
-                f"No agent registered with name: {message.recipient!r}"
-            )
+            raise MessageRoutingError(f"No agent registered with name: {message.recipient!r}")
 
         span = self._tracer.start_send_span(message)
         try:
@@ -110,9 +108,7 @@ class MessageBus:
 
         entry = self._registry.lookup(message.recipient)
         if entry is None:
-            raise MessageRoutingError(
-                f"No agent registered with name: {message.recipient!r}"
-            )
+            raise MessageRoutingError(f"No agent registered with name: {message.recipient!r}")
 
         span = self._tracer.start_send_span(message)
         try:

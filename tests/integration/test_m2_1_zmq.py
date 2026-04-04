@@ -9,14 +9,12 @@ import os
 import tempfile
 
 import pytest
-import zmq
 
 from agency import AgentProcess, Runtime, Supervisor
 from agency.messages import Message, _uuid7
 from agency.process import ProcessStatus
 from agency.serializer import MsgpackSerializer
 from agency.transport.zmq import ZMQProxy, ZMQTransport
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -67,9 +65,7 @@ class Forwarder(AgentProcess):
     """Forwards to another agent, proving multi-hop routing works."""
 
     async def handle(self, message: Message) -> Message | None:
-        result = await self.ask(
-            message.payload["target"], {"name": message.payload["name"]}
-        )
+        result = await self.ask(message.payload["target"], {"name": message.payload["name"]})
         return self.reply(result.payload)
 
 
@@ -94,9 +90,7 @@ async def test_zmq_transport_publish_subscribe(zmq_addrs):
     frontend, backend = zmq_addrs
     serializer = MsgpackSerializer()
 
-    transport = ZMQTransport(
-        serializer, pub_addr=frontend, sub_addr=backend, start_proxy=True
-    )
+    transport = ZMQTransport(serializer, pub_addr=frontend, sub_addr=backend, start_proxy=True)
     await transport.start()
 
     received: list[bytes] = []
@@ -126,9 +120,7 @@ async def test_zmq_transport_request_reply(zmq_addrs):
     frontend, backend = zmq_addrs
     serializer = MsgpackSerializer()
 
-    transport = ZMQTransport(
-        serializer, pub_addr=frontend, sub_addr=backend, start_proxy=True
-    )
+    transport = ZMQTransport(serializer, pub_addr=frontend, sub_addr=backend, start_proxy=True)
     await transport.start()
 
     # Handler that echoes the payload back
@@ -161,15 +153,11 @@ async def test_zmq_two_transports_communicate(zmq_addrs):
     serializer = MsgpackSerializer()
 
     # Transport A starts the proxy
-    transport_a = ZMQTransport(
-        serializer, pub_addr=frontend, sub_addr=backend, start_proxy=True
-    )
+    transport_a = ZMQTransport(serializer, pub_addr=frontend, sub_addr=backend, start_proxy=True)
     await transport_a.start()
 
     # Transport B connects to the same proxy
-    transport_b = ZMQTransport(
-        serializer, pub_addr=frontend, sub_addr=backend, start_proxy=False
-    )
+    transport_b = ZMQTransport(serializer, pub_addr=frontend, sub_addr=backend, start_proxy=False)
     await transport_b.start()
 
     received_by_b: list[bytes] = []
@@ -200,14 +188,10 @@ async def test_zmq_cross_transport_request_reply(zmq_addrs):
     frontend, backend = zmq_addrs
     serializer = MsgpackSerializer()
 
-    transport_a = ZMQTransport(
-        serializer, pub_addr=frontend, sub_addr=backend, start_proxy=True
-    )
+    transport_a = ZMQTransport(serializer, pub_addr=frontend, sub_addr=backend, start_proxy=True)
     await transport_a.start()
 
-    transport_b = ZMQTransport(
-        serializer, pub_addr=frontend, sub_addr=backend, start_proxy=False
-    )
+    transport_b = ZMQTransport(serializer, pub_addr=frontend, sub_addr=backend, start_proxy=False)
     await transport_b.start()
 
     # B has a handler that replies
@@ -297,9 +281,7 @@ async def test_runtime_zmq_shutdown_clean(zmq_addrs):
     """ZMQ runtime shuts down cleanly — all agents STOPPED."""
     frontend, backend = zmq_addrs
     runtime = Runtime(
-        supervisor=Supervisor(
-            "root", children=[Greeter("greeter"), Adder("adder")]
-        ),
+        supervisor=Supervisor("root", children=[Greeter("greeter"), Adder("adder")]),
         transport="zmq",
         zmq_pub_addr=frontend,
         zmq_sub_addr=backend,
@@ -627,9 +609,7 @@ async def test_agent_code_identical_to_phase1(zmq_addrs):
     frontend, backend = zmq_addrs
 
     # Run the same agent on InProcess
-    rt_inproc = Runtime(
-        supervisor=Supervisor("root", children=[Greeter("greeter")])
-    )
+    rt_inproc = Runtime(supervisor=Supervisor("root", children=[Greeter("greeter")]))
     await rt_inproc.start()
     r_inproc = await rt_inproc.ask("greeter", {"name": "Test"})
     await rt_inproc.stop()

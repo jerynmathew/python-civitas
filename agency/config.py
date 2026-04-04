@@ -55,7 +55,7 @@ class Settings:
     """
 
     def __init__(self, env: dict[str, str] | None = None) -> None:
-        _env: dict[str, str] | os._Environ[str] = env if env is not None else os.environ  # type: ignore[assignment]
+        _env: dict[str, str] | os._Environ[str] = env if env is not None else os.environ
 
         # Validated enum-style settings
         raw_serializer = _env.get("AGENCY_SERIALIZER", "msgpack")

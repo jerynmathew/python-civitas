@@ -200,9 +200,7 @@ def _validate_topology(config: dict[str, Any]) -> _ValidationResult:
         result.ok("Configuration", f"Strategies valid ({strat_list})")
 
     # Check if any config-level failures were already recorded for backoff
-    backoff_errors = sum(
-        1 for _, msg, ok in result.checks if "backoff" in msg.lower() and not ok
-    )
+    backoff_errors = sum(1 for _, msg, ok in result.checks if "backoff" in msg.lower() and not ok)
     if backoff_errors == 0:
         result.ok("Configuration", "Backoff policies valid")
 

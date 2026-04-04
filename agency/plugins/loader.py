@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import importlib
 from importlib.metadata import entry_points
-from typing import Any
+from typing import Any, cast
 
 # PluginError lives in agency.errors (AgencyError subclass) — re-exported here
 # for backward compatibility so existing imports from this module still work.
@@ -68,7 +68,7 @@ def resolve_plugin_class(plugin_type: str, name: str) -> type[Any]:
     for ep in eps:
         if ep.name == name:
             try:
-                return ep.load()
+                return cast(type[Any], ep.load())
             except Exception as exc:
                 raise PluginError(plugin_type, name, str(exc)) from exc
 
@@ -83,9 +83,10 @@ def resolve_plugin_class(plugin_type: str, name: str) -> type[Any]:
         return _import_dotted(plugin_type, name, name)
 
     raise PluginError(
-        plugin_type, name,
+        plugin_type,
+        name,
         f"Unknown plugin '{name}'. Not found in entrypoints, built-ins, "
-        f"or as a dotted import path."
+        f"or as a dotted import path.",
     )
 
 
@@ -103,8 +104,7 @@ def load_plugin(plugin_type: str, name: str, config: dict[str, Any] | None = Non
         return cls(**kwargs)
     except TypeError as exc:
         raise PluginError(
-            plugin_type, name,
-            f"Constructor error: {exc}. Check the plugin config."
+            plugin_type, name, f"Constructor error: {exc}. Check the plugin config."
         ) from exc
 
 
@@ -139,7 +139,9 @@ def load_plugins_from_config(config: dict[str, Any]) -> dict[str, Any]:
     for model_cfg in plugins_cfg.get("models", []):
         name = model_cfg.get("type")
         if not name:
-            raise PluginError("model", "<missing>", "Plugin config entry is missing a 'type' field.")
+            raise PluginError(
+                "model", "<missing>", "Plugin config entry is missing a 'type' field."
+            )
         plugin_config = model_cfg.get("config", {})
         provider = load_plugin("model", name, plugin_config)
         result["model_providers"].append(provider)
@@ -148,7 +150,9 @@ def load_plugins_from_config(config: dict[str, Any]) -> dict[str, Any]:
     for exp_cfg in plugins_cfg.get("exporters", []):
         name = exp_cfg.get("type")
         if not name:
-            raise PluginError("exporter", "<missing>", "Plugin config entry is missing a 'type' field.")
+            raise PluginError(
+                "exporter", "<missing>", "Plugin config entry is missing a 'type' field."
+            )
         plugin_config = exp_cfg.get("config", {})
         exporter = load_plugin("exporter", name, plugin_config)
         result["exporters"].append(exporter)
@@ -168,22 +172,20 @@ def _import_dotted(plugin_type: str, name: str, dotted_path: str) -> type[Any]:
     module_path, _, class_name = dotted_path.rpartition(".")
     if not module_path:
         raise PluginError(
-            plugin_type, name,
-            f"Invalid dotted path '{dotted_path}'. "
-            f"Expected format: 'module.path.ClassName'."
+            plugin_type,
+            name,
+            f"Invalid dotted path '{dotted_path}'. Expected format: 'module.path.ClassName'.",
         )
     try:
         module = importlib.import_module(module_path)
     except ImportError as exc:
         raise PluginError(
-            plugin_type, name,
-            f"Cannot import module '{module_path}': {exc}"
+            plugin_type, name, f"Cannot import module '{module_path}': {exc}"
         ) from exc
 
     cls = getattr(module, class_name, None)
     if cls is None:
         raise PluginError(
-            plugin_type, name,
-            f"Module '{module_path}' has no attribute '{class_name}'."
+            plugin_type, name, f"Module '{module_path}' has no attribute '{class_name}'."
         )
-    return cls
+    return cast(type[Any], cls)

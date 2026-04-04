@@ -5,13 +5,11 @@ registration. The live dashboard itself requires a running runtime and is
 tested via visual inspection.
 """
 
-import time
-
 from rich.layout import Layout
 from rich.table import Table
 from rich.tree import Tree
 
-from agency.dashboard.collector import AgentMetrics, MetricsCollector, RestartEvent
+from agency.dashboard.collector import MetricsCollector
 from agency.dashboard.renderer import (
     render_cost_attribution,
     render_dashboard,
@@ -19,7 +17,6 @@ from agency.dashboard.renderer import (
     render_restart_history,
     render_supervision_tree,
 )
-
 
 # ---------------------------------------------------------------------------
 # MetricsCollector

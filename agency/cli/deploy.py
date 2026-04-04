@@ -254,15 +254,16 @@ def docker_compose(
     ]
 
     file_list = "\n".join(
-        f"    [cyan]{name:<25}[/cyan] [dim]{desc}[/dim]"
-        for name, desc in files_generated
+        f"    [cyan]{name:<25}[/cyan] [dim]{desc}[/dim]" for name, desc in files_generated
     )
 
-    console.print(Panel.fit(
-        f"[green]✔ Generated deployment artifacts[/green]\n\n"
-        f"{file_list}\n\n"
-        f"  [dim]{agent_count} agents across {worker_count + 1} containers[/dim]\n\n"
-        f"  Run with: [bold]cd {output} && docker compose up[/bold]",
-        title="agency deploy",
-        border_style="green",
-    ))
+    console.print(
+        Panel.fit(
+            f"[green]✔ Generated deployment artifacts[/green]\n\n"
+            f"{file_list}\n\n"
+            f"  [dim]{agent_count} agents across {worker_count + 1} containers[/dim]\n\n"
+            f"  Run with: [bold]cd {output} && docker compose up[/bold]",
+            title="agency deploy",
+            border_style="green",
+        )
+    )

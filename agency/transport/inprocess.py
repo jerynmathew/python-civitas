@@ -29,14 +29,15 @@ class InProcessTransport:
             return
         self._started = True
 
+    async def wait_ready(self) -> None:
+        """No-op for in-process transport — always ready after start()."""
+
     async def stop(self) -> None:
         self._started = False
         self._handlers.clear()
         self._reply_queues.clear()
 
-    async def subscribe(
-        self, address: str, handler: Callable[[bytes], Awaitable[None]]
-    ) -> None:
+    async def subscribe(self, address: str, handler: Callable[[bytes], Awaitable[None]]) -> None:
         self._handlers[address] = handler
 
     async def publish(self, address: str, data: bytes) -> None:

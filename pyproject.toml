@@ -39,6 +39,7 @@ dev       = [
     "anthropic>=0.20",
     "opentelemetry-sdk>=1.20",
     "opentelemetry-exporter-otlp-proto-grpc>=1.20",
+    "types-pyyaml>=6.0.12",
 ]
 docs      = [
     "mkdocs-material>=9.5",
@@ -90,6 +91,9 @@ select = [
 ]
 ignore = [
     "E501",
+    # ASYNC109: timeout as a named parameter is intentional public API for ask()/request().
+    # Callers pass it as a kwarg; using asyncio.timeout() internally is already done.
+    "ASYNC109",
 ]
 
 [tool.ruff.lint.isort]
@@ -106,4 +110,8 @@ warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 module = ["msgpack.*", "zmq.*", "nats.*", "litellm.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["agents", "agents.*"]
 ignore_missing_imports = true

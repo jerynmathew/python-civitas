@@ -10,6 +10,7 @@ Renders a MetricsCollector snapshot as a Rich Layout with:
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from rich.layout import Layout
 from rich.panel import Panel
@@ -74,7 +75,7 @@ def _format_timestamp(ts: float | None) -> str:
 
 def render_supervision_tree(
     snapshot: RuntimeSnapshot,
-    tree_config: dict | None = None,
+    tree_config: dict[str, Any] | None = None,
 ) -> Tree:
     """Render the supervision tree with live agent status indicators.
 

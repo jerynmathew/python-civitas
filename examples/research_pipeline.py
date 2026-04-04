@@ -36,11 +36,13 @@ class Coordinator(AgentProcess):
         summary = await self.ask("summarizer", {"findings": research.payload["findings"]})
 
         self.state["tasks_completed"] += 1
-        return self.reply({
-            "topic": topic,
-            "summary": summary.payload["summary"],
-            "tasks_completed": self.state["tasks_completed"],
-        })
+        return self.reply(
+            {
+                "topic": topic,
+                "summary": summary.payload["summary"],
+                "tasks_completed": self.state["tasks_completed"],
+            }
+        )
 
 
 async def main():

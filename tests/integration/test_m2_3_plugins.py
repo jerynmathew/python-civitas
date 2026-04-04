@@ -13,7 +13,7 @@ import tempfile
 
 import pytest
 
-from agency import AgentProcess, Runtime, Supervisor
+from agency import AgentProcess, Runtime
 from agency.messages import Message
 from agency.plugins.loader import (
     PluginError,
@@ -21,7 +21,6 @@ from agency.plugins.loader import (
     load_plugins_from_config,
     resolve_plugin_class,
 )
-
 
 # ---------------------------------------------------------------------------
 # Test plugins (simulating user-written custom plugins)
@@ -466,7 +465,8 @@ async def test_tool_registry_list_tools():
 
 async def test_plugin_error_is_agency_error():
     """PluginError is a subclass of AgencyError."""
-    from agency.errors import AgencyError, PluginError as AgencyPluginError
+    from agency.errors import AgencyError
+    from agency.errors import PluginError as AgencyPluginError
 
     assert issubclass(AgencyPluginError, AgencyError)
 
@@ -476,8 +476,8 @@ async def test_plugin_error_is_agency_error():
 
 async def test_plugin_error_importable_from_loader():
     """PluginError is still importable from agency.plugins.loader."""
-    from agency.plugins.loader import PluginError as LoaderPluginError
     from agency.errors import PluginError as ErrorsPluginError
+    from agency.plugins.loader import PluginError as LoaderPluginError
 
     assert LoaderPluginError is ErrorsPluginError
 

@@ -134,9 +134,7 @@ class ZMQTransport:
             return
 
         if self._start_proxy:
-            self._proxy = ZMQProxy(
-                frontend=self._pub_addr, backend=self._sub_addr
-            )
+            self._proxy = ZMQProxy(frontend=self._pub_addr, backend=self._sub_addr)
             # Run blocking proxy start in a thread executor to avoid blocking
             # the event loop during the ready-wait.
             loop = asyncio.get_running_loop()
@@ -190,9 +188,7 @@ class ZMQTransport:
         self._handlers.clear()
         self._reply_queues.clear()
 
-    async def subscribe(
-        self, address: str, handler: Callable[[bytes], Awaitable[None]]
-    ) -> None:
+    async def subscribe(self, address: str, handler: Callable[[bytes], Awaitable[None]]) -> None:
         """Subscribe to messages arriving at this address."""
         if self._sub is None:
             raise RuntimeError("ZMQTransport not started")

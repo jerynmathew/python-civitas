@@ -37,8 +37,7 @@ class ToolRegistry:
         """
         if tool.name in self._tools:
             raise ValueError(
-                f"Tool already registered: {tool.name!r}. "
-                f"Deregister the existing tool first."
+                f"Tool already registered: {tool.name!r}. Deregister the existing tool first."
             )
         self._tools[tool.name] = tool
 

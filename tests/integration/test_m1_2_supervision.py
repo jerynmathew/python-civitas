@@ -6,13 +6,10 @@ Each test maps to one bullet in the M1.2 milestone.
 import asyncio
 import time
 
-import pytest
-
 from agency import AgentProcess, Runtime, Supervisor
 from agency.messages import Message
 from agency.process import ProcessStatus
 from tests.conftest import wait_for, wait_for_status
-
 
 # ------------------------------------------------------------------
 # Test agents
@@ -189,7 +186,7 @@ async def test_rest_for_one_restarts_failed_and_downstream():
 
         r_up = await runtime.ask("upstream", {})
         r_down = await runtime.ask("downstream", {})
-        assert r_up.payload["starts"] == 1   # upstream untouched
+        assert r_up.payload["starts"] == 1  # upstream untouched
         assert r_down.payload["starts"] == 2  # downstream restarted
     finally:
         await runtime.stop()
