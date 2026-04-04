@@ -39,9 +39,22 @@ def _resolve_agent_class(type_str: str) -> type:
     """Resolve a dotted type string to an agent class."""
     module_path, _, class_name = type_str.rpartition(".")
     if not module_path:
+        err_console.print(
+            f"[red]Error:[/red] '{type_str}' is not a dotted path (e.g. 'myapp.agents.MyAgent')."
+        )
         raise typer.Exit(code=1)
-    module = importlib.import_module(module_path)
-    return cast(type, getattr(module, class_name))
+    try:
+        module = importlib.import_module(module_path)
+    except ImportError as exc:
+        err_console.print(f"[red]Error:[/red] cannot import '{module_path}': {exc}")
+        raise typer.Exit(code=1) from exc
+    cls = getattr(module, class_name, None)
+    if cls is None:
+        err_console.print(
+            f"[red]Error:[/red] '{module_path}' has no attribute '{class_name}'."
+        )
+        raise typer.Exit(code=1)
+    return cast(type, cls)
 
 
 def _build_startup_tree(config: dict[str, Any]) -> Tree:
@@ -136,14 +149,15 @@ async def _run_worker(config: dict[str, Any], process_name: str) -> None:
     await worker.start()
     success("Worker started — Ctrl+C to stop")
 
-    try:
-        await worker.wait_until_stopped()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        console.print("\n  [yellow]Shutting down worker...[/yellow]")
-        await worker.stop()
-        success("Stopped")
+    # F09-7: use stop_event + signal handlers (same as _run_supervisor) so
+    # SIGTERM (container stop, systemctl stop) is handled gracefully.
+    stop_event = asyncio.Event()
+    register_shutdown(stop_event)
+
+    await stop_event.wait()
+    console.print("\n  [yellow]Shutting down worker...[/yellow]")
+    await worker.stop()
+    success("Stopped")
 
 
 @app.command()

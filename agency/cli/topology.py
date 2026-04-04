@@ -70,12 +70,10 @@ def _validate_topology(config: dict[str, Any]) -> _ValidationResult:
     result = _ValidationResult()
 
     # --- Structure ---
-    try:
-        yaml.safe_dump(config)
-        result.ok("Structure", "YAML syntax")
-    except yaml.YAMLError:
-        result.fail("Structure", "YAML syntax invalid")
-        return result
+    # F09-1: config is already a parsed dict at this point; yaml.safe_dump
+    # would never raise YAMLError. YAML parse errors are caught upstream at
+    # yaml.safe_load() before _validate_topology is ever called.
+    result.ok("Structure", "YAML syntax")
 
     sup = config.get("supervision", config.get("supervisor"))
     if sup is None:
@@ -288,10 +286,10 @@ def _build_summary(config: dict[str, Any]) -> str:
         if pub:
             transport_detail += f"  [dim]{pub}[/dim]"
 
-    # Plugins
+    # Plugins — F09-3: align keys with loader schema (models, tools, exporters)
     plugins_cfg = config.get("plugins", {})
     plugin_names: list[str] = []
-    for section_name in ("model_providers", "exporters", "observability"):
+    for section_name in ("models", "tools", "exporters"):
         for p in plugins_cfg.get(section_name, []):
             ptype = p.get("type", "")
             short = ptype.rpartition(".")[2].replace("Provider", "").replace("Exporter", "").lower()

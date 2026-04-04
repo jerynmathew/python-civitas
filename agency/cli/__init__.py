@@ -16,7 +16,12 @@ Package structure:
 
 from __future__ import annotations
 
-import agency.cli.dashboard  # noqa: F401
+# F09-8: guard dashboard import — it requires optional dependencies (rich Live).
+# If the import fails, the rest of the CLI still loads normally.
+try:
+    import agency.cli.dashboard  # noqa: F401
+except ImportError:
+    pass
 
 # Register all subcommands by importing the modules that decorate them.
 # Each module adds its commands to the shared `app` instance.

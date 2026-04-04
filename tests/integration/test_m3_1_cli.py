@@ -4,6 +4,7 @@ Tests validate that the Typer+Rich CLI scaffolds projects, runs topologies,
 manages state, and switches transports via flags.
 """
 
+import asyncio
 import os
 import tempfile
 from pathlib import Path
@@ -35,10 +36,10 @@ def test_version():
 def test_init_scaffolds_project():
     """agency init creates project directory with expected files."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        result = runner.invoke(app, ["init", "my-project", "--dir", tmpdir])
+        result = runner.invoke(app, ["init", "my_project", "--dir", tmpdir])
         assert result.exit_code == 0
 
-        project_dir = Path(tmpdir) / "my-project"
+        project_dir = Path(tmpdir) / "my_project"
         assert project_dir.exists()
         assert (project_dir / "pyproject.toml").exists()
         assert (project_dir / "topology.yaml").exists()
@@ -50,8 +51,8 @@ def test_init_scaffolds_project():
 def test_init_pyproject_has_agency_dep():
     """Scaffolded pyproject.toml includes python-agency dependency."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        runner.invoke(app, ["init", "dep-test", "--dir", tmpdir])
-        content = (Path(tmpdir) / "dep-test" / "pyproject.toml").read_text()
+        runner.invoke(app, ["init", "dep_test", "--dir", tmpdir])
+        content = (Path(tmpdir) / "dep_test" / "pyproject.toml").read_text()
         assert "python-agency" in content
 
 
@@ -60,8 +61,8 @@ def test_init_topology_is_valid_yaml():
     import yaml
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        runner.invoke(app, ["init", "yaml-test", "--dir", tmpdir])
-        content = (Path(tmpdir) / "yaml-test" / "topology.yaml").read_text()
+        runner.invoke(app, ["init", "yaml_test", "--dir", tmpdir])
+        content = (Path(tmpdir) / "yaml_test" / "topology.yaml").read_text()
         config = yaml.safe_load(content)
         assert "supervision" in config
         assert config["supervision"]["name"] == "root"
@@ -70,8 +71,8 @@ def test_init_topology_is_valid_yaml():
 def test_init_agents_contains_agent_class():
     """Scaffolded agents.py contains an AgentProcess subclass."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        runner.invoke(app, ["init", "agent-test", "--dir", tmpdir])
-        content = (Path(tmpdir) / "agent-test" / "agents.py").read_text()
+        runner.invoke(app, ["init", "agent_test", "--dir", tmpdir])
+        content = (Path(tmpdir) / "agent_test" / "agents.py").read_text()
         assert "class GreeterAgent(AgentProcess)" in content
         assert "async def handle" in content
 
@@ -88,8 +89,8 @@ def test_init_rejects_existing_directory():
 def test_init_run_script_is_functional():
     """Scaffolded run.py contains runnable structure."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        runner.invoke(app, ["init", "func-test", "--dir", tmpdir])
-        content = (Path(tmpdir) / "func-test" / "run.py").read_text()
+        runner.invoke(app, ["init", "func_test", "--dir", tmpdir])
+        content = (Path(tmpdir) / "func_test" / "run.py").read_text()
         assert "asyncio.run(main())" in content
         assert "Runtime.from_config" in content
 
@@ -138,7 +139,7 @@ def test_state_list_shows_agents():
         store = SQLiteStateStore(db_path)
         asyncio.run(store.set("agent_a", {"count": 42}))
         asyncio.run(store.set("agent_b", {"step": 3, "data": "hello"}))
-        store.close()
+        asyncio.run(store.close())
 
         result = runner.invoke(app, ["state", "list", "--db", db_path])
         assert result.exit_code == 0
@@ -162,7 +163,7 @@ def test_state_clear_specific_agent():
         store = SQLiteStateStore(db_path)
         asyncio.run(store.set("agent_a", {"v": 1}))
         asyncio.run(store.set("agent_b", {"v": 2}))
-        store.close()
+        asyncio.run(store.close())
 
         result = runner.invoke(app, ["state", "clear", "agent_a", "--db", db_path, "--force"])
         assert result.exit_code == 0
@@ -172,7 +173,7 @@ def test_state_clear_specific_agent():
         store = SQLiteStateStore(db_path)
         assert asyncio.run(store.get("agent_a")) is None
         assert asyncio.run(store.get("agent_b")) == {"v": 2}
-        store.close()
+        asyncio.run(store.close())
     finally:
         os.unlink(db_path)
 
@@ -190,14 +191,14 @@ def test_state_clear_all():
         store = SQLiteStateStore(db_path)
         asyncio.run(store.set("agent_a", {"v": 1}))
         asyncio.run(store.set("agent_b", {"v": 2}))
-        store.close()
+        asyncio.run(store.close())
 
         result = runner.invoke(app, ["state", "clear", "--db", db_path, "--force"])
         assert result.exit_code == 0
 
         store = SQLiteStateStore(db_path)
         assert asyncio.run(store.list_agents()) == []
-        store.close()
+        asyncio.run(store.close())
     finally:
         os.unlink(db_path)
 
@@ -211,7 +212,7 @@ def test_state_clear_nonexistent_agent():
         from agency.plugins.sqlite_store import SQLiteStateStore
 
         store = SQLiteStateStore(db_path)
-        store.close()
+        asyncio.run(store.close())
 
         result = runner.invoke(app, ["state", "clear", "ghost", "--db", db_path, "--force"])
         assert result.exit_code == 0
@@ -230,6 +231,51 @@ def test_run_transport_override_flag():
     assert "--transport" in result.output
     # Verify nats-url is also available
     assert "--nats-url" in result.output
+
+
+# ---------------------------------------------------------------------------
+# F09 — CLI hardening
+# ---------------------------------------------------------------------------
+
+
+def test_init_rejects_invalid_identifier():
+    """agency init rejects names that are not valid Python identifiers."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        result = runner.invoke(app, ["init", "my-project", "--dir", tmpdir])
+        assert result.exit_code == 1
+        assert "not a valid Python identifier" in result.output
+
+        result = runner.invoke(app, ["init", "123start", "--dir", tmpdir])
+        assert result.exit_code == 1
+
+        result = runner.invoke(app, ["init", "has space", "--dir", tmpdir])
+        assert result.exit_code == 1
+
+
+def test_topology_validate_bad_yaml():
+    """topology validate reports YAML parse errors cleanly."""
+    with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w", delete=False) as f:
+        f.write(":\n  - bad: [unclosed\n")
+        path = f.name
+
+    try:
+        result = runner.invoke(app, ["topology", "validate", path])
+        assert result.exit_code == 1
+    finally:
+        os.unlink(path)
+
+
+def test_topology_validate_no_supervision():
+    """topology validate reports missing supervision section."""
+    with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w", delete=False) as f:
+        f.write("transport:\n  type: in_process\n")
+        path = f.name
+
+    try:
+        result = runner.invoke(app, ["topology", "validate", path])
+        assert result.exit_code == 1
+    finally:
+        os.unlink(path)
 
 
 # ---------------------------------------------------------------------------

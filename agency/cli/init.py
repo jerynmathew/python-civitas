@@ -32,6 +32,14 @@ def init(
     directory: str | None = typer.Option(None, "--dir", "-d", help="Parent directory"),
 ) -> None:
     """Scaffold a new Agency project."""
+    # F09-6: validate name as a Python identifier (used as class name and file name)
+    if not name.isidentifier():
+        err_console.print(
+            f"[red]Error:[/red] '{name}' is not a valid Python identifier. "
+            "Use letters, digits, and underscores only; do not start with a digit."
+        )
+        raise typer.Exit(1)
+
     parent = Path(directory) if directory else Path.cwd()
     project_dir = parent / name
 
@@ -43,7 +51,7 @@ def init(
 
     for filename, tmpl_name in _TEMPLATE_FILES:
         tmpl = _load_template(tmpl_name)
-        content = tmpl.substitute(project_name=name)
+        content = tmpl.safe_substitute(project_name=name)  # F09-5: safe_substitute
         (project_dir / filename).write_text(content)
 
     console.print(
