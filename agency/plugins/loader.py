@@ -32,7 +32,7 @@ _BUILTINS: dict[str, dict[str, str]] = {
         "litellm": "agency.plugins.litellm.LiteLLMProvider",
     },
     "exporter": {
-        "console": "agency.observability.tracer.Tracer",
+        "console": "agency.observability.export_backend.ConsoleBackend",
     },
     "state": {
         "in_memory": "agency.plugins.state.InMemoryStateStore",

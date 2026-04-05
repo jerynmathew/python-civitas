@@ -45,6 +45,10 @@ def _collect_processes(config: dict[str, Any]) -> dict[str, list[dict[str, str]]
             a = node["agent"]
             process_name = a.get("process", "supervisor")
             processes.setdefault(process_name, []).append(a)
+        elif "type" in node and "name" in node:
+            # Flat format: {type: "module.Class", name: "agent_name", process: "worker"}
+            process_name = node.get("process", "supervisor")
+            processes.setdefault(process_name, []).append(node)
 
     for child in sup.get("children", []):
         _walk(child)
@@ -144,7 +148,6 @@ def _generate_docker_compose(
         services[f"worker-{process_name}"] = worker_service
 
     compose = {
-        "version": "3.8",
         "services": services,
     }
 

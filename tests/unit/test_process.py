@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 import pytest
 
@@ -365,7 +366,7 @@ def test_default_shutdown_timeout():
 # ---------------------------------------------------------------------------
 
 
-def _make_agent_with_tracer() -> "tuple[TrackingAgent, Any]":
+def _make_agent_with_tracer() -> tuple[TrackingAgent, Any]:
     """Return a TrackingAgent wired with an in-memory test tracer."""
     pytest.importorskip("opentelemetry", reason="opentelemetry-sdk not installed")
     from agency.plugins.otel import create_test_tracer

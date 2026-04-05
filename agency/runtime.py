@@ -196,6 +196,12 @@ class Runtime:
 
         return cls(**kwargs)
 
+    def all_agents(self) -> list[AgentProcess]:
+        """Return all AgentProcess instances in the supervision tree."""
+        if self._root_supervisor is None:
+            return []
+        return self._root_supervisor.all_agents()
+
     def print_tree(self) -> str:
         """Return an ASCII representation of the supervision tree."""
         if self._root_supervisor is None:

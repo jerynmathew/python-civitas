@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.table import Table
@@ -19,6 +20,29 @@ state_app = typer.Typer(
 )
 
 
+async def _load_all_states(
+    db_path: str,
+) -> tuple[list[str], dict[str, dict[str, Any] | None]]:
+    """Fetch all agent names and their states in a single event loop."""
+    store = SQLiteStateStore(db_path)
+    try:
+        agents = await store.list_agents()
+        states = {name: await store.get(name) for name in agents}
+        return agents, states
+    finally:
+        await store.close()
+
+
+async def _delete_agents(db_path: str, names: list[str]) -> None:
+    """Delete state for each name in a single event loop."""
+    store = SQLiteStateStore(db_path)
+    try:
+        for name in names:
+            await store.delete(name)
+    finally:
+        await store.close()
+
+
 @state_app.command("list")
 def state_list(
     db: str = typer.Option("agency_state.db", "--db", help="SQLite database path"),
@@ -29,12 +53,10 @@ def state_list(
         warn(f"No state database found at '{db}'.")
         raise typer.Exit(0)
 
-    store = SQLiteStateStore(str(db_path))
-    agents = asyncio.run(store.list_agents())
+    agents, states = asyncio.run(_load_all_states(str(db_path)))
 
     if not agents:
         warn("No persisted agent states found.")
-        asyncio.run(store.close())
         return
 
     table = Table(title="Persisted Agent States", show_lines=True)
@@ -42,12 +64,10 @@ def state_list(
     table.add_column("State", style="white", overflow="fold")
 
     for agent_name in agents:
-        state = asyncio.run(store.get(agent_name))
-        state_str = json.dumps(state, indent=2) if state else "{}"
+        state_str = json.dumps(states.get(agent_name), indent=2) if states.get(agent_name) else "{}"
         table.add_row(agent_name, state_str)
 
     console.print(table)
-    asyncio.run(store.close())
 
 
 @state_app.command("clear")
@@ -62,32 +82,25 @@ def state_clear(
         warn(f"No state database found at '{db}'.")
         raise typer.Exit(0)
 
-    store = SQLiteStateStore(str(db_path))
+    agents, states = asyncio.run(_load_all_states(str(db_path)))
 
     if agent_name:
-        state = asyncio.run(store.get(agent_name))
-        if state is None:
+        if agent_name not in states or states[agent_name] is None:
             warn(f"No state found for agent '{agent_name}'.")
-            asyncio.run(store.close())
             return
         if not force:
             confirm = typer.confirm(f"Clear state for agent '{agent_name}'?")
             if not confirm:
                 raise typer.Abort()
-        asyncio.run(store.delete(agent_name))
+        asyncio.run(_delete_agents(str(db_path), [agent_name]))
         success(f"Cleared state for agent '{agent_name}'.")
     else:
-        agents = asyncio.run(store.list_agents())
         if not agents:
             warn("No persisted agent states found.")
-            asyncio.run(store.close())
             return
         if not force:
             confirm = typer.confirm(f"Clear state for ALL {len(agents)} agents?")
             if not confirm:
                 raise typer.Abort()
-        for name in agents:
-            asyncio.run(store.delete(name))
+        asyncio.run(_delete_agents(str(db_path), agents))
         success(f"Cleared state for {len(agents)} agents.")
-
-    asyncio.run(store.close())
