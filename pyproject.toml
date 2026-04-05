@@ -18,6 +18,12 @@ dependencies = [
     "rich>=13",
 ]
 
+[project.urls]
+Homepage = "https://github.com/anthropics/python-agency"
+Repository = "https://github.com/anthropics/python-agency"
+Documentation = "https://github.com/anthropics/python-agency#readme"
+"Bug Tracker" = "https://github.com/anthropics/python-agency/issues"
+
 [project.optional-dependencies]
 otel      = [
     "opentelemetry-sdk>=1.20",
@@ -65,6 +71,8 @@ omit = [
     # Requires live Anthropic/LiteLLM API keys — unit-tested via mocks
     "agency/plugins/anthropic.py",
     "agency/plugins/litellm.py",
+    # Fiddler integration is a planned stub with no callable implementation yet
+    "agency/plugins/fiddler.py",
     # Adapter coverage lives in test_m2_6_adapters.py (excluded to avoid
     # inflating the threshold with tests that mock optional deps)
     "agency/adapters/*",

@@ -261,3 +261,52 @@ class TestFromConfig:
         assert len(agents) == 1
         assert agents[0].name == "worker"
         assert isinstance(agents[0], NullAgent)
+
+
+# ---------------------------------------------------------------------------
+# F12-9 — Example YAML topology files are valid against the config schema
+# ---------------------------------------------------------------------------
+
+_EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
+
+# A fallback agent_classes dict that resolves any type string to a NullAgent
+# stub, so from_config() can parse example files without real implementations.
+class _AnyClasses(dict):  # type: ignore[type-arg]
+    """Accepts any type string and returns NullAgent."""
+
+    def __contains__(self, key: object) -> bool:
+        return True
+
+    def __getitem__(self, key: object) -> type[AgentProcess]:
+        return NullAgent
+
+
+_ANY = _AnyClasses({"_": NullAgent})  # non-empty so `agent_classes or {}` keeps it
+
+
+@pytest.mark.parametrize(
+    "example_file",
+    [
+        "topology.yaml",
+        "multi_process.yaml",
+        "distributed.yaml",
+    ],
+)
+def test_example_topology_parses(example_file: str) -> None:
+    """Example YAML files parse without ConfigurationError (F12-9)."""
+    path = _EXAMPLES_DIR / example_file
+    rt = Runtime.from_config(path, agent_classes=_ANY)
+    assert rt._root_supervisor is not None
+    assert rt._root_supervisor.name  # non-empty name
+
+
+def test_example_production_yaml_supervision_structure() -> None:
+    """production.yaml supervision tree parses; plugin loading is mocked (F12-9)."""
+    from unittest.mock import patch
+
+    mock_loaded = {"model_providers": [], "state_store": None}
+    path = _EXAMPLES_DIR / "production.yaml"
+    with patch("agency.plugins.loader.load_plugins_from_config", return_value=mock_loaded):
+        rt = Runtime.from_config(path, agent_classes=_ANY)
+    assert rt._root_supervisor is not None
+    assert rt._root_supervisor.name == "root"

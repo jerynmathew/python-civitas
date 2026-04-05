@@ -391,6 +391,19 @@ async def test_in_memory_state_store_set_copies_dict():
     assert restored["key"] == "value"  # stored copy is unchanged
 
 
+async def test_in_memory_state_store_delete():
+    """InMemoryStateStore.delete() removes stored state; get() returns None after."""
+    from agency.plugins.state import InMemoryStateStore
+
+    store = InMemoryStateStore()
+    await store.set("agent1", {"x": 1})
+    assert await store.get("agent1") is not None
+    await store.delete("agent1")
+    assert await store.get("agent1") is None
+    # Deleting a non-existent key is a no-op (no exception)
+    await store.delete("agent1")
+
+
 # ---------------------------------------------------------------------------
 # F07-6: ToolRegistry.register() raises on duplicate
 # ---------------------------------------------------------------------------

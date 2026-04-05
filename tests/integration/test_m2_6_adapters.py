@@ -17,7 +17,7 @@ from agency.adapters.openai import OpenAIAgent
 from agency.errors import ErrorAction
 from agency.messages import Message
 from agency.process import ProcessStatus
-from tests.conftest import wait_for, wait_for_status
+from tests.conftest import wait_for, wait_for_status  # noqa: F401 — used via wait_for_status
 
 # ---------------------------------------------------------------------------
 # Mock LangGraph compiled graph
