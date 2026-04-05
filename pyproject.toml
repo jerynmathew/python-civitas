@@ -58,15 +58,21 @@ addopts = "--cov=agency --cov-report=term-missing --cov-fail-under=85"
 [tool.coverage.run]
 branch = true
 omit = [
-    "agency/adapters/*",
-    "agency/cli/*",
-    "agency/dashboard/*",
-    "agency/__main__.py",
-    "agency/plugins/anthropic.py",
-    "agency/plugins/litellm.py",
-    "agency/transport/__init__.py",
+    # Requires live infra (ZMQ IPC/TCP, NATS server) — covered in test_m2_1/m2_2
     "agency/transport/zmq.py",
     "agency/transport/nats.py",
+    "agency/transport/__init__.py",   # protocol definition only
+    # Requires live Anthropic/LiteLLM API keys — unit-tested via mocks
+    "agency/plugins/anthropic.py",
+    "agency/plugins/litellm.py",
+    # Adapter coverage lives in test_m2_6_adapters.py (excluded to avoid
+    # inflating the threshold with tests that mock optional deps)
+    "agency/adapters/*",
+    # CLI and dashboard require Typer/Rich setup — covered in test_m3_1/m3_3
+    "agency/cli/*",
+    "agency/dashboard/*",
+    # Entry point shim
+    "agency/__main__.py",
 ]
 
 [tool.coverage.report]

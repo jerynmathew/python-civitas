@@ -10,6 +10,9 @@ import tempfile
 
 import pytest
 
+# F11-5: skip entire module if pyzmq is not installed
+pytest.importorskip("zmq", reason="pyzmq not installed — skipping ZMQ transport tests")
+
 from agency import AgentProcess, Runtime, Supervisor
 from agency.messages import Message, _uuid7
 from agency.process import ProcessStatus

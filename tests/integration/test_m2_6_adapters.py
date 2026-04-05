@@ -6,7 +6,6 @@ framework agents as AgentProcesses with supervision, tracing, and messaging.
 Uses mock framework objects to avoid requiring langgraph/openai-agents deps.
 """
 
-import asyncio
 from dataclasses import dataclass
 from typing import Any
 
@@ -17,6 +16,8 @@ from agency.adapters.langgraph import LangGraphAgent
 from agency.adapters.openai import OpenAIAgent
 from agency.errors import ErrorAction
 from agency.messages import Message
+from agency.process import ProcessStatus
+from tests.conftest import wait_for, wait_for_status
 
 # ---------------------------------------------------------------------------
 # Mock LangGraph compiled graph
@@ -138,7 +139,9 @@ async def test_langgraph_supervisor_restarts_on_failure():
         with pytest.raises(TimeoutError):
             await runtime.ask("lg_crash", {"query": "fail"}, timeout=1.0)
 
-        await asyncio.sleep(0.5)
+        lg_agent = runtime.get_agent("lg_crash")
+        assert lg_agent is not None
+        await wait_for_status(lg_agent, ProcessStatus.RUNNING, timeout=3.0)
 
         # Second invocation succeeds (graph.invoke_count > 1 now)
         result = await runtime.ask("lg_crash", {"query": "recover"}, timeout=5.0)
@@ -265,7 +268,7 @@ async def test_openai_agent_handoff_maps_to_send():
             assert result.payload["output"] == "Delegated to specialist"
 
             # Wait for the send() to be delivered
-            await asyncio.sleep(0.1)
+            await wait_for(lambda: len(received_by_specialist) == 1)
             assert len(received_by_specialist) == 1
             assert received_by_specialist[0].payload["input"] == "handle this"
         finally:

@@ -3,7 +3,6 @@
 Each test maps to one bullet in the M1.2 milestone.
 """
 
-import asyncio
 import time
 
 from agency import AgentProcess, Runtime, Supervisor
@@ -263,8 +262,10 @@ async def test_backoff_delay_applied():
     try:
         t0 = time.monotonic()
         await runtime.send("crasher", {"text": "trigger"})
-        # Wait for restart to complete (backoff + processing)
-        await asyncio.sleep(0.5)
+        # Phase 1: wait for the agent to leave RUNNING (crash)
+        await wait_for(lambda: agent.status != ProcessStatus.RUNNING, timeout=2.0)
+        # Phase 2: wait for the supervisor to restart with backoff delay applied
+        await wait_for_status(agent, ProcessStatus.RUNNING, timeout=3.0)
         elapsed = time.monotonic() - t0
 
         # Restart should have taken at least the backoff delay

@@ -9,6 +9,7 @@ import pytest
 from agency.errors import ErrorAction
 from agency.messages import Message
 from agency.process import AgentProcess, Mailbox, ProcessStatus
+from tests.conftest import wait_for
 
 # ---------------------------------------------------------------------------
 # Mailbox tests
@@ -201,8 +202,7 @@ async def test_retry_redelivers_message():
     agent = RetryAgent()
     await agent._start()
     await agent._mailbox.put(Message(type="work"))
-    await asyncio.sleep(0.05)
-    assert len(agent.attempts) >= 2
+    await wait_for(lambda: len(agent.attempts) >= 2)
     assert agent.status == ProcessStatus.RUNNING  # SKIP kept it running
     await agent._stop()
 
@@ -226,9 +226,8 @@ async def test_retry_increments_attempt():
     agent = AttemptLogger()
     await agent._start()
     await agent._mailbox.put(Message(type="work"))
-    await asyncio.sleep(0.1)
+    await wait_for(lambda: 1 in agent.seen_attempts)
     assert 0 in agent.seen_attempts
-    assert 1 in agent.seen_attempts
     await agent._stop()
 
 
@@ -276,7 +275,7 @@ async def test_skip_discards_message():
     await agent._start()
     await agent._mailbox.put(Message(type="bad"))
     await agent._mailbox.put(Message(type="good"))
-    await asyncio.sleep(0.05)
+    await wait_for(lambda: "good" in agent.processed)
     assert "good" in agent.processed
     assert agent.status == ProcessStatus.RUNNING
     await agent._stop()
@@ -298,8 +297,7 @@ async def test_stop_error_action_stops_gracefully():
     agent = StopOnErrorAgent()
     await agent._start()
     await agent._mailbox.put(Message(type="trigger"))
-    await asyncio.sleep(0.05)
-    assert agent.status in (ProcessStatus.STOPPING, ProcessStatus.STOPPED)
+    await wait_for(lambda: agent.status in (ProcessStatus.STOPPING, ProcessStatus.STOPPED))
 
 
 async def test_escalate_crashes_process():
