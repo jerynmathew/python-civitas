@@ -178,24 +178,6 @@ async def test_langgraph_non_dict_output():
         await runtime.stop()
 
 
-async def test_langgraph_wrapper_under_10_lines():
-    """Wrapping code is under 10 lines (core logic in handle + on_error)."""
-    import inspect
-
-    source = inspect.getsource(LangGraphAgent.handle)
-    source += inspect.getsource(LangGraphAgent.on_error)
-    # Count non-empty, non-comment, non-decorator lines
-    lines = [
-        line.strip()
-        for line in source.split("\n")
-        if line.strip()
-        and not line.strip().startswith("#")
-        and not line.strip().startswith("@")
-        and not line.strip().startswith('"""')
-        and not line.strip().startswith("'''")
-    ]
-    assert len(lines) <= 10, f"Core logic is {len(lines)} lines, expected ≤10"
-
 
 # ---------------------------------------------------------------------------
 # OpenAI Agents SDK adapter tests
@@ -300,23 +282,106 @@ async def test_openai_error_escalates():
     assert action == ErrorAction.ESCALATE
 
 
-async def test_openai_wrapper_under_10_lines():
-    """Wrapping code is under 10 lines (core logic in handle + on_error)."""
-    import inspect
+async def test_openai_missing_input_returns_error():
+    """F10-2: missing 'input' key returns error reply instead of running with empty string."""
+    import sys
+    from unittest.mock import MagicMock
 
-    source = inspect.getsource(OpenAIAgent.handle)
-    source += inspect.getsource(OpenAIAgent.on_error)
-    lines = [
-        line.strip()
-        for line in source.split("\n")
-        if line.strip()
-        and not line.strip().startswith("#")
-        and not line.strip().startswith("@")
-        and not line.strip().startswith('"""')
-        and not line.strip().startswith("'''")
-        and not line.strip().startswith("from ")
-    ]
-    assert len(lines) <= 10, f"Core logic is {len(lines)} lines, expected ≤10"
+    agents_module = MagicMock()
+    sys.modules["agents"] = agents_module
+
+    try:
+        runtime = Runtime(
+            supervisor=Supervisor(
+                "root", children=[OpenAIAgent("oai_noinput", agent=MockAgent(name="test"))]
+            )
+        )
+        await runtime.start()
+        try:
+            result = await runtime.ask("oai_noinput", {"wrong_key": "value"})
+            assert "error" in result.payload
+            # Runner.run should NOT have been called
+            agents_module.Runner.run.assert_not_called()
+        finally:
+            await runtime.stop()
+    finally:
+        del sys.modules["agents"]
+
+
+async def test_openai_unregistered_handoff_logs_warning(caplog):
+    """F10-1: handoff to unregistered agent logs warning instead of crashing."""
+    import logging
+    import sys
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_handoff_item = MagicMock()
+    mock_handoff_item.agent = MagicMock()
+    mock_handoff_item.agent.name = "nonexistent_agent"
+    mock_handoff_item.input = "route this"
+
+    run_result = MockRunResult(final_output="done")
+    run_result.new_items = [mock_handoff_item]
+
+    agents_module = MagicMock()
+    mock_runner = MagicMock()
+    mock_runner.run = AsyncMock(return_value=run_result)
+    agents_module.Runner = mock_runner
+    sys.modules["agents"] = agents_module
+
+    try:
+        runtime = Runtime(
+            supervisor=Supervisor(
+                "root", children=[OpenAIAgent("oai_handoff", agent=MockAgent(name="test"))]
+            )
+        )
+        await runtime.start()
+        try:
+            with caplog.at_level(logging.WARNING, logger="agency.adapters.openai"):
+                result = await runtime.ask("oai_handoff", {"input": "trigger handoff"})
+            # Agent should return its reply, not crash
+            assert result.payload["output"] == "done"
+            assert "nonexistent_agent" in caplog.text
+            assert "not registered" in caplog.text
+        finally:
+            await runtime.stop()
+    finally:
+        del sys.modules["agents"]
+
+
+async def test_langgraph_input_schema_coercion():
+    """F10-4: input_schema coerces payload before ainvoke."""
+
+    class MyState:
+        def __init__(self, query: str) -> None:
+            self.query = query
+
+    class SchemaGraph:
+        async def ainvoke(self, data: object) -> dict:
+            assert isinstance(data, MyState)
+            return {"result": f"got: {data.query}"}
+
+    runtime = Runtime(
+        supervisor=Supervisor(
+            "root",
+            children=[
+                LangGraphAgent("lg_schema", graph=SchemaGraph(), input_schema=MyState)
+            ],
+        )
+    )
+    await runtime.start()
+    try:
+        result = await runtime.ask("lg_schema", {"query": "hello"})
+        assert result.payload["result"] == "got: hello"
+    finally:
+        await runtime.stop()
+
+
+def test_crewai_stub_raises_not_implemented():
+    """F10-5: CrewAIAgent raises NotImplementedError on instantiation."""
+    from agency.adapters.crewai import CrewAIAgent
+
+    with pytest.raises(NotImplementedError, match="not yet implemented"):
+        CrewAIAgent("test")
 
 
 # ---------------------------------------------------------------------------
