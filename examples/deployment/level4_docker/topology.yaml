@@ -1,0 +1,54 @@
+# Deployment Level 4: Containerized (Docker Compose)
+#
+# This file is the input to `agency deploy docker-compose`.
+# The Dockerfile, docker-compose.yml, and .env are generated from it.
+#
+# Generate and run:
+#   agency deploy docker-compose \
+#     --topology examples/deployment/level4_docker/topology.yaml \
+#     --output   examples/deployment/level4_docker/
+#
+#   cd examples/deployment/level4_docker
+#   echo "ANTHROPIC_API_KEY=sk-ant-..." >> .env   # if using AnthropicProvider
+#   docker compose up --build
+#
+# Scale workers:
+#   docker compose up --scale worker-worker=3
+
+transport:
+  type: nats
+  servers: "nats://nats:4222"     # docker-compose service name, not localhost
+  jetstream: false
+
+plugins:
+  models:
+    - type: anthropic
+      config:
+        default_model: claude-haiku-4-5-20251001
+
+  state:
+    type: sqlite
+    config:
+      db_path: /data/agency.db    # mount a volume here in production
+
+supervision:
+  name: root
+  strategy: ONE_FOR_ONE
+  max_restarts: 5
+  backoff: EXPONENTIAL
+  backoff_base: 1.0
+  backoff_max: 60.0
+  children:
+    - agent:
+        name: frontend
+        type: examples.deployment.level4_docker.agents.FrontendAgent
+
+    - agent:
+        name: worker_a
+        type: examples.deployment.level4_docker.agents.WorkerAgent
+        process: worker
+
+    - agent:
+        name: worker_b
+        type: examples.deployment.level4_docker.agents.WorkerAgent
+        process: worker

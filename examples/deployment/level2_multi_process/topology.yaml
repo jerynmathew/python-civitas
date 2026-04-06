@@ -1,0 +1,43 @@
+# Deployment Level 2: Multi-Process (ZMQTransport)
+#
+# Same agents as Level 1, now split across two OS processes.
+# worker_a and worker_b run in the "worker" process; frontend stays in
+# the supervisor process.
+#
+# Install: pip install python-agency[zmq]
+#
+# Run:
+#   Terminal 1 (supervisor process — also starts the ZMQ proxy):
+#     agency run --topology examples/deployment/level2_multi_process/topology.yaml
+#
+#   Terminal 2 (worker process):
+#     agency run --topology examples/deployment/level2_multi_process/topology.yaml \
+#                --process worker
+#
+# Or programmatically — see run_supervisor.py and run_worker.py
+
+transport:
+  type: zmq
+  pub_addr: "tcp://127.0.0.1:5559"
+  sub_addr: "tcp://127.0.0.1:5560"
+  start_proxy: true
+
+supervision:
+  name: root
+  strategy: ONE_FOR_ONE
+  max_restarts: 5
+  children:
+    - agent:
+        name: frontend
+        type: examples.deployment.level2_multi_process.agents.FrontendAgent
+        # no process: — runs in the supervisor process
+
+    - agent:
+        name: worker_a
+        type: examples.deployment.level2_multi_process.agents.WorkerAgent
+        process: worker   # runs in the worker process
+
+    - agent:
+        name: worker_b
+        type: examples.deployment.level2_multi_process.agents.WorkerAgent
+        process: worker   # same worker process as worker_a

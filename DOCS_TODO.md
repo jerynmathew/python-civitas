@@ -229,7 +229,7 @@ After core docs are complete.
 ---
 
 ### 18. Examples — New: `examples/quickstart/`
-`[ ]` **Minimal, polished onboarding examples.**
+`[x]` **Minimal, polished onboarding examples.**
 
 Four files, each independently runnable, progressively building:
 - `01_hello_agent.py` — simplest possible agent (no LLM, no tools)
@@ -240,7 +240,7 @@ Four files, each independently runnable, progressively building:
 ---
 
 ### 19. Examples — New: `examples/patterns/`
-`[ ]` **Canonical patterns for common architectures.**
+`[x]` **Canonical patterns for common architectures.**
 
 - `fan_out_fan_in.py` — parallel tool calls with aggregation
 - `pipeline.py` — sequential agent chain
@@ -250,7 +250,7 @@ Four files, each independently runnable, progressively building:
 ---
 
 ### 20. Examples — New: `examples/deployment/`
-`[ ]` **Deployment ladder examples.**
+`[x]` **Deployment ladder examples.**
 
 - `level1_single_process/` — InProcess, runnable with no deps
 - `level2_multi_process/` — ZMQ, with topology YAML
@@ -317,9 +317,9 @@ After all content is written.
 | 15 | CONTRIBUTING.md | `[x]` |
 | 16 | CHANGELOG.md | `[x]` |
 | 17 | Examples — audit & cleanup | `[x]` |
-| 18 | Examples — quickstart/ | `[ ]` |
-| 19 | Examples — patterns/ | `[ ]` |
-| 20 | Examples — deployment/ | `[ ]` |
+| 18 | Examples — quickstart/ | `[x]` |
+| 19 | Examples — patterns/ | `[x]` |
+| 20 | Examples — deployment/ | `[x]` |
 | 21 | AGENTS.md — review & update | `[ ]` |
 | 22 | mkdocs.yml — complete nav | `[ ]` |
 | 23 | API reference pages | `[ ]` |
