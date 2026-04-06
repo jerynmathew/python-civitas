@@ -1,4 +1,4 @@
-"""M1.5 — Automatic Observability: A pipeline with traced LLM and tool calls.
+"""Automatic Observability: A pipeline with traced LLM and tool calls.
 
 Every message send/receive, LLM call, and tool invocation generates a span.
 With OTEL installed, spans export to Jaeger/Grafana; without it, a readable

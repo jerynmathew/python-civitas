@@ -1,4 +1,4 @@
-"""M1.2 — Supervised Agent: Crash recovery with restart strategies.
+"""Supervised Agent: Crash recovery with restart strategies.
 
 A flaky agent that crashes occasionally. The supervisor detects the crash,
 applies backoff, and restarts the agent — all automatically.

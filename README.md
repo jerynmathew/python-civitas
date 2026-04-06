@@ -2,83 +2,365 @@
 
 **The production runtime for Python agents.**
 
-Agency is an OTP-inspired agent runtime that provides supervision trees, message passing, and automatic observability for Python agent systems. Build agents that crash safely, restart automatically, and trace every decision.
+Agency brings Erlang's battle-tested fault-tolerance model to Python agent systems: supervision trees that restart crashed agents automatically, transport-agnostic message passing that scales from a single script to a distributed cluster, and first-class observability with zero instrumentation code.
 
-## Quick Start
-
-```bash
+```
 pip install python-agency
 ```
 
+---
+
+## The problem
+
+Most Python agent frameworks are great at calling LLMs. They are not runtimes. When an agent crashes, nothing restarts it. When a tool hangs, nothing times it out. When you need to scale across machines, you rewrite the routing layer. When something goes wrong in production, you have a log file.
+
+Agency is the infrastructure layer underneath your agent code. It handles the hard parts — process lifecycle, fault tolerance, message routing, and distributed tracing — so your agents can focus on reasoning.
+
+---
+
+## Quickstart
+
+A supervised agent that crashes occasionally and recovers automatically:
+
 ```python
 import asyncio
+import random
 from agency import AgentProcess, Runtime, Supervisor
 from agency.messages import Message
 
-class Greeter(AgentProcess):
+class FlakyWorker(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
-        name = message.payload.get("name", "world")
-        return self.reply({"greeting": f"Hello, {name}!"})
+        if random.random() < 0.4:
+            raise RuntimeError("transient failure")          # crashes ~40% of the time
+        return self.reply({"result": f"processed: {message.payload['task']}"})
 
 async def main():
     runtime = Runtime(
-        supervisor=Supervisor("root", children=[Greeter("greeter")])
+        supervisor=Supervisor(
+            "root",
+            strategy="ONE_FOR_ONE",   # restart only the crashed child
+            max_restarts=5,
+            backoff="EXPONENTIAL",
+            children=[FlakyWorker("worker")],
+        )
     )
     await runtime.start()
-    result = await runtime.ask("greeter", {"name": "Agency"})
-    print(result.payload["greeting"])  # Hello, Agency!
+
+    for i in range(10):
+        result = await runtime.ask("worker", {"task": f"job-{i}"})
+        print(result.payload["result"])   # always succeeds — supervisor handles the rest
+
     await runtime.stop()
 
 asyncio.run(main())
 ```
 
-**Time to run: under 2 minutes from `pip install`.**
+The supervisor detects every crash, applies exponential backoff, and restarts the agent. Your call site never changes.
 
-## Features
+---
 
-- **Supervision trees** — agents crash safely and restart automatically with configurable strategies (ONE_FOR_ONE, ONE_FOR_ALL, REST_FOR_ONE)
-- **Message passing** — `send` (fire-and-forget), `ask` (request-reply), `broadcast` (pattern-matched)
-- **Backpressure** — bounded mailboxes prevent runaway producers
-- **LLM integration** — `ModelProvider` protocol with first-party Anthropic support
-- **Tool system** — `ToolProvider` protocol with schema-based registration
-- **Automatic observability** — every message, LLM call, and tool invocation generates OTEL spans
-- **YAML topologies** — define supervision trees in YAML or Python DSL
-- **Zero framework deps** — no LangChain, no CrewAI, just Agency
+## Core concepts
+
+```mermaid
+graph TD
+    R[Runtime] --> S[Supervisor]
+    S -->|ONE_FOR_ONE| A1[AgentProcess]
+    S -->|ONE_FOR_ONE| A2[AgentProcess]
+    S --> CS[Child Supervisor]
+    CS -->|ONE_FOR_ALL| A3[AgentProcess]
+    CS -->|ONE_FOR_ALL| A4[AgentProcess]
+
+    A1 <-->|MessageBus| A2
+    A2 <-->|MessageBus| A3
+    A3 <-->|MessageBus| A4
+
+    A1 --- LLM[ModelProvider]
+    A2 --- Tools[ToolRegistry]
+    A1 --- OTEL[OTEL Tracer]
+
+    style R fill:#1e3a5f,color:#fff
+    style S fill:#1e3a5f,color:#fff
+    style CS fill:#1e3a5f,color:#fff
+    style A1 fill:#2d6a4f,color:#fff
+    style A2 fill:#2d6a4f,color:#fff
+    style A3 fill:#2d6a4f,color:#fff
+    style A4 fill:#2d6a4f,color:#fff
+```
+
+**`AgentProcess`** — the unit of computation. Subclass it, override `handle()`. Each process has its own mailbox, state, lifecycle hooks, and error boundary.
+
+**`Supervisor`** — monitors child processes and applies restart strategies when they crash. Supervisors nest, forming a tree. Failures propagate upward only when a supervisor exhausts its restart budget.
+
+**`MessageBus`** — routes typed messages between agents by name. Supports fire-and-forget (`send`), request-reply (`ask`), and glob-pattern broadcast.
+
+**`Transport`** — the delivery layer underneath the bus. Swap it in the config, not in your agent code.
+
+---
+
+## Multi-agent example
+
+Three agents forming a research pipeline. Each runs in its own supervised process:
+
+```python
+from agency import AgentProcess, Runtime, Supervisor
+from agency.messages import Message
+
+class Orchestrator(AgentProcess):
+    async def handle(self, message: Message) -> Message | None:
+        # fan out to researcher, collect, then summarize
+        findings = await self.ask("researcher", {"query": message.payload["query"]})
+        report   = await self.ask("summarizer", {"findings": findings.payload})
+        return self.reply(report.payload)
+
+class Researcher(AgentProcess):
+    async def handle(self, message: Message) -> Message | None:
+        result = await self.tools.get("web_search").execute(query=message.payload["query"])
+        return self.reply({"findings": result})
+
+class Summarizer(AgentProcess):
+    async def handle(self, message: Message) -> Message | None:
+        response = await self.llm.chat(
+            model="claude-haiku-4-5",
+            messages=[{"role": "user", "content": str(message.payload["findings"])}],
+        )
+        return self.reply({"report": response.content})
+
+runtime = Runtime(
+    supervisor=Supervisor("root", strategy="ONE_FOR_ONE", children=[
+        Orchestrator("orchestrator"),
+        Researcher("researcher"),
+        Summarizer("summarizer"),
+    ]),
+    model_provider=AnthropicProvider(),
+    tool_registry=tools,
+)
+```
+
+---
+
+## Scaling ladder
+
+The same agent code runs at every level. The only thing that changes is the topology configuration:
+
+```mermaid
+graph LR
+    L1["Level 1\nSingle process\nInProcessTransport\npip install python-agency"]
+    L2["Level 2\nMulti-process\nZMQTransport\npip install python-agency[zmq]"]
+    L3["Level 3\nDistributed\nNATSTransport\npip install python-agency[nats]"]
+    L4["Level 4\nContainerized\nagency deploy --target docker-compose"]
+
+    L1 -->|"change transport in topology.yaml"| L2
+    L2 -->|"change transport in topology.yaml"| L3
+    L3 -->|"agency deploy"| L4
+
+    style L1 fill:#1e3a5f,color:#fff
+    style L2 fill:#2d6a4f,color:#fff
+    style L3 fill:#6b4c11,color:#fff
+    style L4 fill:#4a1942,color:#fff
+```
+
+```yaml
+# topology.yaml — switch from in-process to distributed by changing one block
+transport:
+  type: nats           # was: in_process, then: zmq
+  url: nats://localhost:4222
+
+supervision:
+  name: root
+  strategy: ONE_FOR_ONE
+  children:
+    - agent: { name: orchestrator, type: myapp.Orchestrator }
+    - agent: { name: researcher,   type: myapp.Researcher,   process: worker }
+    - agent: { name: summarizer,   type: myapp.Summarizer,   process: worker }
+```
+
+```bash
+agency run --topology topology.yaml
+```
+
+---
+
+## Supervision strategies
+
+When a child crashes, the supervisor applies one of three strategies:
+
+```mermaid
+graph TD
+    subgraph ONE_FOR_ONE["ONE_FOR_ONE — restart only the crashed child"]
+        direction LR
+        S1[Supervisor] --> A["Agent A ✓"]
+        S1 --> B["Agent B ✗ → ↻"]
+        S1 --> C["Agent C ✓"]
+    end
+
+    subgraph ONE_FOR_ALL["ONE_FOR_ALL — restart all children"]
+        direction LR
+        S2[Supervisor] --> D["Agent D ↻"]
+        S2 --> E["Agent E ✗ → ↻"]
+        S2 --> F["Agent F ↻"]
+    end
+
+    subgraph REST_FOR_ONE["REST_FOR_ONE — restart crashed + all younger siblings"]
+        direction LR
+        S3[Supervisor] --> G["Agent G ✓"]
+        S3 --> H["Agent H ✗ → ↻"]
+        S3 --> I["Agent I ↻"]
+    end
+```
+
+Supervisors nest. If a supervisor exhausts its restart budget, it escalates to its parent. Backoff policies — `CONSTANT`, `LINEAR`, `EXPONENTIAL` — are configured per supervisor.
+
+---
+
+## Automatic observability
+
+Every message, LLM call, and tool invocation generates an OTEL span — no instrumentation code required:
+
+```
+[10:00:00.123] orchestrator → researcher: research_query
+[10:00:00.135] researcher: llm.chat(claude-haiku-4-5)  1520 → 430 tokens  $0.0089
+[10:00:02.025] researcher: tool.invoke(web_search)  450ms  OK
+[10:00:02.480] researcher → summarizer: summarize_request
+[10:00:02.495] summarizer: llm.chat(claude-haiku-4-5)  890 → 210 tokens  $0.0003
+[10:00:03.100] summarizer → orchestrator: reply  OK
+─────────────────────────────────────────────────────
+Total: 2.977s  |  2 LLM calls  |  $0.0092  |  0 errors
+```
+
+To export to Jaeger, Grafana, or any OTEL-compatible backend:
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+python my_agent.py
+```
+
+Trace context propagates automatically across process and machine boundaries.
+
+---
+
+## Hero demo
+
+A research assistant with four supervised agents: an Orchestrator that fans out tasks, a WebResearcher that searches (with retry on transient failures), a Synthesizer, and a Writer.
+
+```bash
+# No API key needed — uses a mock LLM
+python examples/research_assistant.py "Compare AI safety approaches"
+
+# With a real LLM
+export ANTHROPIC_API_KEY=sk-...
+python examples/research_assistant.py "Compare AI safety approaches" --live
+
+# With full distributed tracing
+docker run -d -p 16686:16686 -p 4317:4317 jaegertracing/all-in-one
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+python examples/research_assistant.py "Compare AI safety approaches"
+open http://localhost:16686
+```
+
+---
+
+## Install
+
+```bash
+pip install python-agency                        # core runtime
+pip install python-agency[anthropic]             # + Anthropic model provider
+pip install python-agency[litellm]               # + OpenAI / Gemini / Bedrock / 100+ models
+pip install python-agency[zmq]                   # + ZMQ multi-process transport
+pip install python-agency[nats]                  # + NATS distributed transport
+pip install python-agency[otel]                  # + OpenTelemetry SDK
+pip install python-agency[anthropic,otel]        # typical dev setup
+```
+
+**Requires Python 3.11+.**
+
+---
+
+## How Agency fits in the stack
+
+Agency is a **runtime**, not a framework. LangGraph, CrewAI, and the OpenAI Agents SDK define how you build agents. Agency is the infrastructure that keeps them alive.
+
+```
+┌──────────────────────────────────────────────┐
+│  CONTEXT LAYER                               │
+│  Prompts, memory, RAG, AGENTS.md             │
+├──────────────────────────────────────────────┤
+│  CONTROL LAYER                               │
+│  Guardrails, HITL gates, cost limits         │
+├──────────────────────────────────────────────┤
+│  RUNTIME LAYER  ◄── Agency lives here        │
+│  Process lifecycle, fault tolerance,         │
+│  message routing, observability, scaling     │
+└──────────────────────────────────────────────┘
+```
+
+Agency wraps LangGraph and OpenAI SDK agents natively:
+
+```python
+from agency.adapters.langgraph import LangGraphAgent
+
+# Your existing LangGraph graph gains supervision,
+# message routing, and OTEL tracing in 3 lines.
+class MyLangGraphAgent(LangGraphAgent):
+    graph = compiled_graph
+```
+
+---
+
+## Compared to alternatives
+
+| | Agency | Temporal | LangGraph | CrewAI |
+|---|---|---|---|---|
+| **Category** | Agent runtime | Durable execution | Agent orchestration | Agent framework |
+| **Supervision trees** | ✓ | ✗ | ✗ | ✗ |
+| **Restart strategies** | ONE_FOR_ONE, ONE_FOR_ALL, REST_FOR_ONE | Retry policies (activity level) | ✗ | ✗ |
+| **Message passing** | First-class MessageBus | Signals (limited) | Graph edges (static) | ✗ |
+| **Transport abstraction** | InProcess → ZMQ → NATS | Worker polling | In-process only | In-process only |
+| **Agent identity** | Persistent named process | Workflow instance | Graph node | Role object |
+| **OTEL tracing** | Automatic, zero code | Manual | Manual | ✗ |
+| **LLM-native** | ModelProvider protocol | Bring your own | ChatModel built-in | Built-in |
+| **License** | Apache 2.0 | MIT | Proprietary (LangSmith) | MIT |
+
+**Temporal** excels at linear pipelines requiring durable execution. Agency wins for multi-agent systems with dynamic routing and supervision hierarchies. They're complementary — Temporal can run inside an Agency activity.
+
+**LangGraph** is great for single-agent graphs with checkpointing and HITL gates. The [`LangGraphAgent`](docs/adapters.md) adapter runs a compiled graph inside an Agency process, giving it supervision and transport for free.
+
+---
 
 ## Examples
 
 ```bash
-python examples/hello_agent.py           # M1.1 — basic agent
-python examples/supervised_agent.py      # M1.2 — crash recovery
-python examples/research_pipeline.py     # M1.3 — multi-agent pipeline
-python examples/self_sufficient_agent.py # M1.4 — LLM + tools
-python examples/observable_pipeline.py   # M1.5 — traced spans
-python examples/supervision_tree.py      # M1.6 — YAML topology
-python examples/research_assistant.py    # M1.7 — hero demo (4 agents, full trace)
+python examples/hello_agent.py           # simplest possible agent
+python examples/supervised_agent.py      # crash + auto-restart
+python examples/research_pipeline.py     # three-agent pipeline
+python examples/self_sufficient_agent.py # agent with LLM and tools
+python examples/observable_pipeline.py   # full OTEL tracing
+python examples/supervision_tree.py      # nested supervision strategies
+python examples/research_assistant.py    # four-agent hero demo
+python examples/stateful_workflow.py     # state persistence across restarts
 ```
 
-## Hero Demo
+---
 
-```bash
-# No API key needed — uses mock LLM
-python examples/research_assistant.py "Compare AI safety approaches"
+## Documentation
 
-# With real LLM
-export ANTHROPIC_API_KEY=...
-python examples/research_assistant.py "Compare AI safety approaches" --live
+| | |
+|---|---|
+| [Getting Started](docs/getting-started.md) | Install, hello agent, first supervised system |
+| [Core Concepts](docs/concepts.md) | AgentProcess, Supervisor, MessageBus, Transport |
+| [Supervision](docs/supervision.md) | Strategies, backoff, escalation, heartbeats |
+| [Messaging](docs/messaging.md) | send, ask, broadcast, backpressure, trace propagation |
+| [Transports](docs/transports.md) | InProcess → ZMQ → NATS, switching levels |
+| [Observability](docs/observability.md) | OTEL spans, console exporter, Jaeger setup |
+| [Plugins](docs/plugins.md) | ModelProvider, ToolProvider, StateStore, custom plugins |
+| [Topology YAML](docs/topology.md) | Schema reference, CLI commands |
+| [Deployment](docs/deployment.md) | Level 1–4 deployment ladder |
+| [Framework Adapters](docs/adapters.md) | LangGraph, OpenAI SDK integration |
+| [Architecture](docs/architecture.md) | Runtime internals, component wiring |
+| [FAQ](docs/faq.md) | Why not Temporal? Why not LangGraph? GIL concerns |
+| [Contributing](CONTRIBUTING.md) | Dev setup, test strategy, plugin authoring |
 
-# With Jaeger tracing
-docker run -d -p 16686:16686 -p 4317:4317 jaegertracing/all-in-one
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
-python examples/research_assistant.py "Compare AI safety approaches"
-```
-
-## Requirements
-
-- Python 3.11+
-- Core dependencies: `msgpack`, `pyyaml`
-- Optional: `opentelemetry-sdk` (OTEL tracing), `anthropic` (Anthropic LLM provider)
+---
 
 ## License
 
-Apache 2.0
+Apache 2.0. See [LICENSE](LICENSE).

@@ -1,4 +1,4 @@
-"""M1.3 — Multi-Agent Communication: A three-agent research pipeline.
+"""Multi-Agent Communication: A three-agent research pipeline.
 
 Coordinator sends tasks to Researcher, who sends results to Summarizer.
 Demonstrates send, ask, broadcast, and pattern-based routing.

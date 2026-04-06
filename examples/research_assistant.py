@@ -1,4 +1,4 @@
-"""M1.7 — Phase 1 Hero Demo: Research Assistant.
+"""Research Assistant: A supervised multi-agent research pipeline.
 
 A four-agent supervised pipeline that researches a topic, synthesizes findings,
 and produces a structured report. Demonstrates supervision, multi-agent
@@ -213,7 +213,7 @@ async def main() -> None:
     )
 
     print(f"\n{'=' * 60}")
-    print("  Agency Research Assistant — M1.7 Hero Demo")
+    print("  Agency Research Assistant")
     print(f"  Query: {query}")
     print(f"  LLM: {'AnthropicProvider' if use_live else 'MockLLM (no API key needed)'}")
     print(f"{'=' * 60}\n")

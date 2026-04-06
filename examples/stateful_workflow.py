@@ -1,4 +1,4 @@
-"""M2.8 — Stateful Workflow with Crash Recovery.
+"""Stateful Workflow with Crash Recovery.
 
 A workflow agent processes a 7-step pipeline, checkpointing after each step.
 Kill it mid-execution (Ctrl+C), restart — it resumes from the last checkpoint.
@@ -80,7 +80,7 @@ async def main():
         print("\n\nInterrupted! State saved. Restart to resume.")
     finally:
         await runtime.stop()
-        store.close()
+        await store.close()
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""M1.4 — LLM + Tools: An agent that uses an LLM and a tool.
+"""LLM + Tools: An agent that uses an LLM and a tool.
 
 Demonstrates ModelProvider and ToolProvider plugin injection via Runtime.
 """

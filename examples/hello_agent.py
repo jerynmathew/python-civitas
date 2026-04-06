@@ -1,4 +1,4 @@
-"""M1.1 — Hello Agent: The simplest Agency program.
+"""Hello Agent: The simplest Agency program.
 
 A single agent receives a message and responds. Under 15 lines of user code.
 No LLM, no tools — pure runtime mechanics.

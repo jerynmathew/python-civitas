@@ -1,4 +1,4 @@
-"""M1.6 — Supervision Tree: YAML config and ASCII tree visualization.
+"""Supervision Tree: YAML config and ASCII tree visualization.
 
 Loads a topology from YAML and prints the tree structure.
 """
