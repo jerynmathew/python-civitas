@@ -11,8 +11,10 @@ import typer
 import yaml
 from rich.tree import Tree
 
+from agency import Runtime
 from agency.cli.app import app, console, err_console, register_shutdown, success
 from agency.plugins.loader import load_plugins_from_config
+from agency.worker import Worker
 
 
 def _find_process_agents(config: dict[str, Any], process_name: str) -> list[dict[str, str]]:
@@ -50,9 +52,7 @@ def _resolve_agent_class(type_str: str) -> type:
         raise typer.Exit(code=1) from exc
     cls = getattr(module, class_name, None)
     if cls is None:
-        err_console.print(
-            f"[red]Error:[/red] '{module_path}' has no attribute '{class_name}'."
-        )
+        err_console.print(f"[red]Error:[/red] '{module_path}' has no attribute '{class_name}'.")
         raise typer.Exit(code=1)
     return cast(type, cls)
 
@@ -87,8 +87,6 @@ def _build_startup_tree(config: dict[str, Any]) -> Tree:
 
 async def _run_supervisor(config: dict[str, Any], topology_path: Path) -> None:
     """Run the full runtime as the supervisor process."""
-    from agency import Runtime
-
     runtime = Runtime.from_config(str(topology_path))
 
     tree = _build_startup_tree(config)
@@ -110,8 +108,6 @@ async def _run_supervisor(config: dict[str, Any], topology_path: Path) -> None:
 
 async def _run_worker(config: dict[str, Any], process_name: str) -> None:
     """Run a worker process hosting a subset of agents."""
-    from agency.worker import Worker
-
     agents_cfg = _find_process_agents(config, process_name)
     if not agents_cfg:
         err_console.print(f"[red]Error:[/red] No agents found for process '{process_name}'.")

@@ -10,10 +10,11 @@ from typing import TYPE_CHECKING, Any
 
 from agency.errors import ErrorAction
 from agency.messages import Message, _new_span_id, _uuid7
+from agency.observability.tracer import Span
 
 if TYPE_CHECKING:
     from agency.bus import MessageBus
-    from agency.observability.tracer import Span, Tracer
+    from agency.observability.tracer import Tracer
     from agency.plugins.model import ModelProvider
     from agency.plugins.state import StateStore
     from agency.plugins.tools import ToolRegistry
@@ -272,10 +273,7 @@ class AgentProcess:
                 span.set_attribute("agency.llm.tokens_out", ...)
         """
         if self._tracer is None:
-            from agency.observability.tracer import Span
-
-            dummy = Span(name="llm", trace_id="", span_id="")
-            yield dummy
+            yield Span(name="llm", trace_id="", span_id="")
             return
 
         parent_span_id = (
@@ -308,10 +306,7 @@ class AgentProcess:
                 span.set_attribute("agency.tool.result_size_bytes", len(result))
         """
         if self._tracer is None:
-            from agency.observability.tracer import Span
-
-            dummy = Span(name="tool", trace_id="", span_id="")
-            yield dummy
+            yield Span(name="tool", trace_id="", span_id="")
             return
 
         parent_span_id = (

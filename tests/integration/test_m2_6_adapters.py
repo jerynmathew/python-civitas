@@ -181,7 +181,6 @@ async def test_langgraph_non_dict_output():
         await runtime.stop()
 
 
-
 # ---------------------------------------------------------------------------
 # OpenAI Agents SDK adapter tests
 # ---------------------------------------------------------------------------
@@ -366,9 +365,7 @@ async def test_langgraph_input_schema_coercion():
     runtime = Runtime(
         supervisor=Supervisor(
             "root",
-            children=[
-                LangGraphAgent("lg_schema", graph=SchemaGraph(), input_schema=MyState)
-            ],
+            children=[LangGraphAgent("lg_schema", graph=SchemaGraph(), input_schema=MyState)],
         )
     )
     await runtime.start()

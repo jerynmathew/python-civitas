@@ -55,9 +55,7 @@ class LangGraphAgent(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
         """Invoke the LangGraph compiled graph with the message payload."""
         # F10-4: coerce payload through input_schema if provided
-        payload = (
-            self._input_schema(**message.payload) if self._input_schema else message.payload
-        )
+        payload = self._input_schema(**message.payload) if self._input_schema else message.payload
         output = await self._graph.ainvoke(payload)
         return self.reply(output if isinstance(output, dict) else {"output": output})
 

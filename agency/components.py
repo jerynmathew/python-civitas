@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Any
 from agency.bus import MessageBus
 from agency.config import settings
 from agency.observability.tracer import Tracer
+from agency.plugins.state import InMemoryStateStore
 from agency.registry import LocalRegistry, Registry
 from agency.serializer import JsonSerializer, MsgpackSerializer, Serializer
 from agency.transport import Transport
@@ -141,8 +142,6 @@ def build_component_set(
 
     # State store default
     if state_store is None:
-        from agency.plugins.state import InMemoryStateStore
-
         state_store = InMemoryStateStore()
 
     return ComponentSet(

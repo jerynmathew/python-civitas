@@ -269,6 +269,7 @@ class TestFromConfig:
 
 _EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
 
+
 # A fallback agent_classes dict that resolves any type string to a NullAgent
 # stub, so from_config() can parse example files without real implementations.
 class _AnyClasses(dict):  # type: ignore[type-arg]
@@ -310,3 +311,31 @@ def test_example_production_yaml_supervision_structure() -> None:
         rt = Runtime.from_config(path, agent_classes=_ANY)
     assert rt._root_supervisor is not None
     assert rt._root_supervisor.name == "root"
+
+
+# ---------------------------------------------------------------------------
+# build_component_set — serializer selection branches (components.py)
+# ---------------------------------------------------------------------------
+
+
+def test_build_component_set_custom_serializer() -> None:
+    """build_component_set uses the provided serializer instance directly."""
+    from agency.components import build_component_set
+    from agency.serializer import JsonSerializer
+
+    custom = JsonSerializer()
+    cs = build_component_set(serializer=custom)
+    assert cs.serializer is custom
+
+
+def test_build_component_set_json_serializer_from_settings() -> None:
+    """build_component_set picks JsonSerializer when settings.serializer == 'json'."""
+    from unittest.mock import patch
+
+    from agency.components import build_component_set
+    from agency.serializer import JsonSerializer
+
+    with patch("agency.components.settings") as mock_settings:
+        mock_settings.serializer = "json"
+        cs = build_component_set()
+    assert isinstance(cs.serializer, JsonSerializer)
