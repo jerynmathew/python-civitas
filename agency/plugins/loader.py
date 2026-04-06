@@ -29,6 +29,9 @@ __all__ = ["PluginError", "resolve_plugin_class", "load_plugin", "load_plugins_f
 _BUILTINS: dict[str, dict[str, str]] = {
     "model": {
         "anthropic": "agency.plugins.anthropic.AnthropicProvider",
+        "openai": "agency.plugins.openai.OpenAIProvider",
+        "gemini": "agency.plugins.gemini.GeminiProvider",
+        "mistral": "agency.plugins.mistral.MistralProvider",
         "litellm": "agency.plugins.litellm.LiteLLMProvider",
     },
     "exporter": {

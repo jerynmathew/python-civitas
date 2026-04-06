@@ -1,4 +1,4 @@
-"""AnthropicProvider — Phase 1 reference implementation (requires [anthropic] extra)."""
+"""AnthropicProvider — first-party Anthropic SDK integration (requires [anthropic] extra)."""
 
 from __future__ import annotations
 
@@ -18,13 +18,19 @@ except ImportError:
 # Models not listed here return cost_usd=None (unknown, not zero).
 _PRICING_PER_M_TOKENS: dict[str, tuple[float, float]] = {
     # (input $/M, output $/M)
-    "claude-opus-4-5-20251001": (15.0, 75.0),
+    # Claude 4 family
+    "claude-opus-4-6": (15.0, 75.0),
     "claude-sonnet-4-6": (3.0, 15.0),
-    "claude-sonnet-4-5-20251001": (3.0, 15.0),
     "claude-haiku-4-5-20251001": (0.8, 4.0),
+    # Claude 3.7 / 3.5 family
+    "claude-sonnet-4-5-20251001": (3.0, 15.0),
+    "claude-3-7-sonnet-20250219": (3.0, 15.0),
     "claude-3-5-sonnet-20241022": (3.0, 15.0),
     "claude-3-5-haiku-20241022": (0.8, 4.0),
+    # Claude 3 family
     "claude-3-opus-20240229": (15.0, 75.0),
+    "claude-3-sonnet-20240229": (3.0, 15.0),
+    "claude-3-haiku-20240307": (0.25, 1.25),
 }
 
 

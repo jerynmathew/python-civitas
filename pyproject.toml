@@ -30,6 +30,9 @@ otel      = [
     "opentelemetry-exporter-otlp-proto-grpc>=1.20",
 ]
 anthropic = ["anthropic>=0.20"]
+openai    = ["openai>=1.0"]
+gemini    = ["google-generativeai>=0.8"]
+mistral   = ["mistralai>=1.0"]
 litellm   = ["litellm>=1.40"]
 zmq       = ["pyzmq>=25"]
 nats      = ["nats-py>=2.6"]
@@ -68,8 +71,11 @@ omit = [
     "agency/transport/zmq.py",
     "agency/transport/nats.py",
     "agency/transport/__init__.py",   # protocol definition only
-    # Requires live Anthropic/LiteLLM API keys — unit-tested via mocks
+    # Require live API keys — unit-tested via mocks
     "agency/plugins/anthropic.py",
+    "agency/plugins/openai.py",
+    "agency/plugins/gemini.py",
+    "agency/plugins/mistral.py",
     "agency/plugins/litellm.py",
     # Fiddler integration is a planned stub with no callable implementation yet
     "agency/plugins/fiddler.py",
@@ -123,7 +129,7 @@ warn_return_any = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["msgpack.*", "zmq.*", "nats.*", "litellm.*"]
+module = ["msgpack.*", "zmq.*", "nats.*", "litellm.*", "openai.*", "google.generativeai.*", "mistralai.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
