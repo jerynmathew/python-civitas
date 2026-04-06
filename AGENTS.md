@@ -29,8 +29,11 @@ A change to an internal module can break the public SDK, the CLI, or both.
 ```bash
 pip install python-agency                          # core runtime (print-based console tracing)
 pip install python-agency[otel]                    # + OpenTelemetry tracing (Jaeger, Grafana, etc.)
-pip install python-agency[anthropic]               # + Anthropic model provider
-pip install python-agency[litellm]                 # + OpenAI / Gemini / Bedrock / 100+ models
+pip install python-agency[anthropic]               # + Anthropic Claude (native SDK)
+pip install python-agency[openai]                  # + OpenAI GPT-4o / o-series (native SDK)
+pip install python-agency[gemini]                  # + Google Gemini 2.0 / 1.5 (native SDK)
+pip install python-agency[mistral]                 # + Mistral Large / Codestral (native SDK)
+pip install python-agency[litellm]                 # + 100+ models via LiteLLM proxy
 pip install python-agency[anthropic,otel]          # typical dev setup
 ```
 
@@ -43,7 +46,11 @@ from agency import AgentProcess, Supervisor, Runtime, Worker
 from agency.messages import Message
 from agency.errors import AgencyError, ErrorAction
 from agency.plugins.anthropic import AnthropicProvider   # requires [anthropic]
+from agency.plugins.openai import OpenAIProvider         # requires [openai]
+from agency.plugins.gemini import GeminiProvider         # requires [gemini]
+from agency.plugins.mistral import MistralProvider       # requires [mistral]
 from agency.plugins.litellm import LiteLLMProvider       # requires [litellm]
+from agency.plugins.tools import ToolProvider, ToolRegistry
 from agency.adapters.langgraph import LangGraphAgent
 from agency.adapters.openai import OpenAIAgent
 ```
@@ -142,9 +149,10 @@ or real API keys.
 |---|---|---|
 | `AGENCY_SERIALIZER` | `json` for human-readable debug output | `msgpack` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTEL collector endpoint (e.g. Jaeger) | console output |
-| `ANTHROPIC_API_KEY` | Anthropic model provider | — |
-| `OPENAI_API_KEY` | OpenAI via LiteLLM | — |
-| `GEMINI_API_KEY` | Google Gemini via LiteLLM | — |
+| `ANTHROPIC_API_KEY` | Anthropic model provider (`[anthropic]`) | — |
+| `OPENAI_API_KEY` | OpenAI model provider (`[openai]` or `[litellm]`) | — |
+| `GEMINI_API_KEY` | Google Gemini model provider (`[gemini]` or `[litellm]`) | — |
+| `MISTRAL_API_KEY` | Mistral model provider (`[mistral]`) | — |
 | `FIDDLER_API_KEY` | Fiddler exporter plugin | — |
 | `NATS_URL` | NATS server for distributed transport | `nats://localhost:4222` |
 
@@ -219,10 +227,34 @@ return self.reply({"result": "..."})                                     # respo
 ```python
 self.llm      # ModelProvider  — self.llm.chat(model, messages, tools)
 self.tools    # ToolRegistry   — self.tools.get("tool_name")
-self.store    # StateStore     — self.store.get / set / delete
-self.state    # dict           — persisted to StateStore; survives restarts
+self.store    # StateStore     — raw key/value store; self.store.get/set/delete(agent_name)
+self.state    # dict           — in-memory dict, auto-restored from StateStore on restart
 self.name     # str            — this agent's Registry name
 ```
+
+**`self.state` vs `self.store`** — use `self.state` for everything in normal code:
+
+```python
+async def on_start(self) -> None:
+    self.state.setdefault("counter", 0)    # ✅ initialise with a default
+
+async def handle(self, message: Message) -> Message | None:
+    self.state["counter"] += 1             # ✅ mutate in-place
+    await self.checkpoint()                # ✅ persist — survives supervisor restart
+    # ...
+```
+
+`self.store` is the raw `StateStore`. Use it only for advanced cases (e.g. reading
+another agent's state, or wiping state for a specific agent name):
+
+```python
+await self.store.delete("other_agent")    # clear another agent's persisted state
+saved = await self.store.get(self.name)   # read raw checkpoint dict
+```
+
+`self.checkpoint()` is a helper that calls `self.store.set(self.name, self.state)`.
+Call it after completing a meaningful unit of work — agents that never call it
+incur zero overhead.
 
 ### ErrorAction values
 
@@ -336,35 +368,155 @@ supervision:
 
 ---
 
+## Core API — Tools
+
+Tools are implemented as classes that satisfy the `ToolProvider` protocol and
+registered in a `ToolRegistry` that is passed to `Runtime`.
+
+### Defining a tool
+
+```python
+from typing import Any
+from agency.plugins.tools import ToolProvider, ToolRegistry
+
+class WebSearchTool:
+    """Search the web and return a list of results."""
+
+    @property
+    def name(self) -> str:
+        return "web_search"
+
+    @property
+    def schema(self) -> dict[str, Any]:
+        return {
+            "name": "web_search",
+            "description": "Search the web for a query and return results.",
+            "input_schema": {           # Anthropic-style JSON Schema
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"}
+                },
+                "required": ["query"],
+            },
+        }
+
+    async def execute(self, **kwargs: Any) -> Any:
+        query = kwargs["query"]
+        # ... perform the search ...
+        return {"results": [...]}
+```
+
+> The `schema` dict must conform to the tool format expected by your model provider.
+> Anthropic uses `input_schema`; OpenAI uses `parameters`. If you use multiple
+> providers, keep schemas per-provider or use LiteLLM (which normalises them).
+
+### Registering tools and wiring to Runtime
+
+```python
+registry = ToolRegistry()
+registry.register(WebSearchTool())
+registry.register(CalculatorTool())
+
+runtime = Runtime(
+    supervisor=Supervisor("root", children=[ResearchAgent("researcher")]),
+    model_provider=AnthropicProvider(),
+    tool_registry=registry,
+)
+```
+
+### Using tools inside `handle()`
+
+`self.llm.chat()` returns a `ModelResponse`. When the model wants to call a tool,
+`response.tool_calls` is a non-empty list of `ToolCall` objects. Execute them and
+send the results back to the model in a second call.
+
+```python
+async def handle(self, message: Message) -> Message | None:
+    messages = [{"role": "user", "content": message.payload["query"]}]
+
+    # First call — model may request tool use
+    response = await self.llm.chat(
+        model="claude-sonnet-4-6",
+        messages=messages,
+        tools=[t.schema for t in self.tools.list_tools()],
+    )
+
+    # Tool-call loop
+    while response.tool_calls:
+        tool_results = []
+        for tc in response.tool_calls:
+            tool = self.tools.get(tc.name)
+            if tool is None:
+                raise ValueError(f"Unknown tool: {tc.name}")
+            result = await tool.execute(**tc.input)
+            tool_results.append({"tool_use_id": tc.id, "content": str(result)})
+
+        # Append assistant turn + tool results, then call the model again
+        messages.append({"role": "assistant", "content": response.content})
+        messages.append({"role": "user", "content": tool_results})
+        response = await self.llm.chat(
+            model="claude-sonnet-4-6",
+            messages=messages,
+            tools=[t.schema for t in self.tools.list_tools()],
+        )
+
+    return self.reply({"answer": response.content})
+```
+
+**Rules:**
+- Always check `self.tools is not None` before use — the registry is only injected
+  when `tool_registry=` is passed to `Runtime`.
+- `ToolCall` fields: `tc.id` (str), `tc.name` (str), `tc.input` (dict).
+- Tool results must be plain JSON-serializable values.
+- Do not call `tool.execute()` from `on_start()` — the bus is not ready.
+
+---
+
 ## LLM Calls
 
 All LLM calls go through `self.llm.chat()` — never call provider SDKs directly
 from `AgentProcess`. Provider specifics are configured in topology; call sites
 are identical across providers.
 
+All providers share the same call signature. Select the provider via `Runtime(model_provider=...)`.
+
 ```python
 # Anthropic (requires [anthropic] extra)
+runtime = Runtime(supervisor=..., model_provider=AnthropicProvider())
+# inside handle():
 response = await self.llm.chat(
     model="claude-sonnet-4-6",
     messages=[{"role": "user", "content": message.payload["query"]}],
-    tools=[self.tools.get("web_search")]
+    tools=[t.schema for t in self.tools.list_tools()],   # optional
 )
 
-# OpenAI via LiteLLM (requires [litellm] extra)
-response = await self.llm.chat(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": message.payload["query"]}]
-)
+# OpenAI (requires [openai] extra)
+runtime = Runtime(supervisor=..., model_provider=OpenAIProvider())
+response = await self.llm.chat(model="gpt-4o", messages=[...])
 
-# Gemini via LiteLLM
-response = await self.llm.chat(
-    model="gemini/gemini-2.0-flash",
-    messages=[{"role": "user", "content": message.payload["query"]}]
-)
+# Gemini (requires [gemini] extra)
+runtime = Runtime(supervisor=..., model_provider=GeminiProvider())
+response = await self.llm.chat(model="gemini-2.0-flash", messages=[...])
+
+# Mistral (requires [mistral] extra)
+runtime = Runtime(supervisor=..., model_provider=MistralProvider())
+response = await self.llm.chat(model="mistral-large-latest", messages=[...])
+
+# LiteLLM — 100+ models via one interface (requires [litellm] extra)
+runtime = Runtime(supervisor=..., model_provider=LiteLLMProvider())
+response = await self.llm.chat(model="gemini/gemini-2.0-flash", messages=[...])
 ```
 
-`ModelResponse` fields: `response.content` (str), `response.model` (str),
-`response.tokens_in` (int), `response.tokens_out` (int), `response.cost_usd` (float)
+`ModelResponse` fields:
+
+| Field | Type | Notes |
+|---|---|---|
+| `response.content` | `str` | Final text from the model |
+| `response.model` | `str` | Model name echoed by the provider |
+| `response.tokens_in` | `int` | Prompt tokens |
+| `response.tokens_out` | `int` | Completion tokens |
+| `response.cost_usd` | `float \| None` | Computed from hardcoded pricing table; `None` if model unknown |
+| `response.tool_calls` | `list[ToolCall] \| None` | Non-empty when the model requests tool use |
 
 **Rules:**
 - All LLM calls must be `async` — `self.llm.chat()` is already async.
@@ -374,6 +526,21 @@ response = await self.llm.chat(
 - `429` / transient error handling is built into the provider layer. Do not add
   a second retry layer on top unless explicitly required.
 
+### Observability helpers
+
+Wrap LLM and tool calls in spans for tracing (no-ops when no tracer is configured):
+
+```python
+async def handle(self, message: Message) -> Message | None:
+    with self.llm_span("claude-sonnet-4-6") as span:
+        response = await self.llm.chat(model="claude-sonnet-4-6", messages=[...])
+        span.set_attribute("agency.llm.tokens_out", response.tokens_out)
+
+    with self.tool_span("web_search") as span:
+        result = await self.tools.get("web_search").execute(query="...")
+        span.set_attribute("agency.tool.result_size_bytes", len(str(result)))
+```
+
 ---
 
 ## Multi-Agent Pattern
@@ -381,11 +548,15 @@ response = await self.llm.chat(
 ```python
 class OrchestratorAgent(AgentProcess):
     async def handle(self, message: Message):
-        results = await asyncio.gather(
-            self.ask("worker_a", {"type": "process", "chunk": message.payload["a"]}),
-            self.ask("worker_b", {"type": "process", "chunk": message.payload["b"]}),
-        )
-        combined = [r.payload["result"] for r in results]
+        # Prefer TaskGroup over asyncio.gather for structured concurrency
+        async with asyncio.TaskGroup() as tg:
+            ta = tg.create_task(
+                self.ask("worker_a", {"type": "process", "chunk": message.payload["a"]})
+            )
+            tb = tg.create_task(
+                self.ask("worker_b", {"type": "process", "chunk": message.payload["b"]})
+            )
+        combined = [ta.result().payload["result"], tb.result().payload["result"]]
         summary = await self.ask("summarizer", {"type": "summarize", "items": combined})
         return self.reply(summary.payload)
 
@@ -438,9 +609,8 @@ asyncio.run(main())
 
 - **Unit tests** (`tests/unit/`): no network, no API keys, fast. Mock `self.llm`,
   `self.store`, and all HTTP clients.
-- **Integration tests** (`tests/integration/`): may call real APIs. Guarded by
-  `@pytest.mark.integration`; skipped by default in CI.
-  Run locally: `uv run pytest -m integration`
+- **Integration tests** (`tests/integration/`): may call real APIs. Skipped by default in CI.
+  Run locally: `uv run pytest tests/integration/`
 - Aim for **≥ 85% coverage** (enforced by `--cov-fail-under` in pyproject.toml).
 - Test file names mirror source: `agency/bus.py` → `tests/unit/test_bus.py`.
 - Use `pytest.fixture` over `setUp`/`tearDown`. Prefer function-scoped fixtures.
