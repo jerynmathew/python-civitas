@@ -39,13 +39,13 @@ pip install python-agency[anthropic,otel]          # typical dev setup
 ## Quick Import Reference
 
 ```python
-from agency import AgentProcess, Supervisor, Runtime
+from agency import AgentProcess, Supervisor, Runtime, Worker
 from agency.messages import Message
 from agency.errors import AgencyError, ErrorAction
 from agency.plugins.anthropic import AnthropicProvider   # requires [anthropic]
 from agency.plugins.litellm import LiteLLMProvider       # requires [litellm]
-from agency.adapters.langgraph import LangGraphAgent     # Phase 2
-from agency.adapters.openai import OpenAIAgent           # Phase 2
+from agency.adapters.langgraph import LangGraphAgent
+from agency.adapters.openai import OpenAIAgent
 ```
 
 ---
@@ -135,7 +135,7 @@ and re-run `uv sync`.
 
 ### Environment variables
 
-Copy `.env.example` to `.env` and fill in required keys. Never commit `.env`
+Set the following in your shell or a `.env` file. Never commit `.env`
 or real API keys.
 
 | Variable | Purpose | Default |
@@ -156,7 +156,7 @@ or real API keys.
 |---|---|
 | Run all tests | `uv run pytest` |
 | Run unit tests only | `uv run pytest tests/unit` |
-| Run integration tests | `uv run pytest -m integration` |
+| Run integration tests | `uv run pytest tests/integration/` |
 | Run a single test | `uv run pytest tests/unit/test_foo.py::test_bar -v` |
 | Lint | `uv run ruff check .` |
 | Format | `uv run ruff format .` |
@@ -185,7 +185,7 @@ class MyAgent(AgentProcess):
         # Initialise persistent state here, not instance variables.
         self.state.setdefault("count", 0)
 
-    async def handle(self, message: Message) -> None:
+    async def handle(self, message: Message) -> Message | None:
         # Called for every incoming message.
         # All I/O must be async/await — never block here.
         # Return self.reply(...) when the caller uses ask(). Missing it hangs the caller.
@@ -305,27 +305,33 @@ Never call it inside `AgentProcess` subclasses or library code.
 ## Core API — Topology YAML
 
 ```yaml
-runtime:
-  transport: in_process          # in_process | zmq | nats
+transport:
+  type: in_process          # in_process | zmq | nats
 
-supervisor:
+plugins:
+  models:
+    - type: anthropic        # short name; or full dotted path
+      config:
+        default_model: claude-sonnet-4-6
+  exporters:
+    - type: console          # or: otel
+  state:
+    type: sqlite
+    config:
+      db_path: /data/agency.db
+
+supervision:
   name: root
   strategy: ONE_FOR_ONE
   max_restarts: 3
   restart_window: 60
   children:
-    - type: myapp.agents.ResearchAgent
-      name: research
-    - type: myapp.agents.SummarizerAgent
-      name: summarizer
-
-plugins:
-  model_providers:
-    - type: agency.plugins.anthropic.AnthropicProvider
-      default_model: claude-sonnet-4-6
-  observability:
-    - type: agency.plugins.otel.OTELExporter
-      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+    - agent:
+        name: research
+        type: myapp.agents.ResearchAgent
+    - agent:
+        name: summarizer
+        type: myapp.agents.SummarizerAgent
 ```
 
 ---
@@ -367,33 +373,6 @@ response = await self.llm.chat(
 - Mock `self.llm` in unit tests — never make real API calls in `tests/unit/`.
 - `429` / transient error handling is built into the provider layer. Do not add
   a second retry layer on top unless explicitly required.
-
----
-
-## EvalLoop (Corrective Observability)
-
-```python
-from agency import EvalAgent
-from agency.eval import CorrectionSignal, Severity
-
-class DigressionEval(EvalAgent):
-    # EvalAgent subscribes to MessageBus events automatically.
-    async def evaluate(self, message: Message) -> CorrectionSignal | None:
-        score = await self.llm.chat(
-            model="claude-haiku-4-5",
-            messages=[{"role": "user", "content": f"Is this on-task? Score 0-1.\n{message.payload}"}]
-        )
-        if float(score.content) > 0.75:
-            return CorrectionSignal(
-                target=message.sender,
-                severity=Severity.REDIRECT,
-                context="You are drifting from the original task. Refocus."
-            )
-        return None
-```
-
-Configured in YAML under `eval_agents:`. Rate-limited by `max_corrections_per_window`
-(default: 5 / 60 s).
 
 ---
 
@@ -538,12 +517,12 @@ Omitting it causes the caller to hang silently until timeout.
 
 ```python
 # ❌ Wrong — ask() will hang until timeout
-async def handle(self, message: Message):
+async def handle(self, message: Message) -> Message | None:
     result = await self.llm.chat(...)
     # no return
 
 # ✅ Correct
-async def handle(self, message: Message):
+async def handle(self, message: Message) -> Message | None:
     result = await self.llm.chat(...)
     return self.reply({"result": result.content})
 ```

@@ -1,17 +1,37 @@
 site_name: python-agency
 site_description: The production runtime for Python agents
-site_url: https://github.com/anthropics/python-agency
+site_url: https://anthropics.github.io/python-agency
 repo_url: https://github.com/anthropics/python-agency
 repo_name: anthropics/python-agency
+copyright: Apache 2.0 License
 
 theme:
   name: material
   palette:
-    primary: indigo
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
     - navigation.instant
+    - navigation.indexes
     - content.code.copy
+    - content.code.annotate
+    - search.highlight
+    - search.suggest
 
 plugins:
   - search
@@ -21,12 +41,82 @@ plugins:
           options:
             show_source: true
             show_root_heading: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            docstring_style: google
+            merge_init_into_class: true
+
+markdown_extensions:
+  # Mermaid JS diagram support
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  # Code highlighting
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  # Admonitions (note, warning, tip boxes)
+  - admonition
+  - pymdownx.details
+  # Tables
+  - tables
+  # Task lists
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  # Keyboard keys
+  - pymdownx.keys
+  # Smart symbols
+  - pymdownx.smartsymbols
+  # Snippets (include external files)
+  - pymdownx.snippets
+  # Table of contents
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+extra_javascript:
+  # Mermaid JS (renders mermaid fenced code blocks)
+  - https://unpkg.com/mermaid@11/dist/mermaid.min.js
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/anthropics/python-agency
+  analytics:
+    provider: google
+    property: !ENV [GOOGLE_ANALYTICS_ID, ""]
 
 nav:
   - Home: index.md
-  - API Reference:
-      - Runtime: api/runtime.md
+  - Getting Started: getting-started.md
+
+  - Guides:
+    - Core Concepts: concepts.md
+    - Supervision: supervision.md
+    - Messaging: messaging.md
+    - Transports: transports.md
+    - Observability: observability.md
+    - Plugins: plugins.md
+    - Topology & CLI: topology.md
+    - Deployment: deployment.md
+    - Adapters: adapters.md
+
+  - Reference:
+    - Architecture: architecture.md
+    - FAQ: faq.md
+    - API Reference:
       - AgentProcess: api/process.md
       - Supervisor: api/supervisor.md
-      - Messages: api/messages.md
+      - Runtime: api/runtime.md
+      - Message: api/messages.md
+      - MessageBus: api/bus.md
+      - Transport: api/transport.md
       - Observability: api/observability.md
+      - Plugins: api/plugins.md
+
+  - Contributing: ../CONTRIBUTING.md

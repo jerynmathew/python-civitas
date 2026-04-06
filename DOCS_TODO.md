@@ -260,7 +260,7 @@ Four files, each independently runnable, progressively building:
 ---
 
 ### 21. `AGENTS.md` — Review & Update
-`[ ]` **Verify AGENTS.md is accurate against current codebase.**
+`[x]` **Verify AGENTS.md is accurate against current codebase.**
 
 - Check all import paths are correct
 - Verify Message field names match `messages.py`
@@ -275,7 +275,7 @@ Four files, each independently runnable, progressively building:
 After all content is written.
 
 ### 22. `mkdocs.yml` — Complete Nav + Config
-`[ ]` **Wire all docs into MkDocs navigation.**
+`[x]` **Wire all docs into MkDocs navigation.**
 
 - Add all new pages to `nav:`
 - Configure Material theme properly (palette, icons, extensions)
@@ -285,7 +285,7 @@ After all content is written.
 ---
 
 ### 23. API Reference Pages
-`[ ]` **Auto-generated API docs via mkdocstrings.**
+`[x]` **Auto-generated API docs via mkdocstrings.**
 
 - `docs/api/runtime.md`
 - `docs/api/process.md`
@@ -320,6 +320,6 @@ After all content is written.
 | 18 | Examples — quickstart/ | `[x]` |
 | 19 | Examples — patterns/ | `[x]` |
 | 20 | Examples — deployment/ | `[x]` |
-| 21 | AGENTS.md — review & update | `[ ]` |
-| 22 | mkdocs.yml — complete nav | `[ ]` |
-| 23 | API reference pages | `[ ]` |
+| 21 | AGENTS.md — review & update | `[x]` |
+| 22 | mkdocs.yml — complete nav | `[x]` |
+| 23 | API reference pages | `[x]` |
