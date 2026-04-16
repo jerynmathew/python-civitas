@@ -82,28 +82,28 @@ addopts = "--cov=civitas --cov-report=term-missing --cov-fail-under=85"
 branch = true
 omit = [
     # Requires live infra (ZMQ IPC/TCP, NATS server) — covered in test_m2_1/m2_2
-    "civitas/transport/zmq.py",
-    "civitas/transport/nats.py",
-    "civitas/transport/__init__.py",   # protocol definition only
+    "*/civitas/transport/zmq.py",
+    "*/civitas/transport/nats.py",
+    "*/civitas/transport/__init__.py",   # protocol definition only
     # Require live API keys — unit-tested via mocks
-    "civitas/plugins/anthropic.py",
-    "civitas/plugins/openai.py",
-    "civitas/plugins/gemini.py",
-    "civitas/plugins/mistral.py",
-    "civitas/plugins/litellm.py",
+    "*/civitas/plugins/anthropic.py",
+    "*/civitas/plugins/openai.py",
+    "*/civitas/plugins/gemini.py",
+    "*/civitas/plugins/mistral.py",
+    "*/civitas/plugins/litellm.py",
     # Fiddler integration is a planned stub with no callable implementation yet
-    "civitas/plugins/fiddler.py",
+    "*/civitas/plugins/fiddler.py",
     # SQLite store and tools — deferred to a dedicated plugin testing sprint
-    "civitas/plugins/sqlite_store.py",
-    "civitas/plugins/tools.py",
+    "*/civitas/plugins/sqlite_store.py",
+    "*/civitas/plugins/tools.py",
     # CLI — deferred to a dedicated CLI testing sprint using CliRunner
-    "civitas/cli/*",
+    "*/civitas/cli/*",
     # Adapters — require third-party frameworks (crewai, langgraph, openai)
-    "civitas/adapters/*",
+    "*/civitas/adapters/*",
     # Dashboard — requires live runtime for meaningful testing
-    "civitas/dashboard/*",
+    "*/civitas/dashboard/*",
     # Entry point shim
-    "civitas/__main__.py",
+    "*/civitas/__main__.py",
 ]
 
 [tool.coverage.report]
