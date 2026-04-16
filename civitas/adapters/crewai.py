@@ -13,5 +13,5 @@ class CrewAIAgent:
     def __init__(self, *args: object, **kwargs: object) -> None:
         raise NotImplementedError(
             "CrewAIAgent is not yet implemented. "
-            "Track progress at https://github.com/anthropics/civitas/issues."
+            "Track progress at https://github.com/jerynmathew/civitas/issues."
         )
