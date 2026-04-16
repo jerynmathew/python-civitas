@@ -26,7 +26,7 @@ class RoutingEntry:
 
 
 @runtime_checkable
-class Registry(Protocol):
+class Registry(Protocol):  # pragma: no cover
     """Interface for agent routing tables.
 
     Reads are always synchronous — implementations keep an in-memory cache.

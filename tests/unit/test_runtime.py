@@ -318,6 +318,251 @@ def test_example_production_yaml_supervision_structure() -> None:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Runtime.all_agents — no-supervisor branch
+# ---------------------------------------------------------------------------
+
+
+def test_all_agents_no_supervisor_returns_empty() -> None:
+    """all_agents() returns [] when no supervisor is configured."""
+    rt = Runtime()
+    assert rt.all_agents() == []
+
+
+def test_all_agents_with_supervisor_returns_agents() -> None:
+    """all_agents() returns the agent list from the supervision tree (line 199)."""
+    agent = NullAgent("a")
+    rt = Runtime(supervisor=Supervisor("root", children=[agent]))
+    result = rt.all_agents()
+    assert agent in result
+
+
+# ---------------------------------------------------------------------------
+# Runtime.from_config — plugin loading branches
+# ---------------------------------------------------------------------------
+
+
+def test_from_config_loads_single_model_provider(tmp_path: Path) -> None:
+    """YAML with one model provider injects it into the Runtime constructor."""
+    import textwrap
+    from unittest.mock import MagicMock, patch
+
+    yaml_file = tmp_path / "plugins.yaml"
+    yaml_file.write_text(
+        textwrap.dedent("""\
+        supervision:
+          name: root
+        plugins:
+          models:
+            - type: anthropic
+    """)
+    )
+
+    fake_provider = MagicMock()
+    mock_loaded = {"model_providers": [fake_provider], "state_store": None}
+
+    with patch("civitas.runtime.load_plugins_from_config", return_value=mock_loaded):
+        rt = Runtime.from_config(yaml_file, agent_classes=_ANY)
+
+    assert rt._model_provider is fake_provider
+
+
+def test_from_config_multiple_providers_warns(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """When YAML has >1 model providers, a warning is logged and the first is used."""
+    import logging
+    import textwrap
+    from unittest.mock import MagicMock, patch
+
+    yaml_file = tmp_path / "two_providers.yaml"
+    yaml_file.write_text(
+        textwrap.dedent("""\
+        supervision:
+          name: root
+        plugins:
+          models:
+            - type: anthropic
+            - type: openai
+    """)
+    )
+
+    p1, p2 = MagicMock(), MagicMock()
+    mock_loaded = {"model_providers": [p1, p2], "state_store": None}
+
+    with patch("civitas.runtime.load_plugins_from_config", return_value=mock_loaded):
+        with caplog.at_level(logging.WARNING, logger="civitas.runtime"):
+            rt = Runtime.from_config(yaml_file, agent_classes=_ANY)
+
+    assert rt._model_provider is p1
+    assert any("Multiple model providers" in r.message for r in caplog.records)
+
+
+def test_from_config_loads_state_store(tmp_path: Path) -> None:
+    """YAML with a state store injects it into the Runtime constructor."""
+    import textwrap
+    from unittest.mock import MagicMock, patch
+
+    yaml_file = tmp_path / "state.yaml"
+    yaml_file.write_text(
+        textwrap.dedent("""\
+        supervision:
+          name: root
+        plugins:
+          state:
+            type: in_memory
+    """)
+    )
+
+    fake_store = MagicMock()
+    mock_loaded = {"model_providers": [], "state_store": fake_store}
+
+    with patch("civitas.runtime.load_plugins_from_config", return_value=mock_loaded):
+        rt = Runtime.from_config(yaml_file, agent_classes=_ANY)
+
+    assert rt._state_store is fake_store
+
+
+# ---------------------------------------------------------------------------
+# build_component_set — serializer selection branches (components.py)
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Runtime.start — no-supervisor early return, pre-built components
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_start_no_supervisor_sets_started_flag() -> None:
+    """start() with no supervisor sets _started=True and returns early (lines 264-265)."""
+    rt = Runtime()
+    await rt.start()
+    try:
+        assert rt._started is True
+    finally:
+        await rt.stop()
+
+
+@pytest.mark.asyncio
+async def test_stop_no_supervisor_skips_supervisor_stop() -> None:
+    """stop() skips supervisor.stop() when root supervisor is None (branch 329->333)."""
+    rt = Runtime()
+    await rt.start()
+    await rt.stop()  # must not raise; no supervisor to stop
+    assert rt._started is False
+
+
+@pytest.mark.asyncio
+async def test_start_uses_prebuilt_components() -> None:
+    """Runtime started with components= skips build_component_set (line 239)."""
+    from civitas.components import build_component_set
+    from unittest.mock import patch
+
+    # Build a real in-process ComponentSet, then pass it explicitly so that
+    # build_component_set should NOT be called internally.
+    cs = build_component_set()
+    agent = NullAgent("a")
+    rt = Runtime(supervisor=Supervisor("root", children=[agent]), components=cs)
+    with patch("civitas.runtime.build_component_set") as mock_build:
+        await rt.start()
+        mock_build.assert_not_called()
+    await rt.stop()
+
+
+# ---------------------------------------------------------------------------
+# Runtime.ask / Runtime.send — not-started guard
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_ask_before_start_raises() -> None:
+    """ask() raises RuntimeError when runtime is not started (line 369)."""
+    rt = Runtime()
+    with pytest.raises(RuntimeError, match="not started"):
+        await rt.ask("nobody", {})
+
+
+@pytest.mark.asyncio
+async def test_send_before_start_raises() -> None:
+    """send() raises RuntimeError when runtime is not started (line 391)."""
+    rt = Runtime()
+    with pytest.raises(RuntimeError, match="not started"):
+        await rt.send("nobody", {})
+
+
+# ---------------------------------------------------------------------------
+# Runtime.from_config — unknown node type, zmq/nats transport branches
+# ---------------------------------------------------------------------------
+
+
+def test_from_config_unknown_node_raises(tmp_path: Path) -> None:
+    """_build_node() raises ValueError for nodes with no recognized keys (line 142)."""
+    import textwrap
+
+    yaml_file = tmp_path / "bad_node.yaml"
+    yaml_file.write_text(
+        textwrap.dedent("""\
+        supervision:
+          name: root
+          children:
+            - completely_unknown_key: value
+    """)
+    )
+    with pytest.raises((ValueError, AgencyConfigError)):
+        Runtime.from_config(yaml_file)
+
+
+def test_from_config_zmq_transport_all_params(tmp_path: Path) -> None:
+    """YAML with zmq transport + all config keys is parsed (branches 166->168, 168->170, 170->181)."""
+    import textwrap
+
+    yaml_file = tmp_path / "zmq.yaml"
+    yaml_file.write_text(
+        textwrap.dedent("""\
+        supervision:
+          name: root
+        transport:
+          type: zmq
+          pub_addr: "tcp://127.0.0.1:5559"
+          sub_addr: "tcp://127.0.0.1:5560"
+          start_proxy: true
+    """)
+    )
+    rt = Runtime.from_config(yaml_file)
+    assert rt._transport_type == "zmq"
+    assert rt._zmq_pub_addr == "tcp://127.0.0.1:5559"
+    assert rt._zmq_sub_addr == "tcp://127.0.0.1:5560"
+    assert rt._zmq_start_proxy is True
+
+
+def test_from_config_nats_transport_with_jetstream(tmp_path: Path) -> None:
+    """YAML with nats transport + jetstream key is parsed (branch 173->175)."""
+    import textwrap
+
+    yaml_file = tmp_path / "nats.yaml"
+    yaml_file.write_text(
+        textwrap.dedent("""\
+        supervision:
+          name: root
+        transport:
+          type: nats
+          servers: "nats://localhost:4222"
+          jetstream: true
+          stream_name: MYSTREAM
+    """)
+    )
+    rt = Runtime.from_config(yaml_file)
+    assert rt._transport_type == "nats"
+    assert rt._nats_jetstream is True
+    assert rt._nats_stream_name == "MYSTREAM"
+
+
+# ---------------------------------------------------------------------------
+# build_component_set — serializer selection branches (components.py)
+# ---------------------------------------------------------------------------
+
+
 def test_build_component_set_custom_serializer() -> None:
     """build_component_set uses the provided serializer instance directly."""
     from civitas.components import build_component_set

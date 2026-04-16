@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import time
 from collections import deque
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from civitas.process import AgentProcess, ProcessStatus
 from civitas.supervisor import (
+    BackoffPolicy,
     HeartbeatTimeout,
     Supervisor,
 )
@@ -321,3 +324,356 @@ class TestTreeCollectors:
         root = Supervisor("root", children=[child_sup])
         names = {s.name for s in root.all_supervisors()}
         assert names == {"root", "child"}
+
+
+# ---------------------------------------------------------------------------
+# _compute_backoff — unknown policy fallback
+# ---------------------------------------------------------------------------
+
+
+class TestBackoffFallback:
+    def test_unknown_backoff_policy_falls_back_to_base(self):
+        sup = make_supervisor(backoff="CONSTANT", backoff_base=3.0)
+        # Patch internal enum value to simulate an unrecognised policy
+        sup.backoff = "UNKNOWN_POLICY"  # type: ignore[assignment]
+        assert sup._compute_backoff(1) == 3.0
+
+
+# ---------------------------------------------------------------------------
+# _on_child_done — cancelled task is ignored
+# ---------------------------------------------------------------------------
+
+
+class TestOnChildDone:
+    def test_cancelled_task_not_treated_as_crash(self):
+        sup = make_supervisor()
+        sup._running = True
+
+        task = MagicMock()
+        task.cancelled.return_value = True
+
+        # Should return early — no crash handling scheduled
+        sup._handle_crash = AsyncMock()  # type: ignore[method-assign]
+        sup._on_child_done("worker", task)
+        sup._handle_crash.assert_not_called()
+
+    def test_not_running_ignores_done_callback(self):
+        sup = make_supervisor()
+        sup._running = False
+
+        task = MagicMock()
+        task.cancelled.return_value = False
+
+        sup._handle_crash = AsyncMock()  # type: ignore[method-assign]
+        sup._on_child_done("worker", task)
+        sup._handle_crash.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _handle_crash — sliding window timestamp pruning
+# ---------------------------------------------------------------------------
+
+
+class TestHandleCrashTimestampPruning:
+    @pytest.mark.asyncio
+    async def test_old_timestamps_pruned_from_window(self):
+        """Timestamps outside restart_window are removed before checking limit."""
+        sup = make_supervisor(max_restarts=2, restart_window=10.0, backoff="CONSTANT", backoff_base=0.0)
+        sup._restart_child = AsyncMock()  # type: ignore[method-assign]
+        sup._escalate = AsyncMock()  # type: ignore[method-assign]
+
+        now = time.time()
+        # Two timestamps well outside the 10s window
+        sup._restart_timestamps.extend([now - 30.0, now - 20.0])
+
+        await sup._handle_crash("agent", ValueError("x"))
+
+        # Old timestamps pruned — only 1 in window — should restart, not escalate
+        sup._restart_child.assert_called_once()
+        sup._escalate.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Heartbeat monitor — _start / _stop / loop
+# ---------------------------------------------------------------------------
+
+
+class TestHeartbeatMonitor:
+    @pytest.mark.asyncio
+    async def test_heartbeat_not_started_without_remote_children(self):
+        """_start_heartbeat_monitor is a no-op when there are no remote children."""
+        sup = make_supervisor()
+        await sup._start_heartbeat_monitor()
+        assert sup._heartbeat_task is None
+
+    @pytest.mark.asyncio
+    async def test_heartbeat_task_created_with_remote_children(self):
+        """_start_heartbeat_monitor creates a task when remote children exist."""
+        sup = make_supervisor()
+        sup.add_remote_child("remote_a", heartbeat_interval=60.0)
+
+        # Patch the loop to avoid actually running it
+        sup._heartbeat_loop = AsyncMock(return_value=None)  # type: ignore[method-assign]
+        await sup._start_heartbeat_monitor()
+
+        assert sup._heartbeat_task is not None
+        sup._heartbeat_task.cancel()
+        try:
+            await sup._heartbeat_task
+        except (asyncio.CancelledError, Exception):
+            pass
+
+    @pytest.mark.asyncio
+    async def test_stop_heartbeat_monitor_cancels_task(self):
+        """_stop_heartbeat_monitor cancels the task and sets it to None."""
+        sup = make_supervisor()
+        sup.add_remote_child("remote_a", heartbeat_interval=60.0)
+        sup._running = True
+
+        # Start a long-running task as stand-in for the heartbeat loop
+        sup._heartbeat_task = asyncio.create_task(asyncio.sleep(999))
+        await sup._stop_heartbeat_monitor()
+
+        assert sup._heartbeat_task is None
+
+    @pytest.mark.asyncio
+    async def test_heartbeat_ack_resets_missed_counter(self):
+        """A successful heartbeat reply resets the missed counter to 0."""
+        sup = make_supervisor()
+        sup.add_remote_child("remote_a", heartbeat_interval=0.01, heartbeat_timeout=1.0, missed_heartbeats_threshold=3)
+        sup._running = True
+        sup._missed_heartbeats["remote_a"] = 2  # already has missed beats
+
+        mock_bus = AsyncMock()
+        mock_bus.request = AsyncMock(return_value=MagicMock())
+        sup._bus = mock_bus
+
+        # Let one iteration run then stop the loop via mocked sleep
+        async def _stop_after_sleep(*_a: object, **_kw: object) -> None:
+            sup._running = False
+
+        with patch("civitas.supervisor.asyncio.sleep", side_effect=_stop_after_sleep):
+            await sup._heartbeat_loop()
+
+        assert sup._missed_heartbeats["remote_a"] == 0
+
+    @pytest.mark.asyncio
+    async def test_heartbeat_timeout_increments_missed_counter(self):
+        """A TimeoutError on heartbeat increments the missed counter."""
+        sup = make_supervisor()
+        sup.add_remote_child("remote_a", heartbeat_interval=0.01, heartbeat_timeout=0.01, missed_heartbeats_threshold=5)
+        sup._running = True
+
+        mock_bus = AsyncMock()
+        mock_bus.request = AsyncMock(side_effect=TimeoutError())
+        sup._bus = mock_bus
+
+        async def _stop_after_sleep(*_a: object, **_kw: object) -> None:
+            sup._running = False
+
+        with patch("civitas.supervisor.asyncio.sleep", side_effect=_stop_after_sleep):
+            await sup._heartbeat_loop()
+
+        assert sup._missed_heartbeats.get("remote_a", 0) == 1
+
+    @pytest.mark.asyncio
+    async def test_heartbeat_threshold_triggers_crash_handler(self):
+        """When missed count reaches threshold, _handle_crash is called."""
+        sup = make_supervisor()
+        sup.add_remote_child("remote_a", heartbeat_interval=0.01, heartbeat_timeout=0.01, missed_heartbeats_threshold=2)
+        sup._running = True
+        sup._missed_heartbeats["remote_a"] = 1  # one away from threshold
+
+        mock_bus = AsyncMock()
+        mock_bus.request = AsyncMock(side_effect=TimeoutError())
+        sup._bus = mock_bus
+
+        crash_calls: list = []
+        sup._handle_crash = AsyncMock(side_effect=lambda n, e: crash_calls.append(n))  # type: ignore[method-assign]
+
+        async def _stop_after_sleep(*_a: object, **_kw: object) -> None:
+            sup._running = False
+
+        with patch("civitas.supervisor.asyncio.sleep", side_effect=_stop_after_sleep):
+            await sup._heartbeat_loop()
+
+        assert "remote_a" in crash_calls
+        assert sup._missed_heartbeats.get("remote_a", 0) == 0  # reset after trigger
+
+    @pytest.mark.asyncio
+    async def test_heartbeat_loop_continues_on_generic_exception(
+        self, caplog: pytest.LogCaptureFixture
+    ):
+        """A non-timeout exception is warned but does not crash the loop."""
+        sup = make_supervisor()
+        sup.add_remote_child("remote_a", heartbeat_interval=0.01, heartbeat_timeout=1.0, missed_heartbeats_threshold=3)
+        sup._running = True
+
+        mock_bus = AsyncMock()
+        mock_bus.request = AsyncMock(side_effect=RuntimeError("unexpected"))
+        sup._bus = mock_bus
+
+        async def _stop_after_sleep(*_a: object, **_kw: object) -> None:
+            sup._running = False
+
+        with caplog.at_level(logging.WARNING, logger="civitas.supervisor"):
+            with patch("civitas.supervisor.asyncio.sleep", side_effect=_stop_after_sleep):
+                await sup._heartbeat_loop()
+
+        assert any("heartbeat error" in r.message for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# _restart_child — remote and Supervisor branches
+# ---------------------------------------------------------------------------
+
+
+class TestRestartChildBranches:
+    @pytest.mark.asyncio
+    async def test_restart_child_remote_delegates_to_remote_restart(self):
+        """_restart_child calls _restart_remote_child for remote children."""
+        sup = make_supervisor()
+        sup.add_remote_child("remote_a")
+
+        remote_calls: list = []
+        sup._restart_remote_child = AsyncMock(side_effect=lambda n: remote_calls.append(n))  # type: ignore[method-assign]
+
+        await sup._restart_child("remote_a")
+        assert remote_calls == ["remote_a"]
+
+    @pytest.mark.asyncio
+    async def test_restart_child_supervisor_child_returns_early(self):
+        """_restart_child does nothing when the named child is a Supervisor."""
+        child_sup = Supervisor("inner")
+        sup = Supervisor("root", children=[child_sup])
+
+        # Should not raise and should not try to start
+        child_sup._start = AsyncMock()  # type: ignore[method-assign]
+        await sup._restart_child("inner")
+        child_sup._start.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_restart_child_uses_registry_when_present(self):
+        """_restart_child deregisters and re-registers via the registry."""
+        agent = NullAgent("worker")
+        sup = Supervisor("root", children=[agent], backoff="CONSTANT", backoff_base=0.0)
+
+        mock_registry = MagicMock()
+        mock_registry.deregister = MagicMock()
+        mock_registry.register = MagicMock()
+        sup._registry = mock_registry
+
+        agent._start = AsyncMock()  # type: ignore[method-assign]
+        agent._task = None
+
+        await sup._restart_child("worker")
+
+        mock_registry.deregister.assert_called_once_with("worker")
+        mock_registry.register.assert_called_once_with("worker")
+
+    @pytest.mark.asyncio
+    async def test_restart_remote_child_routes_restart_message(self):
+        """_restart_remote_child sends a restart command via the message bus."""
+        sup = make_supervisor()
+        mock_bus = AsyncMock()
+        sup._bus = mock_bus
+
+        await sup._restart_remote_child("remote_a")
+
+        mock_bus.route.assert_called_once()
+        msg = mock_bus.route.call_args[0][0]
+        assert msg.type == "_agency.restart"
+        assert msg.payload["agent_name"] == "remote_a"
+
+
+# ---------------------------------------------------------------------------
+# _restart_all_children — Supervisor children handled correctly
+# ---------------------------------------------------------------------------
+
+
+class TestRestartAllChildren:
+    @pytest.mark.asyncio
+    async def test_restart_all_stops_and_starts_supervisor_children(self):
+        """ONE_FOR_ALL: child Supervisors are stop()ed then start()ed."""
+        child_sup = Supervisor("inner")
+        child_sup.stop = AsyncMock()  # type: ignore[method-assign]
+        child_sup.start = AsyncMock()  # type: ignore[method-assign]
+
+        sup = Supervisor("root", strategy="ONE_FOR_ALL", children=[child_sup])
+        await sup._restart_all_children()
+
+        child_sup.stop.assert_called_once()
+        child_sup.start.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_restart_all_uses_registry_for_agent_children(self):
+        """ONE_FOR_ALL: agent children are deregistered and re-registered."""
+        agent = NullAgent("worker")
+        agent._status = ProcessStatus.RUNNING
+        agent._stop = AsyncMock()  # type: ignore[method-assign]
+        agent._start = AsyncMock()  # type: ignore[method-assign]
+        agent._task = None
+
+        sup = Supervisor("root", strategy="ONE_FOR_ALL", children=[agent])
+        mock_registry = MagicMock()
+        sup._registry = mock_registry
+
+        await sup._restart_all_children()
+
+        mock_registry.deregister.assert_called_with("worker")
+        mock_registry.register.assert_called_with("worker")
+
+
+# ---------------------------------------------------------------------------
+# _restart_rest_for_one — Supervisor children handled correctly
+# ---------------------------------------------------------------------------
+
+
+class TestRestartRestForOne:
+    @pytest.mark.asyncio
+    async def test_rest_for_one_stops_and_starts_supervisor_children(self):
+        """REST_FOR_ONE: Supervisor children after the crash point are stop()ed and start()ed."""
+        crashed = NullAgent("a")
+        crashed._status = ProcessStatus.CRASHED
+        crashed._stop = AsyncMock()  # type: ignore[method-assign]
+        crashed._start = AsyncMock()  # type: ignore[method-assign]
+        crashed._task = None
+
+        child_sup = Supervisor("inner")
+        child_sup.stop = AsyncMock()  # type: ignore[method-assign]
+        child_sup.start = AsyncMock()  # type: ignore[method-assign]
+
+        sup = Supervisor("root", strategy="REST_FOR_ONE", children=[crashed, child_sup])
+        await sup._restart_rest_for_one("a")
+
+        child_sup.stop.assert_called_once()
+        child_sup.start.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_rest_for_one_uses_registry_for_agent_children(self):
+        """REST_FOR_ONE: agent children after crash point are deregistered and re-registered."""
+        first = NullAgent("first")
+        first._status = ProcessStatus.CRASHED
+        first._stop = AsyncMock()  # type: ignore[method-assign]
+        first._start = AsyncMock()  # type: ignore[method-assign]
+        first._task = None
+
+        second = NullAgent("second")
+        second._status = ProcessStatus.RUNNING
+        second._stop = AsyncMock()  # type: ignore[method-assign]
+        second._start = AsyncMock()  # type: ignore[method-assign]
+        second._task = None
+
+        sup = Supervisor("root", strategy="REST_FOR_ONE", children=[first, second])
+        mock_registry = MagicMock()
+        sup._registry = mock_registry
+
+        await sup._restart_rest_for_one("first")
+
+        # Both agents should be deregistered and re-registered
+        deregister_calls = [c.args[0] for c in mock_registry.deregister.call_args_list]
+        register_calls = [c.args[0] for c in mock_registry.register.call_args_list]
+        assert "first" in deregister_calls
+        assert "second" in deregister_calls
+        assert "first" in register_calls
+        assert "second" in register_calls

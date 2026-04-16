@@ -79,12 +79,10 @@ omit = [
     "civitas/plugins/litellm.py",
     # Fiddler integration is a planned stub with no callable implementation yet
     "civitas/plugins/fiddler.py",
-    # Adapter coverage lives in test_m2_6_adapters.py (excluded to avoid
-    # inflating the threshold with tests that mock optional deps)
-    "civitas/adapters/*",
-    # CLI and dashboard require Typer/Rich setup — covered in test_m3_1/m3_3
-    "civitas/cli/*",
-    "civitas/dashboard/*",
+    # CLI run.py manages real process lifecycles (asyncio.run, signal handling)
+    # — deferred to a dedicated CLI testing sprint using CliRunner
+    "civitas/cli/run.py",
+    "civitas/cli/dashboard.py",
     # Entry point shim
     "civitas/__main__.py",
 ]
@@ -94,6 +92,10 @@ exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
     "@overload",
+    # Protocol method stubs — never executed, only used for type checking
+    "^\\s+\\.\\.\\.$",
+    # Safety-net __del__ destructors — GC-triggered, non-deterministic
+    "def __del__",
 ]
 
 [tool.ruff]

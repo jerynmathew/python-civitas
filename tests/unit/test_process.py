@@ -441,3 +441,234 @@ def test_tool_span_records_error_on_exception():
             raise RuntimeError("tool failed")
     spans = exporter.get_finished_spans()
     assert len(spans) == 1
+
+
+# ---------------------------------------------------------------------------
+# handle() default implementation
+# ---------------------------------------------------------------------------
+
+
+async def test_handle_default_returns_none():
+    """AgentProcess.handle() default implementation returns None (line 146)."""
+    agent = AgentProcess("bare")
+    result = await agent.handle(Message(type="ping"))
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint with store
+# ---------------------------------------------------------------------------
+
+
+async def test_checkpoint_with_store_persists_state():
+    """checkpoint() calls store.set() when a store is configured (line 170)."""
+    from unittest.mock import AsyncMock
+
+    agent = TrackingAgent()
+    mock_store = AsyncMock()
+    agent.store = mock_store
+    agent.state = {"key": "value"}
+
+    await agent.checkpoint()
+
+    mock_store.set.assert_awaited_once_with("tracker", {"key": "value"})
+
+
+async def test_checkpoint_without_store_is_noop():
+    """checkpoint() is a no-op when store is None (branch 169->exit)."""
+    agent = TrackingAgent()
+    # store is None by default
+    await agent.checkpoint()  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# send() and ask() with current_message context
+# ---------------------------------------------------------------------------
+
+
+async def test_send_propagates_trace_from_current_message():
+    """send() uses trace_id/span_id from _current_message (lines 194-196)."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    agent = TrackingAgent()
+    mock_bus = MagicMock()
+    mock_bus.route = AsyncMock()
+    agent._bus = mock_bus
+
+    # Set a current message to exercise the trace propagation branch
+    agent._current_message = Message(
+        type="incoming", sender="other", trace_id="trace-abc", span_id="span-xyz"
+    )
+    await agent.send("somewhere", {"data": 1})
+
+    call_args = mock_bus.route.call_args[0][0]
+    assert call_args.trace_id == "trace-abc"
+    assert call_args.parent_span_id == "span-xyz"
+
+
+async def test_send_without_current_message_uses_empty_trace():
+    """send() with no _current_message uses empty trace (branch 194->198)."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    agent = TrackingAgent()
+    mock_bus = MagicMock()
+    mock_bus.route = AsyncMock()
+    agent._bus = mock_bus
+    # _current_message is None by default
+
+    await agent.send("somewhere", {"data": 1})
+
+    call_args = mock_bus.route.call_args[0][0]
+    assert call_args.trace_id == ""
+    assert call_args.parent_span_id is None
+
+
+async def test_ask_requires_bus():
+    """ask() raises RuntimeError when bus is not injected (line 218)."""
+    agent = TrackingAgent()
+    with pytest.raises(RuntimeError, match="not wired"):
+        await agent.ask("target", {})
+
+
+async def test_ask_propagates_trace_from_current_message():
+    """ask() uses trace_id/span_id from _current_message (lines 221-223)."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from civitas.messages import Message as Msg
+
+    agent = TrackingAgent()
+    mock_bus = MagicMock()
+    reply_msg = Msg(type="reply", sender="target", recipient="tracker")
+    mock_bus.request = AsyncMock(return_value=reply_msg)
+    agent._bus = mock_bus
+
+    agent._current_message = Message(
+        type="incoming", sender="other", trace_id="trace-ask", span_id="span-ask"
+    )
+    result = await agent.ask("target", {"q": 1})
+
+    sent = mock_bus.request.call_args[0][0]
+    assert sent.trace_id == "trace-ask"
+    assert sent.parent_span_id == "span-ask"
+    assert result is reply_msg
+
+
+async def test_ask_without_current_message_uses_empty_trace():
+    """ask() with no _current_message uses empty trace (branch 221->225)."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from civitas.messages import Message as Msg
+
+    agent = TrackingAgent()
+    mock_bus = MagicMock()
+    reply_msg = Msg(type="reply", sender="target", recipient="tracker")
+    mock_bus.request = AsyncMock(return_value=reply_msg)
+    agent._bus = mock_bus
+    # _current_message is None by default
+
+    result = await agent.ask("target", {"q": 1})
+
+    sent = mock_bus.request.call_args[0][0]
+    assert sent.trace_id == ""
+    assert sent.parent_span_id is None
+
+
+async def test_broadcast_requires_bus():
+    """broadcast() raises RuntimeError when bus is not injected (line 241)."""
+    agent = TrackingAgent()
+    with pytest.raises(RuntimeError, match="not wired"):
+        await agent.broadcast("*", {})
+
+
+# ---------------------------------------------------------------------------
+# Heartbeat auto-response
+# ---------------------------------------------------------------------------
+
+
+async def test_heartbeat_auto_response():
+    """_agency.heartbeat messages receive an _agency.heartbeat_ack reply (lines 372-379)."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    agent = TrackingAgent()
+    mock_bus = MagicMock()
+    mock_bus.route = AsyncMock()
+    agent._bus = mock_bus
+
+    await agent._start()
+    hb = Message(
+        type="_agency.heartbeat",
+        sender="supervisor",
+        recipient="tracker",
+        reply_to="supervisor",
+        correlation_id="hb-1",
+    )
+    await agent._mailbox.put(hb)
+    await wait_for(lambda: mock_bus.route.called)
+
+    routed = mock_bus.route.call_args[0][0]
+    assert routed.type == "_agency.heartbeat_ack"
+    assert routed.correlation_id == "hb-1"
+    await agent._stop()
+
+
+async def test_heartbeat_without_bus_continues_loop():
+    """Heartbeat with no bus still continues (branch 371->380: bus is None)."""
+    agent = TrackingAgent()
+    # _bus intentionally left as None
+
+    await agent._start()
+    hb = Message(
+        type="_agency.heartbeat",
+        sender="supervisor",
+        recipient="tracker",
+        correlation_id="hb-2",
+    )
+    await agent._mailbox.put(hb)
+    # Send a normal message after the heartbeat so we know the loop continued
+    await agent._mailbox.put(Message(type="ping"))
+    await wait_for(lambda: "handle:ping" in agent.events)
+    await agent._stop()
+
+
+async def test_stop_noop_when_never_started():
+    """_stop() is a no-op when the agent was never started (branch 491->exit)."""
+    agent = TrackingAgent()
+    # _task is None, _status is INITIALIZING
+    await agent._stop()
+    # No exception — idempotent
+
+
+# ---------------------------------------------------------------------------
+# Retry span emitted with tracer
+# ---------------------------------------------------------------------------
+
+
+async def test_retry_emits_span_when_tracer_set():
+    """RETRY action emits a civitas.agent.retry span when a tracer is attached (lines 459-470)."""
+    pytest.importorskip("opentelemetry", reason="opentelemetry-sdk not installed")
+    from civitas.plugins.otel import create_test_tracer
+
+    class RetryOnceAgent(AgentProcess):
+        def __init__(self) -> None:
+            super().__init__("retrier", max_retries=3)
+            self.count = 0
+
+        async def handle(self, message: Message) -> None:
+            self.count += 1
+            if self.count == 1:
+                raise ValueError("first attempt fails")
+
+        async def on_error(self, error: Exception, message: Message) -> ErrorAction:
+            return ErrorAction.RETRY
+
+    agent = RetryOnceAgent()
+    tracer, exporter = create_test_tracer()
+    agent._tracer = tracer
+
+    await agent._start()
+    await agent._mailbox.put(Message(type="work"))
+    await wait_for(lambda: agent.count >= 2)
+    await agent._stop()
+
+    span_names = [s.name for s in exporter.get_finished_spans()]
+    assert any("retry" in n for n in span_names), f"Expected retry span, got: {span_names}"
