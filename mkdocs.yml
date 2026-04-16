@@ -121,4 +121,8 @@ nav:
       - Plugins: api/plugins.md
 
   - Milestones: milestones.md
+
+  - Design:
+    - GenServer (M3.5): design/genserver.md
+
   - Contributing: contributing.md

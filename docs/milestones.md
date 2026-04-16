@@ -25,6 +25,7 @@ Development progress across all phases of Civitas.
 | 2 | [Ecosystem — EvalLoop](#m25-evalloop) | ⏳ Planned | v0.3 |
 | 3 | [Developer Experience — CLI & Dashboard](#phase-3-developer-experience) | ✅ Completed | Mar 2026 |
 | 3 | [Developer Experience — MCP Integration](#m34-mcp-integration) | ⏳ Planned | v0.3 |
+| 3 | [Developer Experience — GenServer](#m35-genserver) | ⏳ Planned | v0.3 |
 | — | [Infrastructure & Release](#infrastructure--release) | ✅ Completed | Apr 2026 |
 | 4 | [Dynamic Agent Spawning](#m41b-dynamic-agent-spawning) | ⏳ Planned | v0.4 |
 | 4 | [Security Hardening](#m42-security-hardening) | ⏳ Planned | v0.4 |
@@ -140,6 +141,26 @@ Agents consume MCP tools and expose themselves as MCP tool servers — no manual
 | Agents expose themselves as MCP tool servers | ⏳ |
 | MCP tool calls appear in OTEL traces as tool spans | ⏳ |
 | Connection pooling with circuit breakers | ⏳ |
+
+---
+
+### M3.5 — GenServer
+
+**Status: ⏳ Planned — v0.3 | Priority: 🔴 High**
+
+OTP-style generic server primitive for separating stateful API/RPC service processes from AI agent processes on the message bus. See [design spec](design/genserver.md).
+
+| Deliverable | Status |
+|-------------|--------|
+| `GenServer` base class with `handle_call` / `handle_cast` / `handle_info` dispatch | ⏳ |
+| `call()` — synchronous request-reply with timeout | ⏳ |
+| `cast()` — async fire-and-forget | ⏳ |
+| `send_after()` — delayed self-message (tick / timer support) | ⏳ |
+| `init()` — startup initialisation hook | ⏳ |
+| Supervision-compatible (works as a child of any `Supervisor`) | ⏳ |
+| Topology YAML support (`type: gen_server`) | ⏳ |
+| Unit tests (≥ 15 cases) | ⏳ |
+| Documentation + examples | ⏳ |
 
 ---
 
