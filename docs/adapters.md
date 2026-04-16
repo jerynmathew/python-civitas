@@ -239,6 +239,30 @@ class ResilientOpenAIAgent(OpenAIAgent):
 
 ---
 
+## CrewAIAgent
+
+!!! note "Coming soon"
+    `CrewAIAgent` is not yet implemented. The class exists as a placeholder and raises `NotImplementedError` on instantiation. Track progress or upvote the issue at [github.com/jerynmathew/python-civitas/issues](https://github.com/jerynmathew/python-civitas/issues).
+
+When available, it will wrap a CrewAI `Crew` as an `AgentProcess`, providing the same supervision, transport, and tracing benefits as `LangGraphAgent` and `OpenAIAgent`. The planned interface:
+
+```python
+from civitas.adapters.crewai import CrewAIAgent
+
+runtime = Runtime(
+    supervisor=Supervisor(
+        "root",
+        children=[
+            CrewAIAgent("my_crew", crew=my_crew),
+        ],
+    )
+)
+
+response = await runtime.ask("my_crew", {"task": "Research quantum computing"})
+```
+
+---
+
 ## What the adapter pattern gives you
 
 Both adapters provide the same benefits regardless of which framework is wrapped:
