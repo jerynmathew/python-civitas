@@ -53,14 +53,16 @@ class WorkflowAgent(AgentProcess):
         if risk in ("high", "critical"):
             # Store the pending task and ask for approval
             self.state["pending"][task_id] = message.payload
-            print(f"  [workflow] High-risk action — pausing for human approval")
-            return self.reply({
-                "status": "needs_approval",
-                "task_id": task_id,
-                "action": action,
-                "risk": risk,
-                "message": f"Task {task_id} requires approval before executing.",
-            })
+            print("  [workflow] High-risk action — pausing for human approval")
+            return self.reply(
+                {
+                    "status": "needs_approval",
+                    "task_id": task_id,
+                    "action": action,
+                    "risk": risk,
+                    "message": f"Task {task_id} requires approval before executing.",
+                }
+            )
 
         # Low-risk: execute immediately
         result = self._execute(task_id, action)
@@ -80,75 +82,92 @@ class WorkflowAgent(AgentProcess):
             print(f"  [workflow] Approved by {approver} — executing {task_id}")
             result = self._execute(task_id, pending["action"])
             self.state["completed"].append(task_id)
-            return self.reply({
-                "status": "done",
-                "task_id": task_id,
-                "approver": approver,
-                "result": result,
-            })
+            return self.reply(
+                {
+                    "status": "done",
+                    "task_id": task_id,
+                    "approver": approver,
+                    "result": result,
+                }
+            )
         else:
             print(f"  [workflow] Rejected by {approver} — aborting {task_id}")
-            return self.reply({
-                "status": "rejected",
-                "task_id": task_id,
-                "approver": approver,
-            })
+            return self.reply(
+                {
+                    "status": "rejected",
+                    "task_id": task_id,
+                    "approver": approver,
+                }
+            )
 
     def _execute(self, task_id: str, action: str) -> str:
         return f"Executed '{action}' for task {task_id}"
 
 
 async def main() -> None:
-    runtime = Runtime(
-        supervisor=Supervisor("root", children=[WorkflowAgent("workflow")])
-    )
+    runtime = Runtime(supervisor=Supervisor("root", children=[WorkflowAgent("workflow")]))
     await runtime.start()
 
     # --- Task 1: low-risk, executes immediately ---
     print("Task 1: low-risk deploy to staging")
-    r1 = await runtime.ask("workflow", {
-        "type": "task",
-        "task_id": "t001",
-        "action": "deploy staging-v1.2",
-        "risk": "low",
-    })
+    r1 = await runtime.ask(
+        "workflow",
+        {
+            "type": "task",
+            "task_id": "t001",
+            "action": "deploy staging-v1.2",
+            "risk": "low",
+        },
+    )
     print(f"  → status={r1.payload['status']}\n")
 
     # --- Task 2: high-risk, pauses for approval ---
     print("Task 2: high-risk deploy to production")
-    r2 = await runtime.ask("workflow", {
-        "type": "task",
-        "task_id": "t002",
-        "action": "deploy production-v1.2",
-        "risk": "high",
-    })
+    r2 = await runtime.ask(
+        "workflow",
+        {
+            "type": "task",
+            "task_id": "t002",
+            "action": "deploy production-v1.2",
+            "risk": "high",
+        },
+    )
     print(f"  → status={r2.payload['status']}: {r2.payload['message']}\n")
 
     # Simulate human reviewing and approving
     await asyncio.sleep(0.1)
     print("Human reviews and approves t002...")
-    r3 = await runtime.ask("workflow", {
-        "type": "approval",
-        "task_id": "t002",
-        "decision": "approve",
-        "approver": "alice@example.com",
-    })
+    r3 = await runtime.ask(
+        "workflow",
+        {
+            "type": "approval",
+            "task_id": "t002",
+            "decision": "approve",
+            "approver": "alice@example.com",
+        },
+    )
     print(f"  → status={r3.payload['status']}, result={r3.payload['result']!r}\n")
 
     # --- Task 3: high-risk, rejected ---
     print("Task 3: critical action, rejected by human")
-    r4 = await runtime.ask("workflow", {
-        "type": "task",
-        "task_id": "t003",
-        "action": "drop production database",
-        "risk": "critical",
-    })
-    r5 = await runtime.ask("workflow", {
-        "type": "approval",
-        "task_id": "t003",
-        "decision": "reject",
-        "approver": "bob@example.com",
-    })
+    await runtime.ask(
+        "workflow",
+        {
+            "type": "task",
+            "task_id": "t003",
+            "action": "drop production database",
+            "risk": "critical",
+        },
+    )
+    r5 = await runtime.ask(
+        "workflow",
+        {
+            "type": "approval",
+            "task_id": "t003",
+            "decision": "reject",
+            "approver": "bob@example.com",
+        },
+    )
     print(f"  → status={r5.payload['status']}\n")
 
     # Summary

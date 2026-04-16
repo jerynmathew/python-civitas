@@ -1,15 +1,47 @@
 repos:
+  # -----------------------------------------------------------------------
+  # File hygiene
+  # -----------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]   # mkdocs.yml uses !ENV and !!python/name: tags
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: debug-statements   # catch leftover breakpoint() / pdb calls
+
+  # -----------------------------------------------------------------------
+  # Lint + format (ruff replaces flake8, isort, pyupgrade)
+  # -----------------------------------------------------------------------
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.10
+    rev: v0.11.6
     hooks:
       - id: ruff
         args: [--fix]
       - id: ruff-format
 
+  # -----------------------------------------------------------------------
+  # Type checking
+  # -----------------------------------------------------------------------
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.1
+    rev: v1.15.0
     hooks:
       - id: mypy
         args: [civitas/]
-        additional_dependencies: [types-pyyaml]
         pass_filenames: false
+        additional_dependencies:
+          # Type stubs
+          - types-pyyaml
+          # Runtime dependencies (mypy runs in an isolated env and needs these)
+          - msgpack>=1.1
+          - pyyaml>=6.0
+          - typer>=0.12
+          - rich>=13
+          - anthropic>=0.20
+          - opentelemetry-sdk>=1.20
+          - opentelemetry-exporter-otlp-proto-grpc>=1.20

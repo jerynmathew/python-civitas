@@ -566,7 +566,7 @@ async def test_ask_without_current_message_uses_empty_trace():
     agent._bus = mock_bus
     # _current_message is None by default
 
-    result = await agent.ask("target", {"q": 1})
+    await agent.ask("target", {"q": 1})
 
     sent = mock_bus.request.call_args[0][0]
     assert sent.trace_id == ""
