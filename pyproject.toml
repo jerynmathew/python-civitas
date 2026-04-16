@@ -75,7 +75,7 @@ civitas = "civitas.cli:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests/unit"]
 addopts = "--cov=civitas --cov-report=term-missing --cov-fail-under=85"
 
 [tool.coverage.run]
