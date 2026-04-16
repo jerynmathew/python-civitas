@@ -120,4 +120,5 @@ nav:
       - Observability: api/observability.md
       - Plugins: api/plugins.md
 
+  - Milestones: milestones.md
   - Contributing: contributing.md
