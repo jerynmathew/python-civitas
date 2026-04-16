@@ -16,7 +16,7 @@
         <link rel="prev" href="../api/plugins/">
       
       
-        <link rel="next" href="../contributing/">
+        <link rel="next" href="../design/genserver/">
       
       
         
@@ -327,6 +327,28 @@
 
       </a>
     </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../design/genserver/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Design
+
+        </a>
+      </li>
+    
   
 
       
@@ -1440,6 +1462,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#m35-genserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M3.5 — GenServer
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1520,6 +1553,99 @@
     </ul>
   
 </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/genserver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GenServer (M3.5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -1706,6 +1832,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#m35-genserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M3.5 — GenServer
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1878,6 +2015,12 @@
 <tr>
 <td>3</td>
 <td><a href="#m34-mcp-integration">Developer Experience — MCP Integration</a></td>
+<td>⏳ Planned</td>
+<td>v0.3</td>
+</tr>
+<tr>
+<td>3</td>
+<td><a href="#m35-genserver">Developer Experience — GenServer</a></td>
 <td>⏳ Planned</td>
 <td>v0.3</td>
 </tr>
@@ -2178,6 +2321,56 @@
 </tr>
 <tr>
 <td>Connection pooling with circuit breakers</td>
+<td>⏳</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="m35-genserver">M3.5 — GenServer<a class="headerlink" href="#m35-genserver" title="Permanent link">&para;</a></h3>
+<p><strong>Status: ⏳ Planned — v0.3 | Priority: 🔴 High</strong></p>
+<p>OTP-style generic server primitive for separating stateful API/RPC service processes from AI agent processes on the message bus. See <a href="../design/genserver/">design spec</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Deliverable</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GenServer</code> base class with <code>handle_call</code> / <code>handle_cast</code> / <code>handle_info</code> dispatch</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td><code>call()</code> — synchronous request-reply with timeout</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td><code>cast()</code> — async fire-and-forget</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td><code>send_after()</code> — delayed self-message (tick / timer support)</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td><code>init()</code> — startup initialisation hook</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>Supervision-compatible (works as a child of any <code>Supervisor</code>)</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>Topology YAML support (<code>type: gen_server</code>)</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>Unit tests (≥ 15 cases)</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>Documentation + examples</td>
 <td>⏳</td>
 </tr>
 </tbody>
