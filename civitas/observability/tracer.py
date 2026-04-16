@@ -13,13 +13,11 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from civitas.config import settings
 from civitas.messages import Message, _new_span_id
-
-if TYPE_CHECKING:
-    from civitas.observability.span_queue import SpanQueue
+from civitas.observability.span_queue import SpanData, SpanQueue
 
 logger = logging.getLogger(__name__)
 
@@ -78,8 +76,6 @@ class Span:
 
     def _push_to_queue(self) -> None:
         """Push completed span to SpanQueue for async export."""
-        from civitas.observability.span_queue import SpanData
-
         status = "error" if self.attributes.get("error") else "ok"
         error_msg = self.attributes.get("error.message") if status == "error" else None
         self._span_queue.put_nowait(  # type: ignore[union-attr]

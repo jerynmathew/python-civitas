@@ -112,7 +112,9 @@ def build_component_set(
     # Tracer
     built_tracer = Tracer()
 
-    # Transport
+    # Transport — imports are intentionally scoped here: ZMQ and NATS are optional
+    # extras (pyzmq, nats-py) that may not be installed. Importing at module level
+    # would cause ImportError on every civitas import for users without those extras.
     built_transport: Transport
     if transport_type == "zmq":
         from civitas.transport.zmq import ZMQTransport

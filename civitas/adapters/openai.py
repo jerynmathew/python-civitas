@@ -25,6 +25,14 @@ from civitas.errors import ErrorAction, MessageRoutingError
 from civitas.messages import Message
 from civitas.process import AgentProcess
 
+try:
+    from agents import Runner as _Runner
+
+    _HAS_OPENAI_AGENTS = True
+except ImportError:
+    _Runner = None
+    _HAS_OPENAI_AGENTS = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -42,14 +50,17 @@ class OpenAIAgent(AgentProcess):
 
     async def handle(self, message: Message) -> Message | None:
         """Run the OpenAI agent and map handoffs to Civitas messages."""
-        from agents import Runner  # optional OpenAI Agents SDK
+        if not _HAS_OPENAI_AGENTS or _Runner is None:
+            return self.reply(
+                {"error": "openai-agents package not installed; pip install civitas[openai]"}
+            )
 
         # F10-2: explicit error on missing input key rather than silent empty string
         user_input = message.payload.get("input")
         if user_input is None:
             return self.reply({"error": "payload must include 'input' key"})
 
-        result = await Runner.run(self._agent, input=user_input)
+        result = await _Runner.run(self._agent, input=user_input)
 
         # F10-1: log a warning instead of crashing on unregistered handoff targets
         for item in getattr(result, "new_items", []):
