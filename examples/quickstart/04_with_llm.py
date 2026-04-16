@@ -18,10 +18,10 @@ from civitas import AgentProcess, Runtime, Supervisor
 from civitas.messages import Message
 from civitas.plugins.model import ModelResponse
 
-
 # ---------------------------------------------------------------------------
 # Mock provider — same interface as AnthropicProvider, no API key needed
 # ---------------------------------------------------------------------------
+
 
 class MockLLM:
     async def chat(
@@ -45,6 +45,7 @@ class MockLLM:
 # Agent
 # ---------------------------------------------------------------------------
 
+
 class QAAgent(AgentProcess):
     """Answers questions using the injected LLM."""
 
@@ -58,22 +59,26 @@ class QAAgent(AgentProcess):
             ],
         )
 
-        return self.reply({
-            "answer": response.content,
-            "tokens": response.tokens_in + response.tokens_out,
-            "cost_usd": response.cost_usd,
-        })
+        return self.reply(
+            {
+                "answer": response.content,
+                "tokens": response.tokens_in + response.tokens_out,
+                "cost_usd": response.cost_usd,
+            }
+        )
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
+
 async def main() -> None:
     use_live = "--live" in sys.argv
 
     if use_live:
         from civitas.plugins.anthropic import AnthropicProvider
+
         llm = AnthropicProvider()
         print("Using AnthropicProvider (live)\n")
     else:

@@ -31,33 +31,40 @@ DATA_KEYWORDS = {"data", "csv", "json", "sql", "database", "query", "table", "co
 class CodeAgent(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
         q = message.payload.get("question", "")
-        return self.reply({
-            "answer": f"[code specialist] For '{q}': use a context manager and add type hints.",
-            "specialist": "code",
-        })
+        return self.reply(
+            {
+                "answer": f"[code specialist] For '{q}': use a context manager and add type hints.",
+                "specialist": "code",
+            }
+        )
 
 
 class DataAgent(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
         q = message.payload.get("question", "")
-        return self.reply({
-            "answer": f"[data specialist] For '{q}': index the join column and use EXPLAIN.",
-            "specialist": "data",
-        })
+        return self.reply(
+            {
+                "answer": f"[data specialist] For '{q}': index the join column and use EXPLAIN.",
+                "specialist": "data",
+            }
+        )
 
 
 class GeneralAgent(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
         q = message.payload.get("question", "")
-        return self.reply({
-            "answer": f"[general] For '{q}': great question — here's a general answer.",
-            "specialist": "general",
-        })
+        return self.reply(
+            {
+                "answer": f"[general] For '{q}': great question — here's a general answer.",
+                "specialist": "general",
+            }
+        )
 
 
 # ---------------------------------------------------------------------------
 # Router
 # ---------------------------------------------------------------------------
+
 
 class Router(AgentProcess):
     """Classifies questions and forwards to the right specialist."""
@@ -81,6 +88,7 @@ class Router(AgentProcess):
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 async def main() -> None:
     runtime = Runtime(

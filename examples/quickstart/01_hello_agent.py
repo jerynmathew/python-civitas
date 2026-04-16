@@ -21,9 +21,7 @@ class Greeter(AgentProcess):
 
 
 async def main() -> None:
-    runtime = Runtime(
-        supervisor=Supervisor("root", children=[Greeter("greeter")])
-    )
+    runtime = Runtime(supervisor=Supervisor("root", children=[Greeter("greeter")]))
     await runtime.start()
 
     reply = await runtime.ask("greeter", {"name": "Agency"})

@@ -12,7 +12,6 @@ import pytest
 
 from civitas.process import AgentProcess, ProcessStatus
 from civitas.supervisor import (
-    BackoffPolicy,
     HeartbeatTimeout,
     Supervisor,
 )
@@ -378,7 +377,9 @@ class TestHandleCrashTimestampPruning:
     @pytest.mark.asyncio
     async def test_old_timestamps_pruned_from_window(self):
         """Timestamps outside restart_window are removed before checking limit."""
-        sup = make_supervisor(max_restarts=2, restart_window=10.0, backoff="CONSTANT", backoff_base=0.0)
+        sup = make_supervisor(
+            max_restarts=2, restart_window=10.0, backoff="CONSTANT", backoff_base=0.0
+        )
         sup._restart_child = AsyncMock()  # type: ignore[method-assign]
         sup._escalate = AsyncMock()  # type: ignore[method-assign]
 
@@ -440,7 +441,12 @@ class TestHeartbeatMonitor:
     async def test_heartbeat_ack_resets_missed_counter(self):
         """A successful heartbeat reply resets the missed counter to 0."""
         sup = make_supervisor()
-        sup.add_remote_child("remote_a", heartbeat_interval=0.01, heartbeat_timeout=1.0, missed_heartbeats_threshold=3)
+        sup.add_remote_child(
+            "remote_a",
+            heartbeat_interval=0.01,
+            heartbeat_timeout=1.0,
+            missed_heartbeats_threshold=3,
+        )
         sup._running = True
         sup._missed_heartbeats["remote_a"] = 2  # already has missed beats
 
@@ -461,7 +467,12 @@ class TestHeartbeatMonitor:
     async def test_heartbeat_timeout_increments_missed_counter(self):
         """A TimeoutError on heartbeat increments the missed counter."""
         sup = make_supervisor()
-        sup.add_remote_child("remote_a", heartbeat_interval=0.01, heartbeat_timeout=0.01, missed_heartbeats_threshold=5)
+        sup.add_remote_child(
+            "remote_a",
+            heartbeat_interval=0.01,
+            heartbeat_timeout=0.01,
+            missed_heartbeats_threshold=5,
+        )
         sup._running = True
 
         mock_bus = AsyncMock()
@@ -480,7 +491,12 @@ class TestHeartbeatMonitor:
     async def test_heartbeat_threshold_triggers_crash_handler(self):
         """When missed count reaches threshold, _handle_crash is called."""
         sup = make_supervisor()
-        sup.add_remote_child("remote_a", heartbeat_interval=0.01, heartbeat_timeout=0.01, missed_heartbeats_threshold=2)
+        sup.add_remote_child(
+            "remote_a",
+            heartbeat_interval=0.01,
+            heartbeat_timeout=0.01,
+            missed_heartbeats_threshold=2,
+        )
         sup._running = True
         sup._missed_heartbeats["remote_a"] = 1  # one away from threshold
 
@@ -506,7 +522,12 @@ class TestHeartbeatMonitor:
     ):
         """A non-timeout exception is warned but does not crash the loop."""
         sup = make_supervisor()
-        sup.add_remote_child("remote_a", heartbeat_interval=0.01, heartbeat_timeout=1.0, missed_heartbeats_threshold=3)
+        sup.add_remote_child(
+            "remote_a",
+            heartbeat_interval=0.01,
+            heartbeat_timeout=1.0,
+            missed_heartbeats_threshold=3,
+        )
         sup._running = True
 
         mock_bus = AsyncMock()

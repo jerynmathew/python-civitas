@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -13,7 +11,6 @@ from civitas.observability.export_backend import ConsoleBackend, FanOutBackend
 from civitas.observability.otel_agent import run_otel_agent
 from civitas.observability.span_queue import SpanData, SpanQueue
 from civitas.observability.tracer import Span, Tracer
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -177,6 +174,7 @@ async def test_fanout_shutdown_calls_all_backends() -> None:
 
 async def test_fanout_shutdown_continues_after_error(caplog: pytest.LogCaptureFixture) -> None:
     """If one backend raises during shutdown, FanOutBackend logs and continues."""
+
     class _BadShutdown:
         async def export(self, spans: list[SpanData]) -> None:
             pass
@@ -204,9 +202,7 @@ async def test_otel_agent_drains_spans() -> None:
     for i in range(3):
         q.put_nowait(_span(f"span-{i}"))
 
-    task = asyncio.create_task(
-        run_otel_agent(q, backend, batch_size=10, flush_interval=0.05)
-    )
+    task = asyncio.create_task(run_otel_agent(q, backend, batch_size=10, flush_interval=0.05))
     await asyncio.sleep(0.15)
     task.cancel()
     try:
@@ -224,9 +220,7 @@ async def test_otel_agent_flushes_on_timeout() -> None:
     backend = _RecordingBackend()
     q.put_nowait(_span("only-one"))
 
-    task = asyncio.create_task(
-        run_otel_agent(q, backend, batch_size=50, flush_interval=0.05)
-    )
+    task = asyncio.create_task(run_otel_agent(q, backend, batch_size=50, flush_interval=0.05))
     await asyncio.sleep(0.2)
     task.cancel()
     try:
@@ -266,9 +260,7 @@ async def test_otel_agent_cancellation_drains_remaining() -> None:
     q = SpanQueue()
     backend = _RecordingBackend()
 
-    task = asyncio.create_task(
-        run_otel_agent(q, backend, batch_size=50, flush_interval=60.0)
-    )
+    task = asyncio.create_task(run_otel_agent(q, backend, batch_size=50, flush_interval=60.0))
     # Let the agent start its wait, then enqueue spans and cancel
     await asyncio.sleep(0.02)
     for i in range(4):
@@ -291,9 +283,7 @@ async def test_otel_agent_export_error_is_logged(caplog: pytest.LogCaptureFixtur
     backend = _RecordingBackend(raise_on_export=True)
     q.put_nowait(_span())
 
-    task = asyncio.create_task(
-        run_otel_agent(q, backend, batch_size=10, flush_interval=0.05)
-    )
+    task = asyncio.create_task(run_otel_agent(q, backend, batch_size=10, flush_interval=0.05))
     with caplog.at_level(logging.ERROR, logger="civitas.observability.otel_agent"):
         await asyncio.sleep(0.2)
     task.cancel()
@@ -310,9 +300,7 @@ async def test_otel_agent_shutdown_called_on_cancel() -> None:
     q = SpanQueue()
     backend = _RecordingBackend()
 
-    task = asyncio.create_task(
-        run_otel_agent(q, backend, batch_size=10, flush_interval=60.0)
-    )
+    task = asyncio.create_task(run_otel_agent(q, backend, batch_size=10, flush_interval=60.0))
     await asyncio.sleep(0.02)
     task.cancel()
     try:

@@ -22,11 +22,13 @@ class FrontendAgent(AgentProcess):
         job = message.payload.get("job", "")
         result_a = await self.ask("worker_a", {"job": job, "shard": "A"})
         result_b = await self.ask("worker_b", {"job": job, "shard": "B"})
-        return self.reply({
-            "job": job,
-            "results": [result_a.payload["output"], result_b.payload["output"]],
-            "transport": "InProcessTransport",
-        })
+        return self.reply(
+            {
+                "job": job,
+                "results": [result_a.payload["output"], result_b.payload["output"]],
+                "transport": "InProcessTransport",
+            }
+        )
 
 
 class WorkerAgent(AgentProcess):
@@ -52,7 +54,7 @@ async def main() -> None:
     )
 
     await runtime.start()
-    print(f"Transport: InProcessTransport\n")
+    print("Transport: InProcessTransport\n")
 
     for job in ["render-report", "export-csv", "send-digest"]:
         reply = await runtime.ask("frontend", {"job": job})

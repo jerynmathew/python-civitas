@@ -104,7 +104,7 @@ async def main() -> None:
 
     records = [
         {"raw": "  Hello Agency World  ", "source": "api"},
-        {"raw": "ok", "source": "api"},           # too short — validation fails
+        {"raw": "ok", "source": "api"},  # too short — validation fails
         {"raw": "Supervision trees are great", "source": "web"},
     ]
 

@@ -8,7 +8,6 @@ import pytest
 
 from civitas.plugins.loader import PluginError, resolve_plugin_class
 
-
 # ---------------------------------------------------------------------------
 # Entrypoint resolution (lines 71-76 in loader.py)
 # ---------------------------------------------------------------------------

@@ -37,7 +37,7 @@ async def main() -> None:
             strategy="ONE_FOR_ONE",
             max_restarts=10,
             backoff="CONSTANT",
-            backoff_base=0.05,      # 50 ms — fast for the demo
+            backoff_base=0.05,  # 50 ms — fast for the demo
             children=[FlakyCounter("counter")],
         )
     )

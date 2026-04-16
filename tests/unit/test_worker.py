@@ -13,7 +13,6 @@ from civitas.process import AgentProcess
 from civitas.serializer import MsgpackSerializer
 from civitas.worker import Worker
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -26,6 +25,7 @@ class NullAgent(AgentProcess):
 
 class _FakeTransport:
     """Minimal transport spec — no wait_ready by default."""
+
     async def start(self) -> None: ...
     async def stop(self) -> None: ...
     async def subscribe(self, topic: str, handler: object) -> None: ...
@@ -134,9 +134,7 @@ class TestOnRestartCommand:
         worker._bus.setup_agent = AsyncMock()
         return worker, agent
 
-    async def test_unknown_agent_logs_warning(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    async def test_unknown_agent_logs_warning(self, caplog: pytest.LogCaptureFixture) -> None:
         """Restart command for an unknown agent logs a warning and returns."""
         worker, _ = self._make_started_worker()
         serializer = worker._serializer
@@ -149,9 +147,7 @@ class TestOnRestartCommand:
 
         assert any("unknown agent" in r.message for r in caplog.records)
 
-    async def test_exceeded_max_restarts_logs_error(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    async def test_exceeded_max_restarts_logs_error(self, caplog: pytest.LogCaptureFixture) -> None:
         """Restart command is rejected when the agent has hit max_restarts."""
         worker, agent = self._make_started_worker()
         # Saturate restart counter
@@ -184,9 +180,7 @@ class TestOnRestartCommand:
         agent._stop.assert_awaited_once()
         agent._start.assert_awaited_once()
 
-    async def test_restart_failure_logs_exception(
-        self, caplog: pytest.LogCaptureFixture
-    ) -> None:
+    async def test_restart_failure_logs_exception(self, caplog: pytest.LogCaptureFixture) -> None:
         """If the restart raises, the exception is logged and does not propagate."""
         worker, agent = self._make_started_worker()
         agent._stop = AsyncMock(side_effect=RuntimeError("crash"))  # type: ignore[method-assign]

@@ -456,8 +456,9 @@ async def test_stop_no_supervisor_skips_supervisor_stop() -> None:
 @pytest.mark.asyncio
 async def test_start_uses_prebuilt_components() -> None:
     """Runtime started with components= skips build_component_set (line 239)."""
-    from civitas.components import build_component_set
     from unittest.mock import patch
+
+    from civitas.components import build_component_set
 
     # Build a real in-process ComponentSet, then pass it explicitly so that
     # build_component_set should NOT be called internally.

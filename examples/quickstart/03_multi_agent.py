@@ -64,10 +64,12 @@ class Coordinator(AgentProcess):
             {**analyzed.payload, "topic": topic},
         )
 
-        return self.reply({
-            "report": formatted.payload["report"],
-            "requests_handled": self.state["requests"],
-        })
+        return self.reply(
+            {
+                "report": formatted.payload["report"],
+                "requests_handled": self.state["requests"],
+            }
+        )
 
 
 async def main() -> None:

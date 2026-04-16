@@ -25,11 +25,13 @@ class DataWorker(AgentProcess):
         chunk = message.payload.get("chunk", "")
         shard = message.payload.get("shard", 0)
         await asyncio.sleep(0.05 * (shard + 1))  # staggered fake I/O
-        return self.reply({
-            "shard": shard,
-            "result": f"processed({chunk})",
-            "word_count": len(chunk.split()),
-        })
+        return self.reply(
+            {
+                "shard": shard,
+                "result": f"processed({chunk})",
+                "word_count": len(chunk.split()),
+            }
+        )
 
 
 class Aggregator(AgentProcess):
@@ -42,15 +44,12 @@ class Aggregator(AgentProcess):
 
         # Split work across workers
         chunks = query.split()
-        shards = [
-            " ".join(chunks[i::len(self.WORKERS)])
-            for i in range(len(self.WORKERS))
-        ]
+        shards = [" ".join(chunks[i :: len(self.WORKERS)]) for i in range(len(self.WORKERS))]
 
         # Fan out — all workers run concurrently
         tasks = [
             self.ask(worker, {"chunk": shard, "shard": i})
-            for i, (worker, shard) in enumerate(zip(self.WORKERS, shards))
+            for i, (worker, shard) in enumerate(zip(self.WORKERS, shards, strict=False))
         ]
         replies = await asyncio.gather(*tasks)
 
@@ -58,11 +57,13 @@ class Aggregator(AgentProcess):
         total_words = sum(r.payload["word_count"] for r in replies)
         combined = " | ".join(r.payload["result"] for r in replies)
 
-        return self.reply({
-            "combined": combined,
-            "total_words": total_words,
-            "worker_count": len(self.WORKERS),
-        })
+        return self.reply(
+            {
+                "combined": combined,
+                "total_words": total_words,
+                "worker_count": len(self.WORKERS),
+            }
+        )
 
 
 async def main() -> None:
