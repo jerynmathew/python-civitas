@@ -23,9 +23,9 @@ YAML:
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
+from civitas.config import settings
 from civitas.plugins.model import ModelResponse, ToolCall
 
 try:
@@ -110,7 +110,7 @@ class GeminiProvider:
                 "The 'google-generativeai' package is required. "
                 "Install it with: pip install civitas[gemini]"
             )
-        resolved_key = api_key or os.environ.get("GEMINI_API_KEY")
+        resolved_key = api_key or settings.gemini_api_key.get()
         genai.configure(api_key=resolved_key)
         self._default_model = default_model
 
