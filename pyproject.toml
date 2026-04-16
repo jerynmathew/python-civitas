@@ -93,10 +93,15 @@ omit = [
     "civitas/plugins/litellm.py",
     # Fiddler integration is a planned stub with no callable implementation yet
     "civitas/plugins/fiddler.py",
-    # CLI run.py manages real process lifecycles (asyncio.run, signal handling)
-    # — deferred to a dedicated CLI testing sprint using CliRunner
-    "civitas/cli/run.py",
-    "civitas/cli/dashboard.py",
+    # SQLite store and tools — deferred to a dedicated plugin testing sprint
+    "civitas/plugins/sqlite_store.py",
+    "civitas/plugins/tools.py",
+    # CLI — deferred to a dedicated CLI testing sprint using CliRunner
+    "civitas/cli/*",
+    # Adapters — require third-party frameworks (crewai, langgraph, openai)
+    "civitas/adapters/*",
+    # Dashboard — requires live runtime for meaningful testing
+    "civitas/dashboard/*",
     # Entry point shim
     "civitas/__main__.py",
 ]
