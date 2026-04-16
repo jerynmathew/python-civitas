@@ -7,7 +7,7 @@ packages = ["civitas"]
 
 [project]
 name = "civitas"
-version = "0.1.0"
+version = "0.1.1"
 description = "The production runtime for Python agents"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -33,9 +33,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/jerynmathew/python-civitas"
+Homepage = "https://jerynmathew.github.io/python-civitas/"
 Repository = "https://github.com/jerynmathew/python-civitas"
-Documentation = "https://github.com/jerynmathew/python-civitas#readme"
+Documentation = "https://jerynmathew.github.io/python-civitas/"
 "Bug Tracker" = "https://github.com/jerynmathew/python-civitas/issues"
 
 [project.optional-dependencies]
