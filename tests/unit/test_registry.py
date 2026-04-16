@@ -2,7 +2,7 @@
 
 import pytest
 
-from agency.registry import LocalRegistry, RoutingEntry
+from civitas.registry import LocalRegistry, RoutingEntry
 
 
 @pytest.fixture

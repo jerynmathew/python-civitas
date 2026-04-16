@@ -10,7 +10,7 @@ attribute reference.
 
 ## Tracer
 
-::: agency.observability.tracer.Tracer
+::: civitas.observability.tracer.Tracer
     options:
       members:
         - start_span
@@ -28,13 +28,13 @@ attribute reference.
 
 ## SpanQueue
 
-::: agency.observability.span_queue.SpanQueue
+::: civitas.observability.span_queue.SpanQueue
     options:
       show_source: true
 
 ---
 
-::: agency.observability.span_queue.SpanData
+::: civitas.observability.span_queue.SpanData
     options:
       show_source: false
 
@@ -42,18 +42,18 @@ attribute reference.
 
 ## Export Backends
 
-::: agency.observability.export_backend.ExportBackend
+::: civitas.observability.export_backend.ExportBackend
     options:
       show_source: false
 
 ---
 
-::: agency.observability.export_backend.ConsoleBackend
+::: civitas.observability.export_backend.ConsoleBackend
     options:
       show_source: true
 
 ---
 
-::: agency.observability.export_backend.FanOutBackend
+::: civitas.observability.export_backend.FanOutBackend
     options:
       show_source: true

@@ -3,8 +3,8 @@
 Identical to Level 2 — transport is the only thing that changed.
 """
 
-from agency import AgentProcess
-from agency.messages import Message
+from civitas import AgentProcess
+from civitas.messages import Message
 
 
 class FrontendAgent(AgentProcess):

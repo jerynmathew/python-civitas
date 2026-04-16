@@ -18,13 +18,13 @@ That's it for the first three steps. An API key and Docker are optional extras i
 ## Step 1 — Install
 
 ```bash
-pip install python-agency
+pip install civitas
 ```
 
 To verify:
 
 ```bash
-python -c "import agency; print('ok')"
+python -c "import civitas; print('ok')"
 ```
 
 ---
@@ -35,8 +35,8 @@ Create `hello.py`:
 
 ```python
 import asyncio
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
 
 class Greeter(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
@@ -49,8 +49,8 @@ async def main():
     )
     await runtime.start()
 
-    result = await runtime.ask("greeter", {"name": "Agency"})
-    print(result.payload["greeting"])   # Hello, Agency!
+    result = await runtime.ask("greeter", {"name": "Civitas"})
+    print(result.payload["greeting"])   # Hello, Civitas!
 
     await runtime.stop()
 
@@ -61,7 +61,7 @@ Run it:
 
 ```bash
 python hello.py
-# Hello, Agency!
+# Hello, Civitas!
 ```
 
 What happened:
@@ -76,16 +76,16 @@ What happened:
 
 ## Step 3 — Add Supervision
 
-Supervision is why Agency exists. This example has an agent that crashes randomly. The supervisor restarts it automatically, every time.
+Supervision is why Civitas exists. This example has an agent that crashes randomly. The supervisor restarts it automatically, every time.
 
 Create `supervised.py`:
 
 ```python
 import asyncio
 import random
-from agency import AgentProcess, Runtime, Supervisor
-from agency.errors import ErrorAction
-from agency.messages import Message
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.errors import ErrorAction
+from civitas.messages import Message
 
 class FlakyWorker(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
@@ -157,8 +157,8 @@ Create `pipeline.py`:
 
 ```python
 import asyncio
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
 
 class Router(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
@@ -186,7 +186,7 @@ async def main():
     )
     await runtime.start()
 
-    result = await runtime.ask("router", {"input": "hello from agency"})
+    result = await runtime.ask("router", {"input": "hello from civitas"})
     print(result.payload["output"])   # >>> HELLO FROM AGENCY <<<
 
     await runtime.stop()
@@ -208,10 +208,10 @@ See [Messaging](messaging.md) for request-reply internals, backpressure, and tra
 
 ## Step 5 — Add an LLM
 
-Agency's `ModelProvider` protocol abstracts LLM calls. Install the Anthropic provider:
+Civitas's `ModelProvider` protocol abstracts LLM calls. Install the Anthropic provider:
 
 ```bash
-pip install python-agency[anthropic]
+pip install civitas[anthropic]
 export ANTHROPIC_API_KEY=sk-...
 ```
 
@@ -219,9 +219,9 @@ Create `with_llm.py`:
 
 ```python
 import asyncio
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
-from agency.plugins.anthropic import AnthropicProvider
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
+from civitas.plugins.anthropic import AnthropicProvider
 
 class Assistant(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
@@ -262,9 +262,9 @@ Tools are registered with a `ToolRegistry` and injected into agents as `self.too
 ```python
 import asyncio
 from typing import Any
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
-from agency.plugins.tools import ToolRegistry
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
+from civitas.plugins.tools import ToolRegistry
 
 class CalculatorTool:
     name = "calculator"
@@ -312,11 +312,11 @@ See [Plugins](plugins.md) for tool schema conventions and building custom provid
 
 ## Step 7 — Observe what's happening
 
-Agency generates OpenTelemetry spans for every message, LLM call, and tool invocation automatically. No instrumentation code required.
+Civitas generates OpenTelemetry spans for every message, LLM call, and tool invocation automatically. No instrumentation code required.
 
 ### Console output (zero dependencies)
 
-With just the core install, Agency prints a human-readable trace summary to the console:
+With just the core install, Civitas prints a human-readable trace summary to the console:
 
 ```
 [10:00:00.123] orchestrator → researcher: research_query
@@ -332,12 +332,12 @@ Total: 2.977s  |  2 LLM calls  |  $0.0092  |  0 errors
 ### Jaeger (full distributed tracing)
 
 ```bash
-pip install python-agency[otel]
+pip install civitas[otel]
 
 # Start Jaeger (all-in-one for local dev)
 docker run -d -p 16686:16686 -p 4317:4317 jaegertracing/all-in-one
 
-# Point Agency at it
+# Point Civitas at it
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 
 # Run any example
@@ -373,8 +373,8 @@ supervision:
 ```
 
 ```bash
-pip install python-agency[zmq]
-agency run --topology topology.yaml
+pip install civitas[zmq]
+civitas run --topology topology.yaml
 ```
 
 Change `type: zmq` to `type: nats` for distributed deployment across machines. See [Transports](transports.md) and [Deployment](deployment.md).
@@ -393,7 +393,7 @@ Change `type: zmq` to `type: nats` for distributed deployment across machines. S
 | Define your system in YAML | [Topology YAML](topology.md) |
 | Deploy to production | [Deployment](deployment.md) |
 | Wrap an existing LangGraph agent | [Framework Adapters](adapters.md) |
-| Contribute to Agency | [Contributing](../CONTRIBUTING.md) |
+| Contribute to Civitas | [Contributing](contributing.md) |
 
 Or run the full hero demo:
 

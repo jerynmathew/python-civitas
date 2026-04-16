@@ -19,11 +19,11 @@ import random
 import sys
 from typing import Any
 
-from agency import AgentProcess, Runtime, Supervisor
-from agency.errors import ErrorAction
-from agency.messages import Message
-from agency.plugins.model import ModelResponse
-from agency.plugins.tools import ToolRegistry
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.errors import ErrorAction
+from civitas.messages import Message
+from civitas.plugins.model import ModelResponse
+from civitas.plugins.tools import ToolRegistry
 
 # -- Mock providers (zero deps, no API key) --
 
@@ -180,7 +180,7 @@ async def main() -> None:
     use_live = "--live" in sys.argv
 
     if use_live:
-        from agency.plugins.anthropic import AnthropicProvider
+        from civitas.plugins.anthropic import AnthropicProvider
 
         llm = AnthropicProvider()
     else:

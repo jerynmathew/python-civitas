@@ -1,6 +1,6 @@
 # Transports
 
-The transport is the delivery layer underneath the MessageBus. Agency provides three implementations that form a deployment scaling ladder — from a single Python process to a distributed multi-machine cluster. The same agent code runs at every level; only the topology configuration changes.
+The transport is the delivery layer underneath the MessageBus. Civitas provides three implementations that form a deployment scaling ladder — from a single Python process to a distributed multi-machine cluster. The same agent code runs at every level; only the topology configuration changes.
 
 ---
 
@@ -135,7 +135,7 @@ ZMQ uses an XSUB/XPUB proxy to bridge PUB/SUB across OS processes. One process s
 **Install:**
 
 ```bash
-pip install python-agency[zmq]
+pip install civitas[zmq]
 ```
 
 **Configuration:**
@@ -182,10 +182,10 @@ transport:
 
 ```bash
 # Terminal 1 — supervisor process (starts the ZMQ proxy)
-agency run --topology examples/multi_process.yaml --process supervisor
+civitas run --topology examples/multi_process.yaml --process supervisor
 
 # Terminal 2 — worker process (connects to the proxy)
-agency run --topology examples/multi_process.yaml --process worker
+civitas run --topology examples/multi_process.yaml --process worker
 ```
 
 ### The ZMQ proxy
@@ -194,7 +194,7 @@ The proxy is a lightweight XSUB/XPUB forwarder. Only one process should start it
 
 The proxy runs in a background daemon thread. It can handle millions of messages per second and adds negligible latency.
 
-**Slow-joiner mitigation:** ZMQ PUB/SUB has a brief connection handshake period during which early messages may be dropped. Agency's `wait_ready()` introduces a 300ms delay after all subscriptions are registered to mitigate this. For production use, agents should be started before messages are sent — which the Runtime's startup sequence guarantees.
+**Slow-joiner mitigation:** ZMQ PUB/SUB has a brief connection handshake period during which early messages may be dropped. Civitas's `wait_ready()` introduces a 300ms delay after all subscriptions are registered to mitigate this. For production use, agents should be started before messages are sent — which the Runtime's startup sequence guarantees.
 
 ---
 
@@ -225,12 +225,12 @@ graph TD
     C <-->|"nats://host:4222"| N
 ```
 
-NATS maps each agent address to a subject under the `agency.agent.` prefix. For example, an agent named `researcher` subscribes to `agency.agent.researcher`. Request-reply uses the same ephemeral subscription pattern as the other transports.
+NATS maps each agent address to a subject under the `civitas.agent.` prefix. For example, an agent named `researcher` subscribes to `civitas.agent.researcher`. Request-reply uses the same ephemeral subscription pattern as the other transports.
 
 **Install:**
 
 ```bash
-pip install python-agency[nats]
+pip install civitas[nats]
 ```
 
 **Configuration:**
@@ -287,19 +287,19 @@ For production, run a NATS cluster. Refer to the [NATS deployment docs](https://
 
 ```bash
 # Machine A — supervisor process
-agency run --topology examples/distributed.yaml
+civitas run --topology examples/distributed.yaml
 
 # Machine B — worker process (update servers URL to point at your NATS host)
-agency run --topology examples/distributed.yaml --process worker
+civitas run --topology examples/distributed.yaml --process worker
 ```
 
 ### NATS subject mapping
 
 | Agent name | NATS subject |
 |---|---|
-| `researcher` | `agency.agent.researcher` |
-| `web_worker` | `agency.agent.web_worker` |
-| `_reply.{uuid}` | `agency.agent._reply.{uuid}` |
+| `researcher` | `civitas.agent.researcher` |
+| `web_worker` | `civitas.agent.web_worker` |
+| `_reply.{uuid}` | `civitas.agent._reply.{uuid}` |
 
 ### JetStream (durable subscriptions)
 
@@ -327,7 +327,7 @@ At Level 2 and Level 3, agents marked `process: worker` in the topology run in s
 
 ```python
 # Programmatically launching a worker
-from agency import Worker
+from civitas import Worker
 from myapp import ResearchAgent
 
 worker = Worker(
@@ -368,7 +368,7 @@ transport:
   jetstream: true
 ```
 
-The only other difference between levels is how you launch processes — via the `agency run` CLI with different `--process` flags or different topology files per node.
+The only other difference between levels is how you launch processes — via the `civitas run` CLI with different `--process` flags or different topology files per node.
 
 ---
 
@@ -392,9 +392,9 @@ The only other difference between levels is how you launch processes — via the
 Implement the five-method `Transport` protocol and pass an instance to `Runtime` via the `components` parameter:
 
 ```python
-from agency import Runtime, Supervisor
-from agency.components import ComponentSet, build_component_set
-from agency.serializer import MsgpackSerializer
+from civitas import Runtime, Supervisor
+from civitas.components import ComponentSet, build_component_set
+from civitas.serializer import MsgpackSerializer
 
 class RedisTransport:
     """Example custom transport backed by Redis pub/sub."""
@@ -411,7 +411,7 @@ class RedisTransport:
         ...
 
     async def publish(self, address: str, data: bytes) -> None:
-        await self._redis.publish(f"agency:{address}", data)
+        await self._redis.publish(f"civitas:{address}", data)
 
     async def request(self, address: str, data: bytes, timeout: float) -> bytes:
         # implement ephemeral reply pattern

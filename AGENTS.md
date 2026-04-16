@@ -1,6 +1,6 @@
 # AGENTS.md
 
-**Package:** `python-agency` | **Import:** `import agency` | **Python:** ≥ 3.12
+**Package:** `python-civitas` | **Import:** `import civitas` | **Python:** ≥ 3.12
 
 This file guides AI coding agents (Claude Code, Cursor, Codex, Gemini CLI) working on
 this codebase. Read it fully before writing any code.
@@ -9,10 +9,10 @@ this codebase. Read it fully before writing any code.
 
 ## Project Overview
 
-`python-agency` is an OSS Python **SDK + library + CLI** for building multi-agent
+`python-civitas` is an OSS Python **SDK + library + CLI** for building multi-agent
 systems. It exposes three distinct surfaces — keep all three in mind at all times:
 
-- **Public SDK / library** — importable by downstream projects (`import agency`)
+- **Public SDK / library** — importable by downstream projects (`import civitas`)
 - **CLI** — entry point for end users
 - **Async runtime** — event-loop-based message bus, supervision tree, LLM integration
 
@@ -27,14 +27,14 @@ A change to an internal module can break the public SDK, the CLI, or both.
 ## Install
 
 ```bash
-pip install python-agency                          # core runtime (print-based console tracing)
-pip install python-agency[otel]                    # + OpenTelemetry tracing (Jaeger, Grafana, etc.)
-pip install python-agency[anthropic]               # + Anthropic Claude (native SDK)
-pip install python-agency[openai]                  # + OpenAI GPT-4o / o-series (native SDK)
-pip install python-agency[gemini]                  # + Google Gemini 2.0 / 1.5 (native SDK)
-pip install python-agency[mistral]                 # + Mistral Large / Codestral (native SDK)
-pip install python-agency[litellm]                 # + 100+ models via LiteLLM proxy
-pip install python-agency[anthropic,otel]          # typical dev setup
+pip install civitas                          # core runtime (print-based console tracing)
+pip install civitas[otel]                    # + OpenTelemetry tracing (Jaeger, Grafana, etc.)
+pip install civitas[anthropic]               # + Anthropic Claude (native SDK)
+pip install civitas[openai]                  # + OpenAI GPT-4o / o-series (native SDK)
+pip install civitas[gemini]                  # + Google Gemini 2.0 / 1.5 (native SDK)
+pip install civitas[mistral]                 # + Mistral Large / Codestral (native SDK)
+pip install civitas[litellm]                 # + 100+ models via LiteLLM proxy
+pip install civitas[anthropic,otel]          # typical dev setup
 ```
 
 ---
@@ -42,17 +42,17 @@ pip install python-agency[anthropic,otel]          # typical dev setup
 ## Quick Import Reference
 
 ```python
-from agency import AgentProcess, Supervisor, Runtime, Worker
-from agency.messages import Message
-from agency.errors import AgencyError, ErrorAction
-from agency.plugins.anthropic import AnthropicProvider   # requires [anthropic]
-from agency.plugins.openai import OpenAIProvider         # requires [openai]
-from agency.plugins.gemini import GeminiProvider         # requires [gemini]
-from agency.plugins.mistral import MistralProvider       # requires [mistral]
-from agency.plugins.litellm import LiteLLMProvider       # requires [litellm]
-from agency.plugins.tools import ToolProvider, ToolRegistry
-from agency.adapters.langgraph import LangGraphAgent
-from agency.adapters.openai import OpenAIAgent
+from civitas import AgentProcess, Supervisor, Runtime, Worker
+from civitas.messages import Message
+from civitas.errors import CivitasError, ErrorAction
+from civitas.plugins.anthropic import AnthropicProvider   # requires [anthropic]
+from civitas.plugins.openai import OpenAIProvider         # requires [openai]
+from civitas.plugins.gemini import GeminiProvider         # requires [gemini]
+from civitas.plugins.mistral import MistralProvider       # requires [mistral]
+from civitas.plugins.litellm import LiteLLMProvider       # requires [litellm]
+from civitas.plugins.tools import ToolProvider, ToolRegistry
+from civitas.adapters.langgraph import LangGraphAgent
+from civitas.adapters.openai import OpenAIAgent
 ```
 
 ---
@@ -60,9 +60,9 @@ from agency.adapters.openai import OpenAIAgent
 ## Repository Layout
 
 ```
-agency/
+civitas/
   __init__.py            # Public SDK surface — be conservative here
-  __main__.py            # Entry point: python -m agency
+  __main__.py            # Entry point: python -m civitas
   process.py             # AgentProcess
   supervisor.py          # Supervisor, RestartStrategy, BackoffPolicy
   runtime.py             # Runtime — wires components, manages lifecycle
@@ -70,18 +70,18 @@ agency/
   messages.py            # Message dataclass
   registry.py            # Registry — agent name → instance lookup
   serializer.py          # Serializer protocol + msgpack/json impls
-  errors.py              # AgencyError hierarchy + ErrorAction enum
+  errors.py              # CivitasError hierarchy + ErrorAction enum
   config.py              # Settings — centralised env var access
   worker.py              # Worker — hosts agents in a worker process
   cli/                   # CLI package (see docs/08-CLI-Design.md)
     __init__.py           # App assembly, exports main()
     app.py                # Shared Typer app, Console, output helpers
-    init.py               # agency init
-    run.py                # agency run
-    state.py              # agency state list|clear
-    topology.py           # agency topology validate|show|diff
-    deploy.py             # agency deploy (M2.7)
-    version.py            # agency version
+    init.py               # civitas init
+    run.py                # civitas run
+    state.py              # civitas state list|clear
+    topology.py           # civitas topology validate|show|diff
+    deploy.py             # civitas deploy (M2.7)
+    version.py            # civitas version
     _templates/           # Scaffolding templates ($variable syntax)
   dashboard/
     __init__.py
@@ -168,8 +168,8 @@ or real API keys.
 | Run a single test | `uv run pytest tests/unit/test_foo.py::test_bar -v` |
 | Lint | `uv run ruff check .` |
 | Format | `uv run ruff format .` |
-| Type-check | `uv run mypy agency/` |
-| Run CLI locally | `uv run agency [args]` |
+| Type-check | `uv run mypy civitas/` |
+| Run CLI locally | `uv run civitas [args]` |
 | Build package | `uv build` |
 
 Run **lint + format + unit tests** before finishing any task:
@@ -350,7 +350,7 @@ plugins:
   state:
     type: sqlite
     config:
-      db_path: /data/agency.db
+      db_path: /data/civitas.db
 
 supervision:
   name: root
@@ -377,7 +377,7 @@ registered in a `ToolRegistry` that is passed to `Runtime`.
 
 ```python
 from typing import Any
-from agency.plugins.tools import ToolProvider, ToolRegistry
+from civitas.plugins.tools import ToolProvider, ToolRegistry
 
 class WebSearchTool:
     """Search the web and return a list of results."""
@@ -521,7 +521,7 @@ response = await self.llm.chat(model="gemini/gemini-2.0-flash", messages=[...])
 **Rules:**
 - All LLM calls must be `async` — `self.llm.chat()` is already async.
 - Prefer named constants for model names when available; inline strings are
-  acceptable until `agency.models` is introduced.
+  acceptable until `civitas.models` is introduced.
 - Mock `self.llm` in unit tests — never make real API calls in `tests/unit/`.
 - `429` / transient error handling is built into the provider layer. Do not add
   a second retry layer on top unless explicitly required.
@@ -534,11 +534,11 @@ Wrap LLM and tool calls in spans for tracing (no-ops when no tracer is configure
 async def handle(self, message: Message) -> Message | None:
     with self.llm_span("claude-sonnet-4-6") as span:
         response = await self.llm.chat(model="claude-sonnet-4-6", messages=[...])
-        span.set_attribute("agency.llm.tokens_out", response.tokens_out)
+        span.set_attribute("civitas.llm.tokens_out", response.tokens_out)
 
     with self.tool_span("web_search") as span:
         result = await self.tools.get("web_search").execute(query="...")
-        span.set_attribute("agency.tool.result_size_bytes", len(str(result)))
+        span.set_attribute("civitas.tool.result_size_bytes", len(str(result)))
 ```
 
 ---
@@ -612,14 +612,14 @@ asyncio.run(main())
 - **Integration tests** (`tests/integration/`): may call real APIs. Skipped by default in CI.
   Run locally: `uv run pytest tests/integration/`
 - Aim for **≥ 85% coverage** (enforced by `--cov-fail-under` in pyproject.toml).
-- Test file names mirror source: `agency/bus.py` → `tests/unit/test_bus.py`.
+- Test file names mirror source: `civitas/bus.py` → `tests/unit/test_bus.py`.
 - Use `pytest.fixture` over `setUp`/`tearDown`. Prefer function-scoped fixtures.
 
 ---
 
 ## Public SDK & CLI Stability
 
-- `agency/__init__.py` is the **public surface**. Think twice before removing
+- `civitas/__init__.py` is the **public surface**. Think twice before removing
   or renaming anything exported there — it is a breaking change.
 - CLI argument names and output formats are also public API. Changing them requires
   a deprecation notice in the changelog.
@@ -651,16 +651,16 @@ Fix circular imports by refactoring — not by scoping.
    from typing import TYPE_CHECKING
 
    if TYPE_CHECKING:
-       from agency.bus import MessageBus
+       from civitas.bus import MessageBus
    ```
 
 2. **Optional dependency gating** — imports of packages from optional extras
    (`[anthropic]`, `[otel]`, `[zmq]`, `[nats]`) must be guarded so that
-   `import agency` does not fail when the extra is not installed.
+   `import civitas` does not fail when the extra is not installed.
    ```python
    # ✅ Acceptable — nats-py is an optional extra
    if self._transport_type == "nats":
-       from agency.transport.nats import NATSTransport
+       from civitas.transport.nats import NATSTransport
    ```
 
 Outside these two cases, all imports belong at the top of the file.
@@ -851,7 +851,7 @@ def get_client() -> Anthropic:
 
 - Never use bare `except:` — catches `KeyboardInterrupt` and `SystemExit`.
 - Never use `except Exception:` without re-raising or converting to a domain exception.
-- All project exceptions live in `agency/errors.py` and inherit from `AgencyError`.
+- All project exceptions live in `civitas/errors.py` and inherit from `CivitasError`.
 
 ```python
 # ❌ Wrong
@@ -864,7 +864,7 @@ except:
 try:
     ...
 except SomeSpecificError as e:
-    raise AgencyError("Context about what failed") from e
+    raise CivitasError("Context about what failed") from e
 ```
 
 ---
@@ -929,18 +929,18 @@ async with AsyncClient() as client:
 ### 18. Reading env vars directly
 
 Never call `os.environ["KEY"]` in application code — it throws on missing keys
-and scatters config logic. Use the central settings object (`agency/config.py`).
+and scatters config logic. Use the central settings object (`civitas/config.py`).
 
 ```python
 # ❌ Wrong
 api_key = os.environ["ANTHROPIC_API_KEY"]
 
 # ✅ Correct
-from agency.config import settings
+from civitas.config import settings
 api_key = settings.anthropic_api_key
 ```
 
-> `agency.config` is implemented. All env var reads must go through `settings`.
+> `civitas.config` is implemented. All env var reads must go through `settings`.
 
 ---
 

@@ -3,8 +3,8 @@
 # All plugins loaded from YAML — no code imports needed.
 #
 # Usage:
-#   pip install python-agency[nats] python-agency[anthropic]
-#   agency run --topology examples/production.yaml
+#   pip install civitas[nats] civitas[anthropic]
+#   civitas run --topology examples/production.yaml
 
 transport:
   type: nats

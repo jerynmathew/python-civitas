@@ -8,13 +8,13 @@ import asyncio
 
 import pytest
 
-from agency.messages import Message, _new_span_id
-from agency.observability.tracer import Tracer
+from civitas.messages import Message, _new_span_id
+from civitas.observability.tracer import Tracer
 
 # Try to import OTEL test utilities
 _HAS_OTEL = False
 try:
-    from agency.plugins.otel import create_test_tracer
+    from civitas.plugins.otel import create_test_tracer
 
     _HAS_OTEL = True
 except ImportError:
@@ -28,7 +28,7 @@ except ImportError:
 
 @pytest.mark.skipif(not _HAS_OTEL, reason="opentelemetry-sdk not installed")
 async def test_send_receive_spans_have_enrichment():
-    """Send/receive spans include agency.sender, agency.recipient attributes."""
+    """Send/receive spans include civitas.sender, civitas.recipient attributes."""
     tracer, exporter = create_test_tracer()
 
     msg = Message(
@@ -50,14 +50,14 @@ async def test_send_receive_spans_have_enrichment():
 
     # Check send span attributes
     send_attrs = dict(spans[0].attributes)
-    assert send_attrs["agency.sender"] == "agent_a"
-    assert send_attrs["agency.recipient"] == "agent_b"
-    assert send_attrs["agency.message_type"] == "test_msg"
+    assert send_attrs["civitas.sender"] == "agent_a"
+    assert send_attrs["civitas.recipient"] == "agent_b"
+    assert send_attrs["civitas.message_type"] == "test_msg"
 
     # Check receive span attributes
     recv_attrs = dict(spans[1].attributes)
-    assert recv_attrs["agency.sender"] == "agent_a"
-    assert recv_attrs["agency.recipient"] == "agent_b"
+    assert recv_attrs["civitas.sender"] == "agent_a"
+    assert recv_attrs["civitas.recipient"] == "agent_b"
 
 
 @pytest.mark.skipif(not _HAS_OTEL, reason="opentelemetry-sdk not installed")
@@ -138,7 +138,7 @@ async def test_console_fallback_send_format(caplog):
         trace_id="abc123",
         span_id=_new_span_id(),
     )
-    with caplog.at_level("DEBUG", logger="agency.observability.tracer"):
+    with caplog.at_level("DEBUG", logger="civitas.observability.tracer"):
         span = tracer.start_send_span(msg)
         span.end()
 
@@ -149,7 +149,7 @@ async def test_console_fallback_llm_format(caplog):
     """Console exporter logs LLM summary line."""
     tracer = _make_console_tracer()
 
-    with caplog.at_level("DEBUG", logger="agency.observability.tracer"):
+    with caplog.at_level("DEBUG", logger="civitas.observability.tracer"):
         span = tracer.start_llm_span("claude-test", trace_id="trace123")
         tracer.end_llm_span(span, tokens_in=100, tokens_out=50, cost_usd=0.005)
 
@@ -164,7 +164,7 @@ async def test_console_fallback_tool_format(caplog):
     """Console exporter logs tool summary line."""
     tracer = _make_console_tracer()
 
-    with caplog.at_level("DEBUG", logger="agency.observability.tracer"):
+    with caplog.at_level("DEBUG", logger="civitas.observability.tracer"):
         span = tracer.start_tool_span("web_search")
         tracer.end_tool_span(span, status="ok")
 

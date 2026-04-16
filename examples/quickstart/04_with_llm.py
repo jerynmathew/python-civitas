@@ -14,9 +14,9 @@ Run:
 import asyncio
 import sys
 
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
-from agency.plugins.model import ModelResponse
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
+from civitas.plugins.model import ModelResponse
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ async def main() -> None:
     use_live = "--live" in sys.argv
 
     if use_live:
-        from agency.plugins.anthropic import AnthropicProvider
+        from civitas.plugins.anthropic import AnthropicProvider
         llm = AnthropicProvider()
         print("Using AnthropicProvider (live)\n")
     else:

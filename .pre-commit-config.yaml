@@ -10,6 +10,6 @@ repos:
     rev: v1.10.1
     hooks:
       - id: mypy
-        args: [agency/]
+        args: [civitas/]
         additional_dependencies: [types-pyyaml]
         pass_filenames: false

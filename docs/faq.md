@@ -14,14 +14,14 @@ Common questions and objections, answered directly.
 - **Latency per step** is in the tens-to-hundreds of milliseconds because every transition writes to the database
 - **Local development** requires running a local Temporal server or using the Temporal Cloud
 
-Agency is designed for the common case: **LLM-backed agents that mostly do I/O**. The failure mode is "an agent crashes between two LLM calls" — not "a 10,000-step workflow must resume exactly where it left off." Agency's supervision tree restarts the crashed agent in milliseconds, optionally restoring its last `self.checkpoint()` from SQLite. No external server required.
+Civitas is designed for the common case: **LLM-backed agents that mostly do I/O**. The failure mode is "an agent crashes between two LLM calls" — not "a 10,000-step workflow must resume exactly where it left off." Civitas's supervision tree restarts the crashed agent in milliseconds, optionally restoring its last `self.checkpoint()` from SQLite. No external server required.
 
 **Use Temporal when:**
 - You have long-running workflows measured in days or weeks
 - Exact replay semantics are a legal or compliance requirement
 - You need cross-language workflow coordination
 
-**Use Agency when:**
+**Use Civitas when:**
 - You want fault tolerance with zero infrastructure overhead
 - Your agents are I/O-bound (LLM calls, API calls, tool use)
 - You want to start locally and scale to distributed without rewriting
@@ -34,7 +34,7 @@ Agency is designed for the common case: **LLM-backed agents that mostly do I/O**
 
 The differences:
 
-| | LangGraph | Agency |
+| | LangGraph | Civitas |
 |---|---|---|
 | **Mental model** | Graph of nodes and edges | Supervision tree of actor processes |
 | **Fault tolerance** | Manual retry logic per node | Automatic supervisor restart with backoff |
@@ -43,9 +43,9 @@ The differences:
 | **Scalability** | Single Python process | Level 1 → 4 ladder, same code |
 | **Observability** | Manual instrumentation | Automatic OTEL spans for every message and LLM call |
 
-LangGraph gives you more control over the graph structure but leaves fault tolerance, scaling, and observability to you. Agency makes those properties automatic and provides a path from single-process development to multi-machine production.
+LangGraph gives you more control over the graph structure but leaves fault tolerance, scaling, and observability to you. Civitas makes those properties automatic and provides a path from single-process development to multi-machine production.
 
-LangGraph agents can also be wrapped in Agency via `LangGraphAgent` — you get Agency's supervision and transport on top of a compiled LangGraph graph. See [Adapters](adapters.md).
+LangGraph agents can also be wrapped in Civitas via `LangGraphAgent` — you get Civitas's supervision and transport on top of a compiled LangGraph graph. See [Adapters](adapters.md).
 
 ---
 
@@ -53,9 +53,9 @@ LangGraph agents can also be wrapped in Agency via `LangGraphAgent` — you get 
 
 **CrewAI** is a high-level framework for defining teams of agents with roles, goals, and backstories. It is designed for ease of use and rapid prototyping.
 
-Agency is a lower-level runtime with different priorities:
+Civitas is a lower-level runtime with different priorities:
 
-| | CrewAI | Agency |
+| | CrewAI | Civitas |
 |---|---|---|
 | **Abstraction level** | High — roles, goals, crews | Low — processes, supervisors, mailboxes |
 | **Control** | Declarative, opinionated | Explicit, composable |
@@ -64,15 +64,15 @@ Agency is a lower-level runtime with different priorities:
 | **Transport** | LLM routing only | Any message type, any transport |
 | **Observability** | Limited | Full OTEL traces per message, LLM call, tool |
 
-CrewAI is better for "define a team and let them work." Agency is better for "build a reliable system where specific agents have specific responsibilities and must not stay down."
+CrewAI is better for "define a team and let them work." Civitas is better for "build a reliable system where specific agents have specific responsibilities and must not stay down."
 
-Agency and CrewAI are not mutually exclusive. A CrewAI crew can run inside an `AgentProcess`, supervised by Agency's tree.
+Civitas and CrewAI are not mutually exclusive. A CrewAI crew can run inside an `AgentProcess`, supervised by Civitas's tree.
 
 ---
 
 ## "Isn't this what Akka does?"
 
-Yes — conceptually. Agency is the BEAM/Akka actor model applied to Python LLM agents.
+Yes — conceptually. Civitas is the BEAM/Akka actor model applied to Python LLM agents.
 
 **Akka** (and Erlang/OTP before it) pioneered:
 - Supervision trees with restart strategies
@@ -80,9 +80,9 @@ Yes — conceptually. Agency is the BEAM/Akka actor model applied to Python LLM 
 - "Let it crash" fault tolerance
 - Per-actor state isolated from other actors
 
-Agency brings the same ideas to Python:
+Civitas brings the same ideas to Python:
 
-| | Akka | Agency |
+| | Akka | Civitas |
 |---|---|---|
 | **Language** | Scala/Java | Python |
 | **License** | BSL 1.1 (Business Source) | Apache 2.0 |
@@ -92,9 +92,9 @@ Agency brings the same ideas to Python:
 | **Deployment** | Akka Cluster | InProcess / ZMQ / NATS |
 | **LLM integration** | None built-in | ModelProvider, ToolProvider, StateStore |
 
-Akka Cluster's BSL license means production use requires a commercial agreement after the first year. Agency is Apache 2.0 — use it in production, fork it, build on it.
+Akka Cluster's BSL license means production use requires a commercial agreement after the first year. Civitas is Apache 2.0 — use it in production, fork it, build on it.
 
-If you come from Erlang/OTP or Akka, Agency's mental model will feel immediately familiar. The primitives map directly: `AgentProcess` ↔ GenServer, `Supervisor` ↔ Supervisor, ONE_FOR_ONE/ONE_FOR_ALL/REST_FOR_ONE ↔ the same three OTP strategies.
+If you come from Erlang/OTP or Akka, Civitas's mental model will feel immediately familiar. The primitives map directly: `AgentProcess` ↔ GenServer, `Supervisor` ↔ Supervisor, ONE_FOR_ONE/ONE_FOR_ALL/REST_FOR_ONE ↔ the same three OTP strategies.
 
 ---
 
@@ -113,29 +113,29 @@ An agent waiting for a Claude response spends 99% of its time in C-level network
 - CPU-bound Python code: matrix operations in pure Python, text tokenization in Python, etc.
 - GPU inference in Python (though PyTorch releases the GIL for CUDA operations)
 
-For those workloads, move the affected agents to Level 2 (ZMQ) to give them their own OS process and their own GIL. Agency's `process: worker` field in the topology makes this a one-line change.
+For those workloads, move the affected agents to Level 2 (ZMQ) to give them their own OS process and their own GIL. Civitas's `process: worker` field in the topology makes this a one-line change.
 
 ---
 
-## "Can I use Agency with my existing framework?"
+## "Can I use Civitas with my existing framework?"
 
-Yes. Agency provides adapters for common frameworks:
+Yes. Civitas provides adapters for common frameworks:
 
-**LangGraph** — wrap a compiled `StateGraph` in a `LangGraphAgent`. The graph runs inside Agency's message loop, supervised by the tree, with full OTEL trace propagation.
+**LangGraph** — wrap a compiled `StateGraph` in a `LangGraphAgent`. The graph runs inside Civitas's message loop, supervised by the tree, with full OTEL trace propagation.
 
-**OpenAI Agents SDK** — wrap an OpenAI `Agent` in an `OpenAIAgent`. Supervision, transport, and observability from Agency wrap the OpenAI agent's tool-use loop.
+**OpenAI Agents SDK** — wrap an OpenAI `Agent` in an `OpenAIAgent`. Supervision, transport, and observability from Civitas wrap the OpenAI agent's tool-use loop.
 
 See [Adapters](adapters.md) for examples.
 
-More generally, any Python object can be called from inside an `AgentProcess.handle()`. If your existing code is an async function, a class with methods, or an API client, you call it directly — Agency does not restrict what you do inside an agent.
+More generally, any Python object can be called from inside an `AgentProcess.handle()`. If your existing code is an async function, a class with methods, or an API client, you call it directly — Civitas does not restrict what you do inside an agent.
 
 ---
 
-## "Agency vs. a plain asyncio task runner — what's the difference?"
+## "Civitas vs. a plain asyncio task runner — what's the difference?"
 
 `asyncio.create_task()` is a primitive. It creates a coroutine that runs concurrently with other tasks. If it raises an exception and you don't catch it, the exception is silently swallowed (logged as an "unhandled exception in task" at Python 3.11+, but nothing restarts the task).
 
-Agency adds:
+Civitas adds:
 
 **Automatic fault recovery.** When an agent raises an unhandled exception, its supervisor restarts it according to the configured strategy and backoff policy. You don't write try/except in every handler — you let it crash and let the supervisor handle it.
 
@@ -166,15 +166,15 @@ For most LLM workloads, losing an in-flight message is acceptable: the human or 
 
 ---
 
-## "How does Agency handle distributed state?"
+## "How does Civitas handle distributed state?"
 
-Agency does not provide a distributed state store out of the box. Each agent's `self.state` is local to that agent process.
+Civitas does not provide a distributed state store out of the box. Each agent's `self.state` is local to that agent process.
 
 `SQLiteStateStore` persists state to a local SQLite file — suitable for a single machine. If an agent moves between machines, its state does not follow automatically.
 
 For distributed state:
 - Use a shared backing store (Redis, PostgreSQL) by implementing a custom `StateStore` — three methods, see [Plugins](plugins.md#writing-a-custom-statestore)
-- Pass state explicitly in messages between agents — Agency's message-passing model is a natural fit for this
+- Pass state explicitly in messages between agents — Civitas's message-passing model is a natural fit for this
 - Use NATS JetStream key-value store via a custom plugin
 
-Distributed state is intentionally out of scope for the core runtime. The right choice depends on your consistency requirements, and Agency's plugin protocol makes it easy to wire in whatever store fits.
+Distributed state is intentionally out of scope for the core runtime. The right choice depends on your consistency requirements, and Civitas's plugin protocol makes it easy to wire in whatever store fits.

@@ -6,10 +6,10 @@ Demonstrates ModelProvider and ToolProvider plugin injection via Runtime.
 import asyncio
 from typing import Any
 
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
-from agency.plugins.anthropic import AnthropicProvider
-from agency.plugins.tools import ToolRegistry
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
+from civitas.plugins.anthropic import AnthropicProvider
+from civitas.plugins.tools import ToolRegistry
 
 
 class WebSearchTool:

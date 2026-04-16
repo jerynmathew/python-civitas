@@ -8,10 +8,10 @@ console summary is printed.
 import asyncio
 from typing import Any
 
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
-from agency.plugins.model import ModelResponse
-from agency.plugins.tools import ToolRegistry
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
+from civitas.plugins.model import ModelResponse
+from civitas.plugins.tools import ToolRegistry
 
 
 # -- Mock LLM provider (replace with AnthropicProvider for real use) --

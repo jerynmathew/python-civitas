@@ -1,19 +1,19 @@
 # Core Concepts
 
-This document explains the mental model behind Agency. Read it once to understand why the pieces are shaped the way they are — the rest of the docs assume this foundation.
+This document explains the mental model behind Civitas. Read it once to understand why the pieces are shaped the way they are — the rest of the docs assume this foundation.
 
 ---
 
 ## The OTP connection
 
-Agency is built on ideas borrowed from Erlang/OTP — specifically from [GenServer](https://hexdocs.pm/elixir/GenServer.html) and [Supervisor](https://hexdocs.pm/elixir/Supervisor.html). Erlang's production record over 30+ years comes not from the language itself but from two architectural ideas:
+Civitas is built on ideas borrowed from Erlang/OTP — specifically from [GenServer](https://hexdocs.pm/elixir/GenServer.html) and [Supervisor](https://hexdocs.pm/elixir/Supervisor.html). Erlang's production record over 30+ years comes not from the language itself but from two architectural ideas:
 
 1. **Let it crash.** Errors should not be hidden with defensive code. Let processes fail cleanly. Something else — a supervisor — is responsible for deciding what to do next.
 2. **Hierarchical process trees.** Processes are organized into trees. Each node in the tree is responsible for the health of its children. Failure propagates upward only when a node exhausts its own recovery options.
 
 These ideas translate directly to AI agent systems. Agents crash. LLM calls fail. Tools time out. Networks partition. A runtime that treats failure as normal — rather than exceptional — produces systems that stay up.
 
-Agency brings these patterns to Python using asyncio, without requiring Erlang, the BEAM VM, or the JVM.
+Civitas brings these patterns to Python using asyncio, without requiring Erlang, the BEAM VM, or the JVM.
 
 ---
 
@@ -374,8 +374,8 @@ graph TD
     end
 
     subgraph Implementations["Bundled Implementations"]
-        AP["AnthropicProvider\npython-agency[anthropic]"]
-        LP["LiteLLMProvider\npython-agency[litellm]\n100+ models"]
+        AP["AnthropicProvider\npython-civitas[anthropic]"]
+        LP["LiteLLMProvider\npython-civitas[litellm]\n100+ models"]
         IS["InMemoryStateStore\ndefault, volatile"]
         SQ["SQLiteStateStore\nfile-based persistence"]
     end
@@ -500,10 +500,10 @@ The caller never sees the crash. The supervisor handles it between messages.
 
 ---
 
-## What Agency does not do
+## What Civitas does not do
 
-**Agency is not a framework.** It does not define how agents reason, what prompts they use, or how they chain LLM calls. Those decisions belong in your `handle()` method.
+**Civitas is not a framework.** It does not define how agents reason, what prompts they use, or how they chain LLM calls. Those decisions belong in your `handle()` method.
 
-**Agency does not replace LangGraph or CrewAI.** It wraps them. A LangGraph graph runs inside an `AgentProcess` via the [LangGraph adapter](adapters.md), gaining supervision and observability for free.
+**Civitas does not replace LangGraph or CrewAI.** It wraps them. A LangGraph graph runs inside an `AgentProcess` via the [LangGraph adapter](adapters.md), gaining supervision and observability for free.
 
-**Agency does not manage container scheduling.** Level 4 deployment generates Docker Compose configuration. Kubernetes scheduling of those containers is outside scope — use node selectors and resource annotations for that.
+**Civitas does not manage container scheduling.** Level 4 deployment generates Docker Compose configuration. Kubernetes scheduling of those containers is outside scope — use node selectors and resource annotations for that.

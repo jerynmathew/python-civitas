@@ -11,7 +11,7 @@ import asyncio
 import os
 from pathlib import Path
 
-from agency.worker import Worker
+from civitas.worker import Worker
 
 TOPOLOGY = Path(__file__).parent / "topology.yaml"
 

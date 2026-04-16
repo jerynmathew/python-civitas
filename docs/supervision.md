@@ -1,12 +1,12 @@
 # Supervision
 
-Supervision is Agency's core fault-tolerance mechanism. This document covers everything about configuring and composing supervisors: restart strategies, backoff policies, escalation chains, nested trees, and heartbeat-based monitoring for remote agents.
+Supervision is Civitas's core fault-tolerance mechanism. This document covers everything about configuring and composing supervisors: restart strategies, backoff policies, escalation chains, nested trees, and heartbeat-based monitoring for remote agents.
 
 ---
 
 ## The "let it crash" principle
 
-Agency's supervision model is borrowed from Erlang/OTP, and its central idea is counterintuitive: **don't try to recover from errors inside the failing code**. Let the process crash cleanly. A supervisor — which is separate from the failing code — decides what to do.
+Civitas's supervision model is borrowed from Erlang/OTP, and its central idea is counterintuitive: **don't try to recover from errors inside the failing code**. Let the process crash cleanly. A supervisor — which is separate from the failing code — decides what to do.
 
 This separation matters because:
 
@@ -401,11 +401,11 @@ Every supervisor restart emits an OTEL span with the following attributes:
 
 | Attribute | Value |
 |---|---|
-| `agency.supervisor` | Supervisor name |
-| `agency.child` | Name of the restarted child |
-| `agency.restart_count` | Restart number for this child |
-| `agency.strategy` | `ONE_FOR_ONE` / `ONE_FOR_ALL` / `REST_FOR_ONE` |
-| `agency.error` | Exception string that caused the restart |
+| `civitas.supervisor` | Supervisor name |
+| `civitas.child` | Name of the restarted child |
+| `civitas.restart_count` | Restart number for this child |
+| `civitas.strategy` | `ONE_FOR_ONE` / `ONE_FOR_ALL` / `REST_FOR_ONE` |
+| `civitas.error` | Exception string that caused the restart |
 
 These spans are linked to the agent's trace, so you can see the full causal chain: which message triggered the crash, how many restarts occurred, and when the agent recovered.
 

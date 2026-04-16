@@ -9,7 +9,7 @@ See [Transports](../transports.md) for a full guide with architecture diagrams.
 
 ## Protocol
 
-::: agency.transport.Transport
+::: civitas.transport.Transport
     options:
       show_source: false
 
@@ -17,19 +17,19 @@ See [Transports](../transports.md) for a full guide with architecture diagrams.
 
 ## Implementations
 
-::: agency.transport.inprocess.InProcessTransport
+::: civitas.transport.inprocess.InProcessTransport
     options:
       show_source: true
 
 ---
 
-::: agency.transport.zmq.ZMQTransport
+::: civitas.transport.zmq.ZMQTransport
     options:
       show_source: true
 
 ---
 
-::: agency.transport.nats.NATSTransport
+::: civitas.transport.nats.NATSTransport
     options:
       show_source: true
 
@@ -37,7 +37,7 @@ See [Transports](../transports.md) for a full guide with architecture diagrams.
 
 ## Worker
 
-::: agency.worker.Worker
+::: civitas.worker.Worker
     options:
       members:
         - from_config

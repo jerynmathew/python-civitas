@@ -6,7 +6,7 @@ No LLM, no tools — pure runtime mechanics.
 
 import asyncio
 
-from agency import AgentProcess, Runtime, Supervisor
+from civitas import AgentProcess, Runtime, Supervisor
 
 
 class Greeter(AgentProcess):

@@ -9,7 +9,7 @@ Run this before run_worker.py.
 import asyncio
 from pathlib import Path
 
-from agency import Runtime
+from civitas import Runtime
 
 TOPOLOGY = Path(__file__).parent / "topology.yaml"
 

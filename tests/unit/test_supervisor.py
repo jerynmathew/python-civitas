@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from agency.process import AgentProcess, ProcessStatus
-from agency.supervisor import (
+from civitas.process import AgentProcess, ProcessStatus
+from civitas.supervisor import (
     HeartbeatTimeout,
     Supervisor,
 )
@@ -50,14 +50,14 @@ class TestComputeBackoff:
     def test_exponential_doubles_each_restart(self):
         sup = make_supervisor(backoff="EXPONENTIAL", backoff_base=1.0)
         # base * 2^(n-1), ignoring jitter
-        with patch("agency.supervisor.random.random", return_value=0.0):
+        with patch("civitas.supervisor.random.random", return_value=0.0):
             assert sup._compute_backoff(1) == 1.0  # 1 * 2^0
             assert sup._compute_backoff(2) == 2.0  # 1 * 2^1
             assert sup._compute_backoff(3) == 4.0  # 1 * 2^2
 
     def test_exponential_applies_jitter(self):
         sup = make_supervisor(backoff="EXPONENTIAL", backoff_base=1.0)
-        with patch("agency.supervisor.random.random", return_value=1.0):
+        with patch("civitas.supervisor.random.random", return_value=1.0):
             # delay = base * 2^0 = 1.0, jitter = 1.0 * 1.0 * 0.25 = 0.25
             assert sup._compute_backoff(1) == pytest.approx(1.25)
 

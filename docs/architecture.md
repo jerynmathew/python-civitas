@@ -337,7 +337,7 @@ The supervisor in the main process monitors worker agents via heartbeats. When a
 
 ## Key design decisions
 
-**Structural protocols, not base classes for plugins.** `ModelProvider`, `StateStore`, `ExportBackend`, and `Transport` are all `typing.Protocol` classes. Any class with the right method signatures satisfies them — no inheritance, no registration. This makes plugins trivial to write and test without importing Agency internals.
+**Structural protocols, not base classes for plugins.** `ModelProvider`, `StateStore`, `ExportBackend`, and `Transport` are all `typing.Protocol` classes. Any class with the right method signatures satisfies them — no inheritance, no registration. This makes plugins trivial to write and test without importing Civitas internals.
 
 **Serialize everything, even in-process.** The InProcess transport still serializes messages through Msgpack. This makes transport swapping truly transparent and catches non-serializable payloads at development time rather than in production.
 

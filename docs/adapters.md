@@ -1,6 +1,6 @@
 # Adapters
 
-Agency provides adapters that wrap third-party agent frameworks as `AgentProcess` instances. A wrapped agent gains Agency's supervision tree, transport-agnostic messaging, and automatic OTEL tracing — without rewriting the underlying framework code.
+Civitas provides adapters that wrap third-party agent frameworks as `AgentProcess` instances. A wrapped agent gains Civitas's supervision tree, transport-agnostic messaging, and automatic OTEL tracing — without rewriting the underlying framework code.
 
 ---
 
@@ -13,7 +13,7 @@ graph TD
         Note["No supervision\nNo transport\nNo tracing"]
     end
 
-    subgraph "With Agency adapter"
+    subgraph "With Civitas adapter"
         S["Supervisor"]
         A["AgentProcess\n(adapter)"]
         FW2["Framework agent\n(unchanged)"]
@@ -33,7 +33,7 @@ Wraps a LangGraph `CompiledGraph` as an `AgentProcess`. The graph receives `mess
 **Install:**
 
 ```bash
-pip install python-agency langgraph
+pip install civitas langgraph
 ```
 
 **Basic usage:**
@@ -42,8 +42,8 @@ pip install python-agency langgraph
 from langgraph.graph import StateGraph, END
 from typing import TypedDict
 
-from agency import Runtime, Supervisor
-from agency.adapters.langgraph import LangGraphAgent
+from civitas import Runtime, Supervisor
+from civitas.adapters.langgraph import LangGraphAgent
 
 
 # Define your LangGraph graph as usual
@@ -61,7 +61,7 @@ graph.add_edge("answer", END)
 compiled = graph.compile()
 
 
-# Wrap it in an Agency adapter — one line
+# Wrap it in an Civitas adapter — one line
 runtime = Runtime(
     supervisor=Supervisor(
         "root",
@@ -75,7 +75,7 @@ runtime = Runtime(
 Calling the agent from another agent or from the runtime:
 
 ```python
-response = await runtime.ask("my_graph", {"question": "What is Agency?"})
+response = await runtime.ask("my_graph", {"question": "What is Civitas?"})
 print(response.payload["answer"])
 ```
 
@@ -112,7 +112,7 @@ The adapter's `on_error()` escalates by default. Override `_is_transient()` to r
 
 ```python
 import httpx
-from agency.adapters.langgraph import LangGraphAgent
+from civitas.adapters.langgraph import LangGraphAgent
 
 class ResilientGraphAgent(LangGraphAgent):
     def _is_transient(self, error: Exception) -> bool:
@@ -122,28 +122,28 @@ class ResilientGraphAgent(LangGraphAgent):
 
 **Limitations:**
 
-- LangGraph's built-in `MemorySaver` / `SqliteSaver` checkpointing runs independently of Agency's `StateStore`. If you use LangGraph checkpointing, the graph's internal state is managed by LangGraph; `self.state` in the adapter is separate.
-- LangGraph streaming (`graph.astream()`) is not forwarded through Agency's message protocol. The adapter waits for `ainvoke()` to complete and replies once. If you need streaming, do it inside the graph node itself.
+- LangGraph's built-in `MemorySaver` / `SqliteSaver` checkpointing runs independently of Civitas's `StateStore`. If you use LangGraph checkpointing, the graph's internal state is managed by LangGraph; `self.state` in the adapter is separate.
+- LangGraph streaming (`graph.astream()`) is not forwarded through Civitas's message protocol. The adapter waits for `ainvoke()` to complete and replies once. If you need streaming, do it inside the graph node itself.
 - LangGraph human-in-the-loop interrupts (`interrupt()`) pause the graph inside `ainvoke()`. The adapter will block until the interrupt is resolved. Use a short `ask()` timeout at the caller and design your interrupt resolution flow accordingly.
 
 ---
 
 ## OpenAIAgent
 
-Wraps an OpenAI Agents SDK `Agent` as an `AgentProcess`. Incoming messages must include an `"input"` key. The agent's final text output is returned as `{"output": ...}`. Handoffs are mapped to Agency `send()` calls.
+Wraps an OpenAI Agents SDK `Agent` as an `AgentProcess`. Incoming messages must include an `"input"` key. The agent's final text output is returned as `{"output": ...}`. Handoffs are mapped to Civitas `send()` calls.
 
 **Install:**
 
 ```bash
-pip install python-agency openai-agents
+pip install civitas openai-agents
 ```
 
 **Basic usage:**
 
 ```python
 from agents import Agent
-from agency import Runtime, Supervisor
-from agency.adapters.openai import OpenAIAgent
+from civitas import Runtime, Supervisor
+from civitas.adapters.openai import OpenAIAgent
 
 # Define your OpenAI agent as usual
 assistant = Agent(
@@ -171,7 +171,7 @@ print(response.payload["output"])   # "Paris."
 
 **Handoffs between agents:**
 
-If the OpenAI agent hands off to another agent, the handoff is translated to an Agency `send()` call — the target agent must be registered in the supervision tree:
+If the OpenAI agent hands off to another agent, the handoff is translated to an Civitas `send()` call — the target agent must be registered in the supervision tree:
 
 ```python
 from agents import Agent, handoff
@@ -194,10 +194,10 @@ runtime = Runtime(
 )
 ```
 
-When `writer` hands off to `researcher`, the adapter calls `await self.send("researcher", {"input": ...})`. If `researcher` is not registered in Agency, a warning is logged and execution continues — it does not crash:
+When `writer` hands off to `researcher`, the adapter calls `await self.send("researcher", {"input": ...})`. If `researcher` is not registered in Civitas, a warning is logged and execution continues — it does not crash:
 
 ```
-[OpenAIAgent] handoff to 'researcher' failed — not registered in Agency
+[OpenAIAgent] handoff to 'researcher' failed — not registered in Civitas
 ```
 
 **How it works:**
@@ -212,7 +212,7 @@ async def handle(self, message: Message) -> Message | None:
 
     result = await Runner.run(self._agent, input=user_input)
 
-    # Map handoffs to Agency send() calls
+    # Map handoffs to Civitas send() calls
     for item in getattr(result, "new_items", []):
         if hasattr(item, "agent") and hasattr(item, "input"):
             await self.send(item.agent.name, {"input": item.input})
@@ -224,7 +224,7 @@ async def handle(self, message: Message) -> Message | None:
 
 ```python
 from openai import RateLimitError
-from agency.adapters.openai import OpenAIAgent
+from civitas.adapters.openai import OpenAIAgent
 
 class ResilientOpenAIAgent(OpenAIAgent):
     def _is_transient(self, error: Exception) -> bool:
@@ -233,9 +233,9 @@ class ResilientOpenAIAgent(OpenAIAgent):
 
 **Limitations:**
 
-- The adapter uses `Runner.run()` (non-streaming). Streaming responses are not propagated via Agency messages.
-- OpenAI Agents SDK tool calls are executed inside the `Runner` — they are not exposed as Agency `ToolProvider` calls and do not generate Agency tool spans.
-- Handoff target names must match the `name` field of the `AgentProcess` registered in Agency, not the `Agent.name` from the OpenAI SDK (which may differ).
+- The adapter uses `Runner.run()` (non-streaming). Streaming responses are not propagated via Civitas messages.
+- OpenAI Agents SDK tool calls are executed inside the `Runner` — they are not exposed as Civitas `ToolProvider` calls and do not generate Civitas tool spans.
+- Handoff target names must match the `name` field of the `AgentProcess` registered in Civitas, not the `Agent.name` from the OpenAI SDK (which may differ).
 
 ---
 
@@ -247,9 +247,9 @@ Both adapters provide the same benefits regardless of which framework is wrapped
 
 **Transport.** The adapter is a full `AgentProcess`. It can run in-process, in a separate OS process via ZMQ, or on a remote machine via NATS — determined by `process:` in the topology YAML. The framework agent code is unchanged.
 
-**OTEL tracing.** The `agency.agent.handle` span is emitted for every message. If you call `self.llm.chat()` or `self.tool_span()` inside the adapter, those spans are linked to the same trace. Framework-internal LLM calls (made by the OpenAI SDK's `Runner`, or by LangGraph nodes) do not generate Agency spans unless you add `self.llm_span()` wrappers explicitly.
+**OTEL tracing.** The `civitas.agent.handle` span is emitted for every message. If you call `self.llm.chat()` or `self.tool_span()` inside the adapter, those spans are linked to the same trace. Framework-internal LLM calls (made by the OpenAI SDK's `Runner`, or by LangGraph nodes) do not generate Civitas spans unless you add `self.llm_span()` wrappers explicitly.
 
-**Named addressing.** Other agents and the runtime address the wrapped agent by its Agency name, not by any framework-internal identity. Routing, broadcast, and request-reply work identically to native agents.
+**Named addressing.** Other agents and the runtime address the wrapped agent by its Civitas name, not by any framework-internal identity. Routing, broadcast, and request-reply work identically to native agents.
 
 ---
 
@@ -258,9 +258,9 @@ Both adapters provide the same benefits regardless of which framework is wrapped
 Any framework that has an async `run()` / `invoke()` / `chat()` method can be wrapped in three steps:
 
 ```python
-from agency.process import AgentProcess
-from agency.messages import Message
-from agency.errors import ErrorAction
+from civitas.process import AgentProcess
+from civitas.messages import Message
+from civitas.errors import ErrorAction
 
 class MyFrameworkAgent(AgentProcess):
     def __init__(self, name: str, framework_agent, **kwargs):

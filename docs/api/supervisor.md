@@ -6,7 +6,7 @@ See [Supervision](../supervision.md) for a full guide.
 
 ---
 
-::: agency.supervisor.Supervisor
+::: civitas.supervisor.Supervisor
     options:
       members:
         - start
@@ -18,12 +18,12 @@ See [Supervision](../supervision.md) for a full guide.
 
 ---
 
-::: agency.supervisor.RestartStrategy
+::: civitas.supervisor.RestartStrategy
     options:
       show_source: false
 
 ---
 
-::: agency.supervisor.BackoffPolicy
+::: civitas.supervisor.BackoffPolicy
     options:
       show_source: false

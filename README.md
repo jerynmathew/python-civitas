@@ -1,11 +1,31 @@
-# Agency
+# Civitas
 
 **The production runtime for Python agents.**
 
-Agency brings Erlang's battle-tested fault-tolerance model to Python agent systems: supervision trees that restart crashed agents automatically, transport-agnostic message passing that scales from a single script to a distributed cluster, and first-class observability with zero instrumentation code.
+---
+
+## Why Civitas?
+
+*Civitas* is the Latin word for city-state — the community of citizens bound by
+shared laws, common purpose, and mutual protection.
+
+The root is *civis* (citizen). It gives English: civilization, civic, civil, citizen.
+A civitas wasn't just a place — it was a self-governing body that conferred rights,
+identity, and protection on those who belonged to it.
+
+Before Civitas, agents were isolated processes: no persistent identity, no rights,
+no protection. If one crashed, nothing noticed. Nothing restarted it.
+
+Civitas is the covenant that changes what they are.
+It gives agents citizenship: a runtime that watches over them, restarts them on failure,
+routes messages between them, and traces every action — automatically.
+
+---
+
+Civitas brings Erlang's battle-tested fault-tolerance model to Python agent systems: supervision trees that restart crashed agents automatically, transport-agnostic message passing that scales from a single script to a distributed cluster, and first-class observability with zero instrumentation code.
 
 ```
-pip install python-agency
+pip install civitas
 ```
 
 ---
@@ -14,7 +34,7 @@ pip install python-agency
 
 Most Python agent frameworks are great at calling LLMs. They are not runtimes. When an agent crashes, nothing restarts it. When a tool hangs, nothing times it out. When you need to scale across machines, you rewrite the routing layer. When something goes wrong in production, you have a log file.
 
-Agency is the infrastructure layer underneath your agent code. It handles the hard parts — process lifecycle, fault tolerance, message routing, and distributed tracing — so your agents can focus on reasoning.
+Civitas is the infrastructure layer underneath your agent code. It handles the hard parts — process lifecycle, fault tolerance, message routing, and distributed tracing — so your agents can focus on reasoning.
 
 ---
 
@@ -25,8 +45,8 @@ A supervised agent that crashes occasionally and recovers automatically:
 ```python
 import asyncio
 import random
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
 
 class FlakyWorker(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
@@ -102,8 +122,8 @@ graph TD
 Three agents forming a research pipeline. Each runs in its own supervised process:
 
 ```python
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
 
 class Orchestrator(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
@@ -144,14 +164,14 @@ The same agent code runs at every level. The only thing that changes is the topo
 
 ```mermaid
 graph LR
-    L1["Level 1\nSingle process\nInProcessTransport\npip install python-agency"]
-    L2["Level 2\nMulti-process\nZMQTransport\npip install python-agency[zmq]"]
-    L3["Level 3\nDistributed\nNATSTransport\npip install python-agency[nats]"]
-    L4["Level 4\nContainerized\nagency deploy --target docker-compose"]
+    L1["Level 1\nSingle process\nInProcessTransport\npip install civitas"]
+    L2["Level 2\nMulti-process\nZMQTransport\npip install civitas[zmq]"]
+    L3["Level 3\nDistributed\nNATSTransport\npip install civitas[nats]"]
+    L4["Level 4\nContainerized\ncivitas deploy --target docker-compose"]
 
     L1 -->|"change transport in topology.yaml"| L2
     L2 -->|"change transport in topology.yaml"| L3
-    L3 -->|"agency deploy"| L4
+    L3 -->|"civitas deploy"| L4
 
     style L1 fill:#1e3a5f,color:#fff
     style L2 fill:#2d6a4f,color:#fff
@@ -175,7 +195,7 @@ supervision:
 ```
 
 ```bash
-agency run --topology topology.yaml
+civitas run --topology topology.yaml
 ```
 
 ---
@@ -262,33 +282,33 @@ open http://localhost:16686
 ## Install
 
 ```bash
-pip install python-agency                        # core runtime
+pip install civitas                        # core runtime
 
 # Model providers (pick one or more)
-pip install python-agency[anthropic]             # Anthropic Claude
-pip install python-agency[openai]                # OpenAI GPT-4o, o1, o3
-pip install python-agency[gemini]                # Google Gemini 2.0 / 1.5
-pip install python-agency[mistral]               # Mistral Large / Codestral
-pip install python-agency[litellm]               # 100+ models via LiteLLM
+pip install civitas[anthropic]             # Anthropic Claude
+pip install civitas[openai]                # OpenAI GPT-4o, o1, o3
+pip install civitas[gemini]                # Google Gemini 2.0 / 1.5
+pip install civitas[mistral]               # Mistral Large / Codestral
+pip install civitas[litellm]               # 100+ models via LiteLLM
 
 # Transports
-pip install python-agency[zmq]                   # ZMQ multi-process transport
-pip install python-agency[nats]                  # NATS distributed transport
+pip install civitas[zmq]                   # ZMQ multi-process transport
+pip install civitas[nats]                  # NATS distributed transport
 
 # Observability
-pip install python-agency[otel]                  # OpenTelemetry SDK + OTLP exporter
+pip install civitas[otel]                  # OpenTelemetry SDK + OTLP exporter
 
 # Typical dev setup
-pip install python-agency[anthropic,otel]
+pip install civitas[anthropic,otel]
 ```
 
 **Requires Python 3.12+.**
 
 ---
 
-## How Agency fits in the stack
+## How Civitas fits in the stack
 
-Agency is a **runtime**, not a framework. LangGraph, CrewAI, and the OpenAI Agents SDK define how you build agents. Agency is the infrastructure that keeps them alive.
+Civitas is a **runtime**, not a framework. LangGraph, CrewAI, and the OpenAI Agents SDK define how you build agents. Civitas is the infrastructure that keeps them alive.
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -298,16 +318,16 @@ Agency is a **runtime**, not a framework. LangGraph, CrewAI, and the OpenAI Agen
 │  CONTROL LAYER                               │
 │  Guardrails, HITL gates, cost limits         │
 ├──────────────────────────────────────────────┤
-│  RUNTIME LAYER  ◄── Agency lives here        │
+│  RUNTIME LAYER  ◄── Civitas lives here        │
 │  Process lifecycle, fault tolerance,         │
 │  message routing, observability, scaling     │
 └──────────────────────────────────────────────┘
 ```
 
-Agency wraps LangGraph and OpenAI SDK agents natively:
+Civitas wraps LangGraph and OpenAI SDK agents natively:
 
 ```python
-from agency.adapters.langgraph import LangGraphAgent
+from civitas.adapters.langgraph import LangGraphAgent
 
 # Your existing LangGraph graph gains supervision,
 # message routing, and OTEL tracing in 3 lines.
@@ -319,7 +339,7 @@ class MyLangGraphAgent(LangGraphAgent):
 
 ## Compared to alternatives
 
-| | Agency | Temporal | LangGraph | CrewAI |
+| | Civitas | Temporal | LangGraph | CrewAI |
 |---|---|---|---|---|
 | **Category** | Agent runtime | Durable execution | Agent orchestration | Agent framework |
 | **Supervision trees** | ✓ | ✗ | ✗ | ✗ |
@@ -331,9 +351,9 @@ class MyLangGraphAgent(LangGraphAgent):
 | **LLM-native** | ModelProvider protocol | Bring your own | ChatModel built-in | Built-in |
 | **License** | Apache 2.0 | MIT | Proprietary (LangSmith) | MIT |
 
-**Temporal** excels at linear pipelines requiring durable execution. Agency wins for multi-agent systems with dynamic routing and supervision hierarchies. They're complementary — Temporal can run inside an Agency activity.
+**Temporal** excels at linear pipelines requiring durable execution. Civitas wins for multi-agent systems with dynamic routing and supervision hierarchies. They're complementary — Temporal can run inside a Civitas activity.
 
-**LangGraph** is great for single-agent graphs with checkpointing and HITL gates. The [`LangGraphAgent`](docs/adapters.md) adapter runs a compiled graph inside an Agency process, giving it supervision and transport for free.
+**LangGraph** is great for single-agent graphs with checkpointing and HITL gates. The [`LangGraphAgent`](docs/adapters.md) adapter runs a compiled graph inside a Civitas process, giving it supervision and transport for free.
 
 ---
 
@@ -354,39 +374,39 @@ python examples/stateful_workflow.py     # state persistence across restarts
 
 ## CLI
 
-Agency ships a full CLI for running, inspecting, and deploying agent systems.
+Civitas ships a full CLI for running, inspecting, and deploying agent systems.
 
 ```
-agency run          — start a topology (supervisor or worker process)
-agency topology     — validate, visualise, and diff topology files
-agency state        — inspect and manage persisted agent state
-agency deploy       — generate Docker Compose deployment artifacts
-agency version      — show the installed version
+civitas run          — start a topology (supervisor or worker process)
+civitas topology     — validate, visualise, and diff topology files
+civitas state        — inspect and manage persisted agent state
+civitas deploy       — generate Docker Compose deployment artifacts
+civitas version      — show the installed version
 ```
 
 **Run a topology:**
 
 ```bash
 # Start the supervisor process
-agency run --topology topology.yaml
+civitas run --topology topology.yaml
 
 # Start a worker process (for agents with process: worker in the topology)
-agency run --topology topology.yaml --process worker
+civitas run --topology topology.yaml --process worker
 
 # Override transport at runtime without editing the file
-agency run --topology topology.yaml --transport nats --nats-url nats://prod:4222
+civitas run --topology topology.yaml --transport nats --nats-url nats://prod:4222
 ```
 
 **Validate before deploying (CI-safe — exits 1 on error):**
 
 ```bash
-agency topology validate topology.yaml
+civitas topology validate topology.yaml
 ```
 
 **Visualise the supervision tree:**
 
 ```bash
-agency topology show topology.yaml
+civitas topology show topology.yaml
 # root  ONE_FOR_ONE  restarts: 5/60s  backoff: exponential
 # ├── orchestrator  myapp.Orchestrator
 # ├── researcher    myapp.Researcher    @worker
@@ -400,7 +420,7 @@ agency topology show topology.yaml
 **Diff two topology files (e.g. staging vs production):**
 
 ```bash
-agency topology diff topology.staging.yaml topology.prod.yaml
+civitas topology diff topology.staging.yaml topology.prod.yaml
 # Supervision
 #   ~ /root/researcher/@class   myapp.StubResearcher → myapp.Researcher
 # Transport
@@ -411,15 +431,15 @@ agency topology diff topology.staging.yaml topology.prod.yaml
 **Inspect persisted agent state:**
 
 ```bash
-agency state list --db agency_state.db
-agency state clear orchestrator --db agency_state.db   # clear one agent
-agency state clear --force --db agency_state.db        # clear all
+civitas state list --db civitas_state.db
+civitas state clear orchestrator --db civitas_state.db   # clear one agent
+civitas state clear --force --db civitas_state.db        # clear all
 ```
 
 **Generate a Docker Compose stack from a topology:**
 
 ```bash
-agency deploy docker-compose --topology topology.yaml --output ./deploy
+civitas deploy docker-compose --topology topology.yaml --output ./deploy
 # Generates: Dockerfile, docker-compose.yml, .env
 
 cd deploy

@@ -11,7 +11,7 @@ import asyncio
 import os
 from pathlib import Path
 
-from agency import Runtime
+from civitas import Runtime
 
 TOPOLOGY = Path(__file__).parent / "topology.yaml"
 

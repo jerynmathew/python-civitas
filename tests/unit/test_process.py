@@ -7,9 +7,9 @@ from typing import Any
 
 import pytest
 
-from agency.errors import ErrorAction
-from agency.messages import Message
-from agency.process import AgentProcess, Mailbox, ProcessStatus
+from civitas.errors import ErrorAction
+from civitas.messages import Message
+from civitas.process import AgentProcess, Mailbox, ProcessStatus
 from tests.conftest import wait_for
 
 # ---------------------------------------------------------------------------
@@ -369,7 +369,7 @@ def test_default_shutdown_timeout():
 def _make_agent_with_tracer() -> tuple[TrackingAgent, Any]:
     """Return a TrackingAgent wired with an in-memory test tracer."""
     pytest.importorskip("opentelemetry", reason="opentelemetry-sdk not installed")
-    from agency.plugins.otel import create_test_tracer
+    from civitas.plugins.otel import create_test_tracer
 
     agent = TrackingAgent("obs_agent")
     tracer, exporter = create_test_tracer()
@@ -379,7 +379,7 @@ def _make_agent_with_tracer() -> tuple[TrackingAgent, Any]:
 
 def test_llm_span_no_tracer_yields_dummy():
     """llm_span() yields a dummy Span when no tracer is attached."""
-    from agency.observability.tracer import Span
+    from civitas.observability.tracer import Span
 
     agent = TrackingAgent()
     with agent.llm_span("claude-sonnet") as span:
@@ -388,7 +388,7 @@ def test_llm_span_no_tracer_yields_dummy():
 
 def test_tool_span_no_tracer_yields_dummy():
     """tool_span() yields a dummy Span when no tracer is attached."""
-    from agency.observability.tracer import Span
+    from civitas.observability.tracer import Span
 
     agent = TrackingAgent()
     with agent.tool_span("web_search") as span:
@@ -398,27 +398,27 @@ def test_tool_span_no_tracer_yields_dummy():
 def test_llm_span_with_tracer_creates_span():
     """llm_span() creates a real span when a tracer is attached."""
     agent, exporter = _make_agent_with_tracer()
-    from agency.messages import Message
+    from civitas.messages import Message
 
     agent._current_message = Message(sender="x", recipient="obs_agent", trace_id="t1")
     with agent.llm_span("test-model", tokens_in=100) as span:
-        span.set_attribute("agency.llm.tokens_out", 50)
+        span.set_attribute("civitas.llm.tokens_out", 50)
     spans = exporter.get_finished_spans()
     assert len(spans) == 1
-    assert spans[0].name == "agency.llm.chat"
+    assert spans[0].name == "civitas.llm.chat"
 
 
 def test_tool_span_with_tracer_creates_span():
     """tool_span() creates a real span when a tracer is attached."""
     agent, exporter = _make_agent_with_tracer()
-    from agency.messages import Message
+    from civitas.messages import Message
 
     agent._current_message = Message(sender="x", recipient="obs_agent", trace_id="t1")
     with agent.tool_span("web_search") as span:
         span.set_attribute("result", "ok")
     spans = exporter.get_finished_spans()
     assert len(spans) == 1
-    assert spans[0].name == "agency.tool.invoke"
+    assert spans[0].name == "civitas.tool.invoke"
 
 
 def test_llm_span_records_error_on_exception():

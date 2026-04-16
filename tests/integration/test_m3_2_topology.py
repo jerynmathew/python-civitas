@@ -10,7 +10,7 @@ from pathlib import Path
 import yaml
 from typer.testing import CliRunner
 
-from agency.cli import app
+from civitas.cli import app
 
 runner = CliRunner()
 
@@ -96,7 +96,7 @@ def _write_yaml(config: dict, tmpdir: str, name: str = "topology.yaml") -> str:
 
 
 # ---------------------------------------------------------------------------
-# agency topology validate
+# civitas topology validate
 # ---------------------------------------------------------------------------
 
 
@@ -168,7 +168,7 @@ def test_validate_transport_type():
 
 
 # ---------------------------------------------------------------------------
-# agency topology show
+# civitas topology show
 # ---------------------------------------------------------------------------
 
 
@@ -230,7 +230,7 @@ def test_show_missing_file():
 
 
 # ---------------------------------------------------------------------------
-# agency topology diff
+# civitas topology diff
 # ---------------------------------------------------------------------------
 
 

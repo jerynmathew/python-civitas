@@ -1,6 +1,6 @@
 # Deployment
 
-Agency uses a four-level deployment ladder. Every level runs the same agent code — only the transport and process topology change. Start at Level 1, graduate to higher levels as your scale or isolation requirements grow.
+Civitas uses a four-level deployment ladder. Every level runs the same agent code — only the transport and process topology change. Start at Level 1, graduate to higher levels as your scale or isolation requirements grow.
 
 ---
 
@@ -15,7 +15,7 @@ graph LR
 
     L1 -->|"change transport"| L2
     L2 -->|"change transport"| L3
-    L3 -->|"agency deploy"| L4
+    L3 -->|"civitas deploy"| L4
 
     style L1 fill:#1e3a5f,color:#fff
     style L2 fill:#2d6a4f,color:#fff
@@ -45,7 +45,7 @@ All agents run as asyncio tasks inside one Python process. The `InProcessTranspo
 **Install:**
 
 ```bash
-pip install python-agency
+pip install civitas
 ```
 
 **topology.yaml:**
@@ -78,7 +78,7 @@ supervision:
 **Run:**
 
 ```bash
-agency run --topology topology.yaml
+civitas run --topology topology.yaml
 ```
 
 **When to use Level 1:**
@@ -120,7 +120,7 @@ Agents marked `process: worker` in the topology run in a separate OS process. Th
 **Install:**
 
 ```bash
-pip install python-agency[zmq]
+pip install civitas[zmq]
 ```
 
 **topology.yaml:**
@@ -156,13 +156,13 @@ supervision:
 
 ```bash
 # Terminal 1 — supervisor process (also starts the ZMQ proxy)
-agency run --topology topology.yaml
+civitas run --topology topology.yaml
 
 # Terminal 2 — worker process (connects to the proxy)
-agency run --topology topology.yaml --process worker
+civitas run --topology topology.yaml --process worker
 ```
 
-Multiple agents can share the same `process:` name — they all run in one worker. Each distinct process name requires a separate `agency run --process <name>` invocation.
+Multiple agents can share the same `process:` name — they all run in one worker. Each distinct process name requires a separate `civitas run --process <name>` invocation.
 
 **When to use Level 2:**
 
@@ -200,12 +200,12 @@ graph TD
     C <-->|"nats://host:4222"| N
 ```
 
-NATS replaces the ZMQ proxy with a cloud-native message broker. Every agent subscribes to its own NATS subject (`agency.agent.<name>`). The topology, supervision tree, and agent code are unchanged from Level 2.
+NATS replaces the ZMQ proxy with a cloud-native message broker. Every agent subscribes to its own NATS subject (`civitas.agent.<name>`). The topology, supervision tree, and agent code are unchanged from Level 2.
 
 **Install:**
 
 ```bash
-pip install python-agency[nats]
+pip install civitas[nats]
 ```
 
 **Start NATS:**
@@ -264,10 +264,10 @@ supervision:
 
 ```bash
 # Machine A — supervisor
-agency run --topology topology.yaml
+civitas run --topology topology.yaml
 
 # Machine B — worker (point --nats-url at your NATS host if it's not localhost)
-agency run --topology topology.yaml --process worker --nats-url nats://nats-host:4222
+civitas run --topology topology.yaml --process worker --nats-url nats://nats-host:4222
 ```
 
 **JetStream (durable subscriptions):**
@@ -293,12 +293,12 @@ For most workloads, at-most-once delivery with supervisor-level restart (the def
 **Generate a ready-to-run Docker Compose stack from your topology.**
 
 ```bash
-agency deploy docker-compose --topology topology.yaml --output ./deploy
+civitas deploy docker-compose --topology topology.yaml --output ./deploy
 ```
 
 This reads your topology YAML, inspects the `process:` assignments, and generates:
 
-- `Dockerfile` — builds an Agency image with the right transport extras
+- `Dockerfile` — builds an Civitas image with the right transport extras
 - `docker-compose.yml` — one service per process group (supervisor + one per worker name)
 - `.env` — runtime environment variables with placeholders for secrets
 
@@ -406,7 +406,7 @@ transport:
 You can also override the transport at runtime without editing the file:
 
 ```bash
-agency run --topology topology.yaml --transport nats --nats-url nats://prod:4222
+civitas run --topology topology.yaml --transport nats --nats-url nats://prod:4222
 ```
 
 ---
@@ -447,7 +447,7 @@ Standard OTEL SDK variables (`OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES`, et
 
 - [ ] `SQLiteStateStore` (or a custom durable store) configured — not `in_memory`
 - [ ] `db_path` points to a persistent volume (not a container ephemeral filesystem)
-- [ ] State CLI commands tested: `agency state list`, `agency state show <name>`
+- [ ] State CLI commands tested: `civitas state list`, `civitas state show <name>`
 
 **Observability**
 
@@ -464,7 +464,7 @@ Standard OTEL SDK variables (`OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES`, et
 
 **Operations**
 
-- [ ] `agency topology validate topology.yaml` passes in CI
+- [ ] `civitas topology validate topology.yaml` passes in CI
 - [ ] `docker compose up --scale worker-worker=N` tested for horizontal scale
 - [ ] Graceful shutdown tested: `SIGTERM` → `runtime.stop()` → spans flushed
 - [ ] Health check endpoint or NATS monitoring is wired to your load balancer or orchestrator
@@ -473,8 +473,8 @@ Standard OTEL SDK variables (`OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES`, et
 
 ## Upgrading between levels
 
-**Level 1 → Level 2:** Install `python-agency[zmq]`. Change `transport.type` to `zmq`. Add `process: worker` to agents you want isolated. Start a second terminal with `--process worker`. Agent code: unchanged.
+**Level 1 → Level 2:** Install `python-civitas[zmq]`. Change `transport.type` to `zmq`. Add `process: worker` to agents you want isolated. Start a second terminal with `--process worker`. Agent code: unchanged.
 
-**Level 2 → Level 3:** Install `python-agency[nats]`. Start a NATS server. Change `transport.type` to `nats`, set `servers`. Run each process group on its own machine (or container). Agent code: unchanged.
+**Level 2 → Level 3:** Install `python-civitas[nats]`. Start a NATS server. Change `transport.type` to `nats`, set `servers`. Run each process group on its own machine (or container). Agent code: unchanged.
 
-**Level 3 → Level 4:** Run `agency deploy docker-compose --topology topology.yaml`. Edit the generated `.env` with real secrets. Run `docker compose up --build`. Agent code: unchanged.
+**Level 3 → Level 4:** Run `civitas deploy docker-compose --topology topology.yaml`. Edit the generated `.env` with real secrets. Run `docker compose up --build`. Agent code: unchanged.

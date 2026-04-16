@@ -1,41 +1,61 @@
-# Agency
+# Civitas
 
 **The production runtime for Python agents.**
 
-Agency is an OTP-inspired agent runtime for Python. It gives your agent systems the infrastructure layer they need to run reliably in production: supervised processes that restart automatically on failure, transport-agnostic message passing that scales from a script to a distributed cluster, and zero-instrumentation observability via OpenTelemetry.
+---
+
+## Why Civitas?
+
+*Civitas* is the Latin word for city-state — the community of citizens bound by
+shared laws, common purpose, and mutual protection.
+
+The root is *civis* (citizen). It gives English: civilization, civic, civil, citizen.
+A civitas wasn't just a place — it was a self-governing body that conferred rights,
+identity, and protection on those who belonged to it.
+
+Before Civitas, agents were isolated processes: no persistent identity, no rights,
+no protection. If one crashed, nothing noticed. Nothing restarted it.
+
+Civitas is the covenant that changes what they are.
+It gives agents citizenship: a runtime that watches over them, restarts them on failure,
+routes messages between them, and traces every action — automatically.
+
+---
+
+Civitas is an OTP-inspired agent runtime for Python. It gives your agent systems the infrastructure layer they need to run reliably in production: supervised processes that restart automatically on failure, transport-agnostic message passing that scales from a script to a distributed cluster, and zero-instrumentation observability via OpenTelemetry.
 
 ```bash
-pip install python-agency
+pip install civitas
 ```
 
 ---
 
-## What Agency is — and isn't
+## What Civitas is — and isn't
 
-Agency is a **runtime**, not a framework. Frameworks like LangGraph, CrewAI, and the OpenAI Agents SDK define *how* you build agents. Agency defines *how they stay alive*.
+Civitas is a **runtime**, not a framework. Frameworks like LangGraph, CrewAI, and the OpenAI Agents SDK define *how* you build agents. Civitas defines *how they stay alive*.
 
 It sits at the bottom of the agent stack:
 
 ```
 Context layer    →  prompts, memory, RAG
 Control layer    →  guardrails, HITL gates, cost limits
-Runtime layer    →  Agency: lifecycle, fault tolerance, routing, observability
+Runtime layer    →  Civitas: lifecycle, fault tolerance, routing, observability
 ```
 
-You can run Agency alongside any of those frameworks. The [LangGraph adapter](adapters.md) wraps a compiled graph as an Agency process in three lines.
+You can run Civitas alongside any of those frameworks. The [LangGraph adapter](adapters.md) wraps a compiled graph as a Civitas process in three lines.
 
 ---
 
-## When to use Agency
+## When to use Civitas
 
-Agency is a good fit when you need any of the following:
+Civitas is a good fit when you need any of the following:
 
 - **Fault tolerance** — agents that crash should restart automatically, with configurable strategies and backoff
 - **Multi-agent systems** — multiple agents communicating via message passing, with named routing and backpressure
 - **Scaling without rewrites** — the same agent code should run in a single process during development and across machines in production
 - **Production observability** — every message, LLM call, and tool invocation traced to OTEL automatically
 
-If you are building a simple, single-agent script that calls an LLM and exits, Agency adds more structure than you need. Start with the Anthropic SDK or OpenAI SDK directly.
+If you are building a simple, single-agent script that calls an LLM and exits, Civitas adds more structure than you need. Start with the Anthropic SDK or OpenAI SDK directly.
 
 ---
 
@@ -45,8 +65,8 @@ If you are building a simple, single-agent script that calls an LLM and exits, A
 
 ```python
 import asyncio
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
 
 class Echo(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
@@ -66,8 +86,8 @@ asyncio.run(main())
 
 ```python
 import asyncio, random
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
 
 class Flaky(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
@@ -97,14 +117,14 @@ asyncio.run(main())
 **With an LLM** — install the Anthropic provider and inject it via `Runtime`:
 
 ```bash
-pip install python-agency[anthropic]
+pip install civitas[anthropic]
 export ANTHROPIC_API_KEY=sk-...
 ```
 
 ```python
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
-from agency.plugins.anthropic import AnthropicProvider
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
+from civitas.plugins.anthropic import AnthropicProvider
 
 class Assistant(AgentProcess):
     async def handle(self, message: Message) -> Message | None:
@@ -147,7 +167,7 @@ runtime = Runtime(
 
 ### Contributing
 
-- [Contributing Guide](../CONTRIBUTING.md) — dev setup, test strategy, plugin authoring
+- [Contributing Guide](contributing.md) — dev setup, test strategy, plugin authoring
 
 ---
 

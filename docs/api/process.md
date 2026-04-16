@@ -6,7 +6,7 @@ See [Core Concepts](../concepts.md) and [Getting Started](../getting-started.md)
 
 ---
 
-::: agency.process.AgentProcess
+::: civitas.process.AgentProcess
     options:
       members:
         - on_start
@@ -22,12 +22,12 @@ See [Core Concepts](../concepts.md) and [Getting Started](../getting-started.md)
 
 ---
 
-::: agency.process.ProcessStatus
+::: civitas.process.ProcessStatus
     options:
       show_source: false
 
 ---
 
-::: agency.process.Mailbox
+::: civitas.process.Mailbox
     options:
       show_source: true

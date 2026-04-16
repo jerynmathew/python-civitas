@@ -11,8 +11,8 @@ Upgrade to Level 2: change transport.type to zmq in topology.yaml
 
 import asyncio
 
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
 
 
 class FrontendAgent(AgentProcess):

@@ -6,10 +6,10 @@
 #
 # Usage:
 #   # Process A (starts proxy):
-#   agency run --topology examples/multi_process.yaml --process supervisor
+#   civitas run --topology examples/multi_process.yaml --process supervisor
 #
 #   # Process B (connects to proxy):
-#   agency run --topology examples/multi_process.yaml --process worker
+#   civitas run --topology examples/multi_process.yaml --process worker
 #
 # Or programmatically:
 #   runtime = Runtime.from_config("examples/multi_process.yaml")

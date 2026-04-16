@@ -1,5 +1,8 @@
 # Changelog
 
+> **Note:** This project was renamed from Agency to Civitas in April 2026.
+> Historical entries below refer to the product as "Agency".
+
 All notable changes to this project are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -43,16 +46,16 @@ Initial public release.
 #### Transport layer
 
 - `InProcessTransport` — asyncio queues, zero extra dependencies, ~2–5 µs latency
-- `ZMQTransport` — XSUB/XPUB proxy, multi-process on a single machine (`pip install python-agency[zmq]`)
-- `NATSTransport` — distributed multi-machine transport with optional JetStream durable subscriptions (`pip install python-agency[nats]`)
+- `ZMQTransport` — XSUB/XPUB proxy, multi-process on a single machine (`pip install civitas[zmq]`)
+- `NATSTransport` — distributed multi-machine transport with optional JetStream durable subscriptions (`pip install civitas[nats]`)
 - Uniform `Transport` protocol — swap transports with a one-line topology change, no agent code changes
 - Remote agent registration/deregistration via `_agency.register` / `_agency.deregister` messages
 
 #### Plugin system
 
 - `ModelProvider` protocol — structural, no base class required
-- `AnthropicProvider` — first-party Anthropic SDK integration with built-in token pricing (`pip install python-agency[anthropic]`)
-- `LiteLLMProvider` — 100+ models via LiteLLM (OpenAI, Gemini, Bedrock, Azure, etc.) (`pip install python-agency[litellm]`)
+- `AnthropicProvider` — first-party Anthropic SDK integration with built-in token pricing (`pip install civitas[anthropic]`)
+- `LiteLLMProvider` — 100+ models via LiteLLM (OpenAI, Gemini, Bedrock, Azure, etc.) (`pip install civitas[litellm]`)
 - `ToolProvider` protocol and `ToolRegistry` — named tools with JSON schema, duplicate name detection
 - `StateStore` protocol — `get` / `set` / `delete` by agent name
 - `InMemoryStateStore` — default, in-process, survives supervisor restarts
@@ -67,7 +70,7 @@ Initial public release.
 - `SpanQueue` — non-blocking span emission from the message loop (`put_nowait`, drops oldest if full)
 - Three output modes: built-in `logging.DEBUG` console output (no deps) → OTEL `ConsoleSpanExporter` → OTLP gRPC export (Jaeger, Grafana Tempo, Datadog, etc.)
 - `llm_span()` and `tool_span()` context managers for custom instrumentation
-- Full span attribute reference under `agency.*`, `llm.*`, `tool.*` namespaces
+- Full span attribute reference under `civitas.*`, `llm.*`, `tool.*` namespaces
 - Trace context propagation across process and machine boundaries
 - `FanOutBackend` — export to multiple backends simultaneously
 - Per-agent LLM cost attribution via `llm.cost_usd` span attribute
@@ -75,7 +78,7 @@ Initial public release.
 #### Framework adapters
 
 - `LangGraphAgent` — wraps a LangGraph `CompiledGraph` as an `AgentProcess`; optional typed `input_schema` for early payload validation
-- `OpenAIAgent` — wraps an OpenAI Agents SDK `Agent`; maps handoffs to Agency `send()` calls
+- `OpenAIAgent` — wraps an OpenAI Agents SDK `Agent`; maps handoffs to Civitas `send()` calls
 
 #### YAML topology
 
@@ -88,12 +91,12 @@ Initial public release.
 
 #### CLI
 
-- `agency run` — start the runtime from a topology file; `--transport`, `--process`, `--nats-url` overrides
-- `agency topology validate` — structural and configuration validation with grouped output; exit 1 on failure (CI-safe)
-- `agency topology show` — render the supervision tree with inline restart policies
-- `agency topology diff` — meaningful diff between two topology files grouped by section
-- `agency deploy docker-compose` — generate `Dockerfile`, `docker-compose.yml`, and `.env` from a topology; one service per process group
-- `agency state list` / `show` / `clear` — inspect and manage persisted agent state
+- `civitas run` — start the runtime from a topology file; `--transport`, `--process`, `--nats-url` overrides
+- `civitas topology validate` — structural and configuration validation with grouped output; exit 1 on failure (CI-safe)
+- `civitas topology show` — render the supervision tree with inline restart policies
+- `civitas topology diff` — meaningful diff between two topology files grouped by section
+- `civitas deploy docker-compose` — generate `Dockerfile`, `docker-compose.yml`, and `.env` from a topology; one service per process group
+- `civitas state list` / `show` / `clear` — inspect and manage persisted agent state
 
 #### Serialization
 
@@ -122,5 +125,5 @@ Initial public release.
 - `LangGraphAgent`: non-dict graph outputs are wrapped in `{"output": value}` rather than raising `TypeError`
 - Pre-commit hooks: ruff + mypy run on every commit; CI enforces 85% coverage threshold
 
-[Unreleased]: https://github.com/anthropics/python-agency/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/anthropics/python-agency/releases/tag/v0.1.0
+[Unreleased]: https://github.com/jerynmathew/python-civitas/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/jerynmathew/python-civitas/releases/tag/v0.1.0

@@ -6,7 +6,7 @@ See [Messaging](../messaging.md) for routing semantics and payload rules.
 
 ---
 
-::: agency.messages.Message
+::: civitas.messages.Message
     options:
       show_source: true
 
@@ -17,6 +17,6 @@ See [Messaging](../messaging.md) for routing semantics and payload rules.
 Messages with types prefixed `_agency.` are reserved for runtime internals.
 Application code must not use this prefix.
 
-::: agency.messages.SYSTEM_MESSAGE_TYPES
+::: civitas.messages.SYSTEM_MESSAGE_TYPES
     options:
       show_source: false

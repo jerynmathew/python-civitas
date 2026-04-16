@@ -1,6 +1,6 @@
 # Topology YAML
 
-A topology file is a complete, declarative description of an Agency system — supervision tree, transport, and plugins in one place. It can be version-controlled, diffed, and validated without running the system.
+A topology file is a complete, declarative description of an Civitas system — supervision tree, transport, and plugins in one place. It can be version-controlled, diffed, and validated without running the system.
 
 ---
 
@@ -19,7 +19,7 @@ supervision:
 Run it:
 
 ```bash
-agency run --topology topology.yaml
+civitas run --topology topology.yaml
 ```
 
 ---
@@ -210,10 +210,10 @@ Start the supervisor, then the worker:
 
 ```bash
 # Terminal 1 — supervisor process
-agency run --topology topology.yaml
+civitas run --topology topology.yaml
 
 # Terminal 2 — worker process
-agency run --topology topology.yaml --process worker
+civitas run --topology topology.yaml --process worker
 ```
 
 Any string can be the process name. Multiple agents can share the same process name — they will all be hosted in the same Worker.
@@ -292,13 +292,13 @@ supervision:
 
 ## CLI commands
 
-### `agency run`
+### `civitas run`
 
 ```bash
-agency run --topology topology.yaml            # run as supervisor
-agency run --topology topology.yaml --process worker   # run as worker
-agency run --topology topology.yaml --transport nats   # override transport
-agency run --topology topology.yaml --nats-url nats://prod:4222  # override NATS URL
+civitas run --topology topology.yaml            # run as supervisor
+civitas run --topology topology.yaml --process worker   # run as worker
+civitas run --topology topology.yaml --transport nats   # override transport
+civitas run --topology topology.yaml --nats-url nats://prod:4222  # override NATS URL
 ```
 
 | Flag | Default | Description |
@@ -308,12 +308,12 @@ agency run --topology topology.yaml --nats-url nats://prod:4222  # override NATS
 | `--process`, `-p` | — | Run as a Worker hosting agents for this process name |
 | `--nats-url` | — | Override `transport.servers` |
 
-### `agency topology validate`
+### `civitas topology validate`
 
 Checks the topology file for structural and configuration errors before running:
 
 ```bash
-agency topology validate topology.yaml
+civitas topology validate topology.yaml
 ```
 
 ```
@@ -350,19 +350,19 @@ Validation catches:
 Exit code `0` on success, `1` on validation failure. Safe to use in CI:
 
 ```bash
-agency topology validate topology.yaml || exit 1
+civitas topology validate topology.yaml || exit 1
 ```
 
-### `agency topology show`
+### `civitas topology show`
 
 Renders the supervision tree as a formatted tree with inline policies:
 
 ```bash
-agency topology show topology.yaml
+civitas topology show topology.yaml
 ```
 
 ```
-  Agency Topology: topology.yaml
+  Civitas Topology: topology.yaml
 
   root ONE_FOR_ONE  restarts: 3/60.0s  backoff: constant
   ├── research_sup ONE_FOR_ONE  restarts: 5/30.0s  backoff: exponential
@@ -376,12 +376,12 @@ agency topology show topology.yaml
   Topology    3 agents  ·  2 supervisors  ·  1 processes
 ```
 
-### `agency topology diff`
+### `civitas topology diff`
 
 Shows meaningful differences between two topology files — useful for reviewing changes before deployment:
 
 ```bash
-agency topology diff staging.yaml production.yaml
+civitas topology diff staging.yaml production.yaml
 ```
 
 ```
@@ -480,10 +480,10 @@ Start it:
 
 ```bash
 # Supervisor process (Machine A)
-agency run --topology production.yaml
+civitas run --topology production.yaml
 
 # Worker process (Machine B)
-agency run --topology production.yaml --process worker
+civitas run --topology production.yaml --process worker
 ```
 
 ---

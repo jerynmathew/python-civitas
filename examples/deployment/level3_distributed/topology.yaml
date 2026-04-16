@@ -3,18 +3,18 @@
 # Identical agent topology to Level 2. Only the transport block changes.
 # Agents can now run on separate machines — NATS routes all messages.
 #
-# Install: pip install python-agency[nats]
+# Install: pip install civitas[nats]
 #
 # Run:
 #   Start NATS:
 #     docker run -d -p 4222:4222 -p 8222:8222 nats
 #
 #   Machine A (supervisor):
-#     agency run --topology examples/deployment/level3_distributed/topology.yaml
+#     civitas run --topology examples/deployment/level3_distributed/topology.yaml
 #
 #   Machine B (worker — point at the NATS host):
 #     NATS_URL=nats://machine-a:4222 \
-#     agency run --topology examples/deployment/level3_distributed/topology.yaml \
+#     civitas run --topology examples/deployment/level3_distributed/topology.yaml \
 #                --process worker
 #
 # Or programmatically — see run_supervisor.py and run_worker.py

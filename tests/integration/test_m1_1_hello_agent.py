@@ -3,9 +3,9 @@
 Each test maps to one bullet in the M1.1 milestone.
 """
 
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
-from agency.process import ProcessStatus
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
+from civitas.process import ProcessStatus
 
 
 class Greeter(AgentProcess):

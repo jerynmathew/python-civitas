@@ -1,4 +1,4 @@
-# Contributing to python-agency
+# Contributing to python-civitas
 
 Thank you for contributing. This document covers dev setup, the test strategy, PR conventions, and how to write and maintain plugins.
 
@@ -6,12 +6,12 @@ Thank you for contributing. This document covers dev setup, the test strategy, P
 
 ## Dev setup
 
-Agency uses [`uv`](https://docs.astral.sh/uv/) for dependency management.
+Civitas uses [`uv`](https://docs.astral.sh/uv/) for dependency management.
 
 ```bash
 # Clone and enter the repo
-git clone https://github.com/anthropics/python-agency
-cd python-agency
+git clone https://github.com/jerynmathew/python-civitas
+cd python-civitas
 
 # Install all dev dependencies (includes test, lint, type-check tooling)
 uv sync --extra dev
@@ -74,7 +74,7 @@ Coverage is enforced at 85% (`--cov-fail-under=85` in `pyproject.toml`). The cov
 | `test_m2_2_nats.py` | NATSTransport (requires a running NATS server) |
 | `test_m2_3_plugins.py` | Plugin loading from YAML |
 | `test_m2_6_adapters.py` | LangGraph and OpenAI SDK adapters |
-| `test_m2_7_deploy.py` | `agency deploy docker-compose` artifact generation |
+| `test_m2_7_deploy.py` | `civitas deploy docker-compose` artifact generation |
 | `test_m2_8_state.py` | SQLiteStateStore checkpoint/restore |
 | `test_m3_1_cli.py` | CLI commands (run, topology validate/show/diff) |
 | `test_m3_2_topology.py` | YAML topology parsing, `Runtime.from_config()` |
@@ -101,11 +101,11 @@ Pre-commit runs both automatically on `git commit`. Run them manually:
 
 ```bash
 # Lint + autofix
-uv run ruff check --fix agency/
-uv run ruff format agency/
+uv run ruff check --fix civitas/
+uv run ruff format civitas/
 
 # Type check
-uv run mypy agency/
+uv run mypy civitas/
 ```
 
 **Ruff config** (`pyproject.toml`): line length 100, `E`, `F`, `I`, `UP`, `B`, `ASYNC` rule sets. `E501` (line too long) is ignored — Ruff's formatter handles line length. `ASYNC109` is ignored for `timeout` parameters (intentional public API).
@@ -125,8 +125,8 @@ uv run mypy agency/
 ### PR checklist
 
 - [ ] `uv run pytest` passes with coverage ≥ 85%
-- [ ] `uv run ruff check agency/` passes (no warnings)
-- [ ] `uv run mypy agency/` passes (no errors)
+- [ ] `uv run ruff check civitas/` passes (no warnings)
+- [ ] `uv run mypy civitas/` passes (no errors)
 - [ ] New public API is documented in `AGENTS.md`
 - [ ] Relevant doc page updated if behaviour changed
 
@@ -139,8 +139,8 @@ Plugins are structural protocols — no base class, no registration macro. Any c
 ### ModelProvider
 
 ```python
-# agency/plugins/my_provider.py
-from agency.plugins.model import ModelResponse
+# civitas/plugins/my_provider.py
+from civitas.plugins.model import ModelResponse
 
 class MyModelProvider:
     async def chat(
@@ -159,7 +159,7 @@ class MyModelProvider:
         )
 ```
 
-Register a built-in name for YAML loading by adding an entry to `agency/plugins/loader.py` under `_BUILTIN_MODEL_PROVIDERS`. For third-party packages, use a Python entrypoint instead (see [Plugins — entrypoint registration](docs/plugins.md#registering-a-plugin-via-entrypoint)).
+Register a built-in name for YAML loading by adding an entry to `civitas/plugins/loader.py` under `_BUILTIN_MODEL_PROVIDERS`. For third-party packages, use a Python entrypoint instead (see [Plugins — entrypoint registration](docs/plugins.md#registering-a-plugin-via-entrypoint)).
 
 ### StateStore
 
@@ -173,7 +173,7 @@ class MyStateStore:
 ### ExportBackend
 
 ```python
-from agency.observability.span_queue import SpanData
+from civitas.observability.span_queue import SpanData
 
 class MyExportBackend:
     async def export(self, spans: list[SpanData]) -> None: ...
@@ -215,8 +215,8 @@ The `AGENTS.md` review is part of the PR checklist — do not merge without it.
 ## Project structure
 
 ```
-python-agency/
-├── agency/                  # Runtime source
+python-civitas/
+├── civitas/                  # Runtime source
 │   ├── __init__.py          # Public API surface
 │   ├── process.py           # AgentProcess
 │   ├── supervisor.py        # Supervisor, restart strategies
@@ -251,10 +251,10 @@ python-agency/
 │   │   └── openai.py        # OpenAIAgent
 │   └── cli/                 # Typer CLI
 │       ├── app.py           # Root app + console
-│       ├── run.py           # agency run
-│       ├── topology.py      # agency topology validate/show/diff
-│       ├── deploy.py        # agency deploy docker-compose
-│       └── state.py         # agency state list/show/clear
+│       ├── run.py           # civitas run
+│       ├── topology.py      # civitas topology validate/show/diff
+│       ├── deploy.py        # civitas deploy docker-compose
+│       └── state.py         # civitas state list/show/clear
 ├── tests/
 │   ├── conftest.py          # Shared fixtures and test agents
 │   ├── unit/                # Fast, isolated unit tests

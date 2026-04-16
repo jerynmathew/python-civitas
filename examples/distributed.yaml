@@ -11,10 +11,10 @@
 #   docker run -d -p 4222:4222 nats
 #
 #   # Start runtime (machine A):
-#   agency run --topology examples/distributed.yaml
+#   civitas run --topology examples/distributed.yaml
 #
 #   # Start worker (machine B):
-#   agency run --topology examples/distributed.yaml --process worker
+#   civitas run --topology examples/distributed.yaml --process worker
 
 transport:
   type: nats

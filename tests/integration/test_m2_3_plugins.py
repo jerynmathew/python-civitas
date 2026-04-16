@@ -13,9 +13,9 @@ import tempfile
 
 import pytest
 
-from agency import AgentProcess, Runtime
-from agency.messages import Message
-from agency.plugins.loader import (
+from civitas import AgentProcess, Runtime
+from civitas.messages import Message
+from civitas.plugins.loader import (
     PluginError,
     load_plugin,
     load_plugins_from_config,
@@ -35,7 +35,7 @@ class MockModelProvider:
         self.temperature = temperature
 
     async def chat(self, model=None, messages=None, tools=None):
-        from agency.plugins.model import ModelResponse
+        from civitas.plugins.model import ModelResponse
 
         return ModelResponse(
             content="mock response",
@@ -78,7 +78,7 @@ class MockExporter:
 async def test_resolve_builtin_state_plugin():
     """Built-in plugin names resolve to correct classes."""
     cls = resolve_plugin_class("state", "in_memory")
-    from agency.plugins.state import InMemoryStateStore
+    from civitas.plugins.state import InMemoryStateStore
 
     assert cls is InMemoryStateStore
 
@@ -115,7 +115,7 @@ async def test_resolve_bad_dotted_path_raises():
 async def test_resolve_dotted_path_missing_class_raises():
     """Valid module but missing class produces clear error."""
     with pytest.raises(PluginError) as exc_info:
-        resolve_plugin_class("model", "agency.plugins.state.NonExistentClass")
+        resolve_plugin_class("model", "civitas.plugins.state.NonExistentClass")
 
     assert "has no attribute" in str(exc_info.value)
 
@@ -146,7 +146,7 @@ async def test_load_plugin_with_config():
 async def test_load_plugin_no_config():
     """load_plugin works with no config (uses defaults)."""
     store = load_plugin("state", "in_memory")
-    from agency.plugins.state import InMemoryStateStore
+    from civitas.plugins.state import InMemoryStateStore
 
     assert isinstance(store, InMemoryStateStore)
 
@@ -377,7 +377,7 @@ async def test_custom_plugin_via_dotted_path():
 
 async def test_in_memory_state_store_set_copies_dict():
     """InMemoryStateStore.set() stores a copy, not the original reference."""
-    from agency.plugins.state import InMemoryStateStore
+    from civitas.plugins.state import InMemoryStateStore
 
     store = InMemoryStateStore()
     state = {"key": "value"}
@@ -393,7 +393,7 @@ async def test_in_memory_state_store_set_copies_dict():
 
 async def test_in_memory_state_store_delete():
     """InMemoryStateStore.delete() removes stored state; get() returns None after."""
-    from agency.plugins.state import InMemoryStateStore
+    from civitas.plugins.state import InMemoryStateStore
 
     store = InMemoryStateStore()
     await store.set("agent1", {"x": 1})
@@ -411,7 +411,7 @@ async def test_in_memory_state_store_delete():
 
 async def test_tool_registry_duplicate_raises():
     """ToolRegistry.register() raises ValueError on duplicate tool name."""
-    from agency.plugins.tools import ToolRegistry
+    from civitas.plugins.tools import ToolRegistry
 
     class FakeTool:
         name = "search"
@@ -429,7 +429,7 @@ async def test_tool_registry_duplicate_raises():
 
 async def test_tool_registry_deregister_allows_reregister():
     """Deregistering a tool allows re-registering with the same name."""
-    from agency.plugins.tools import ToolRegistry
+    from civitas.plugins.tools import ToolRegistry
 
     class FakeTool:
         name = "search"
@@ -447,7 +447,7 @@ async def test_tool_registry_deregister_allows_reregister():
 
 async def test_tool_registry_list_tools():
     """ToolRegistry.list_tools() returns all registered tools."""
-    from agency.plugins.tools import ToolRegistry
+    from civitas.plugins.tools import ToolRegistry
 
     class FakeToolA:
         name = "tool_a"
@@ -472,25 +472,25 @@ async def test_tool_registry_list_tools():
 
 
 # ---------------------------------------------------------------------------
-# F07-7: PluginError in AgencyError hierarchy
+# F07-7: PluginError in CivitasError hierarchy
 # ---------------------------------------------------------------------------
 
 
 async def test_plugin_error_is_agency_error():
-    """PluginError is a subclass of AgencyError."""
-    from agency.errors import AgencyError
-    from agency.errors import PluginError as AgencyPluginError
+    """PluginError is a subclass of CivitasError."""
+    from civitas.errors import CivitasError
+    from civitas.errors import PluginError as AgencyPluginError
 
-    assert issubclass(AgencyPluginError, AgencyError)
+    assert issubclass(AgencyPluginError, CivitasError)
 
     err = AgencyPluginError("model", "fake", "not found")
-    assert isinstance(err, AgencyError)
+    assert isinstance(err, CivitasError)
 
 
 async def test_plugin_error_importable_from_loader():
-    """PluginError is still importable from agency.plugins.loader."""
-    from agency.errors import PluginError as ErrorsPluginError
-    from agency.plugins.loader import PluginError as LoaderPluginError
+    """PluginError is still importable from civitas.plugins.loader."""
+    from civitas.errors import PluginError as ErrorsPluginError
+    from civitas.plugins.loader import PluginError as LoaderPluginError
 
     assert LoaderPluginError is ErrorsPluginError
 

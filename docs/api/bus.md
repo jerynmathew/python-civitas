@@ -8,7 +8,7 @@ resolution order.
 
 ---
 
-::: agency.bus.MessageBus
+::: civitas.bus.MessageBus
     options:
       members:
         - setup_agent
@@ -19,7 +19,7 @@ resolution order.
 
 ---
 
-::: agency.registry.LocalRegistry
+::: civitas.registry.LocalRegistry
     options:
       members:
         - register
@@ -31,6 +31,6 @@ resolution order.
 
 ---
 
-::: agency.registry.RoutingEntry
+::: civitas.registry.RoutingEntry
     options:
       show_source: false

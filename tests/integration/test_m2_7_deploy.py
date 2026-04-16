@@ -1,6 +1,6 @@
 """M2.7 — Docker Containerized Deployment testable criteria.
 
-Tests validate that `agency deploy docker-compose` generates valid
+Tests validate that `civitas deploy docker-compose` generates valid
 deployment artifacts from topology YAML files.
 """
 
@@ -10,8 +10,8 @@ from pathlib import Path
 import yaml
 from typer.testing import CliRunner
 
-from agency.cli import app
-from agency.cli.deploy import _collect_processes, _generate_docker_compose, _generate_env_file
+from civitas.cli import app
+from civitas.cli.deploy import _collect_processes, _generate_docker_compose, _generate_env_file
 
 runner = CliRunner()
 
@@ -54,8 +54,8 @@ _NATS_TOPOLOGY = {
         ],
     },
     "plugins": {
-        "models": [{"type": "agency.plugins.anthropic.AnthropicProvider"}],
-        "exporters": [{"type": "agency.plugins.otel.OTELExporter"}],
+        "models": [{"type": "civitas.plugins.anthropic.AnthropicProvider"}],
+        "exporters": [{"type": "civitas.plugins.otel.OTELExporter"}],
     },
 }
 
@@ -149,8 +149,8 @@ def test_worker_has_agent_labels():
     output = _generate_docker_compose(_NATS_TOPOLOGY, "topology.yaml")
     config = yaml.safe_load(output)
     labels = config["services"]["worker-worker-1"]["labels"]
-    assert "agency.agents" in labels
-    assert "worker_a" in labels["agency.agents"]
+    assert "civitas.agents" in labels
+    assert "worker_a" in labels["civitas.agents"]
 
 
 def test_nats_dependency():
@@ -214,7 +214,7 @@ def test_env_file_no_extra_keys_for_simple():
 
 
 def test_deploy_command_generates_files():
-    """agency deploy docker-compose creates all expected files."""
+    """civitas deploy docker-compose creates all expected files."""
     with tempfile.TemporaryDirectory() as tmpdir:
         topo_path = Path(tmpdir) / "topology.yaml"
         topo_path.write_text(yaml.dump(_NATS_TOPOLOGY))
@@ -253,7 +253,7 @@ def test_deploy_command_missing_topology():
 
 
 def test_deploy_dockerfile_content():
-    """Generated Dockerfile uses python:3.12-slim and installs agency."""
+    """Generated Dockerfile uses python:3.12-slim and installs civitas."""
     with tempfile.TemporaryDirectory() as tmpdir:
         topo_path = Path(tmpdir) / "topology.yaml"
         topo_path.write_text(yaml.dump(_SIMPLE_TOPOLOGY))
@@ -272,4 +272,4 @@ def test_deploy_dockerfile_content():
         )
         dockerfile = (out_dir / "Dockerfile").read_text()
         assert "python:3.12-slim" in dockerfile
-        assert "agency" in dockerfile
+        assert "civitas" in dockerfile

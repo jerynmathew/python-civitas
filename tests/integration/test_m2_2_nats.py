@@ -18,11 +18,11 @@ import time
 
 import pytest
 
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message, _uuid7
-from agency.process import ProcessStatus
-from agency.serializer import MsgpackSerializer
-from agency.transport.nats import NATSTransport
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message, _uuid7
+from civitas.process import ProcessStatus
+from civitas.serializer import MsgpackSerializer
+from civitas.transport.nats import NATSTransport
 
 # ---------------------------------------------------------------------------
 # NATS server fixture — start/stop a local nats-server per test session
@@ -351,7 +351,7 @@ async def test_worker_nats_hosts_agent(nats_url):
     Simulates distributed scenario: Runtime sends messages to an agent
     hosted in a Worker via NATS server.
     """
-    from agency.worker import Worker
+    from civitas.worker import Worker
 
     class Orchestrator(AgentProcess):
         async def handle(self, message: Message) -> Message | None:
@@ -382,7 +382,7 @@ async def test_worker_nats_hosts_agent(nats_url):
 
 async def test_worker_nats_heartbeat_response(nats_url):
     """Agent in Worker responds to heartbeat pings over NATS."""
-    from agency.worker import Worker
+    from civitas.worker import Worker
 
     runtime = Runtime(
         supervisor=Supervisor("root", children=[]),
@@ -399,7 +399,7 @@ async def test_worker_nats_heartbeat_response(nats_url):
     await worker.start()
 
     try:
-        from agency.messages import _new_span_id
+        from civitas.messages import _new_span_id
 
         heartbeat = Message(
             type="_agency.heartbeat",
@@ -418,7 +418,7 @@ async def test_worker_nats_heartbeat_response(nats_url):
 
 async def test_worker_nats_stop_cleans_up(nats_url):
     """Worker stops all agents and disconnects cleanly over NATS."""
-    from agency.worker import Worker
+    from civitas.worker import Worker
 
     runtime = Runtime(
         supervisor=Supervisor("root", children=[]),

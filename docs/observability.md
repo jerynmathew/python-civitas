@@ -1,6 +1,6 @@
 # Observability
 
-Agency generates OpenTelemetry spans for every message, LLM call, tool invocation, and supervisor event automatically — no instrumentation code required in your agents. This document covers what is traced, how to view it, how to export to external backends, and how to add custom spans.
+Civitas generates OpenTelemetry spans for every message, LLM call, tool invocation, and supervisor event automatically — no instrumentation code required in your agents. This document covers what is traced, how to view it, how to export to external backends, and how to add custom spans.
 
 ---
 
@@ -10,27 +10,27 @@ Every operation in the runtime emits a span:
 
 | Operation | Span name | Key attributes |
 |---|---|---|
-| Message sent | `send {type}` | `agency.sender`, `agency.recipient`, `agency.message_type`, `agency.message_id` |
-| Message received | `recv {type}` | `agency.sender`, `agency.recipient`, `agency.message_type`, `agency.message_id` |
-| Agent started | `agency.agent.start` | `agency.agent.name` |
-| Message handled | `agency.agent.handle` | `agency.agent.name`, `agency.message_type`, `agency.attempt` |
-| Agent stopped | `agency.agent.stop` | `agency.agent.name` |
-| Message retried | `agency.agent.retry` | `agency.agent.name`, `agency.attempt` |
-| Supervisor restart | `supervisor.restart` | `agency.supervisor`, `agency.child`, `agency.restart_count`, `agency.strategy`, `agency.error` |
+| Message sent | `send {type}` | `civitas.sender`, `civitas.recipient`, `civitas.message_type`, `civitas.message_id` |
+| Message received | `recv {type}` | `civitas.sender`, `civitas.recipient`, `civitas.message_type`, `civitas.message_id` |
+| Agent started | `civitas.agent.start` | `civitas.agent.name` |
+| Message handled | `civitas.agent.handle` | `civitas.agent.name`, `civitas.message_type`, `civitas.attempt` |
+| Agent stopped | `civitas.agent.stop` | `civitas.agent.name` |
+| Message retried | `civitas.agent.retry` | `civitas.agent.name`, `civitas.attempt` |
+| Supervisor restart | `supervisor.restart` | `civitas.supervisor`, `civitas.child`, `civitas.restart_count`, `civitas.strategy`, `civitas.error` |
 | LLM call | `llm.chat {model}` | `llm.model`, `llm.tokens_in`, `llm.tokens_out`, `llm.cost_usd`, `llm.latency_ms` |
 | Tool invocation | `tool.execute {name}` | `tool.name`, `tool.result_status`, `tool.latency_ms` |
 
-Zero configuration required. Run any Agency program and these spans are emitted.
+Zero configuration required. Run any Civitas program and these spans are emitted.
 
 ---
 
 ## Three output modes
 
-Agency selects the output mode automatically based on what is installed and what environment variables are set:
+Civitas selects the output mode automatically based on what is installed and what environment variables are set:
 
 ```mermaid
 flowchart TD
-    A["Agency starts"] --> B{"opentelemetry-sdk\ninstalled?"}
+    A["Civitas starts"] --> B{"opentelemetry-sdk\ninstalled?"}
     B -->|"No"| C["Built-in console output\nvia Python logging"]
     B -->|"Yes"| D{"OTEL_EXPORTER_OTLP_ENDPOINT\nset?"}
     D -->|"No"| E["OTEL ConsoleSpanExporter\nJSON to stdout"]
@@ -45,9 +45,9 @@ flowchart TD
 
 ## Mode 1 — Built-in console output
 
-**Default — no dependencies beyond `python-agency` core.**
+**Default — no dependencies beyond `python-civitas` core.**
 
-When `opentelemetry-sdk` is not installed, Agency prints a human-readable summary to the console via Python's `logging` module at `DEBUG` level. Enable it:
+When `opentelemetry-sdk` is not installed, Civitas prints a human-readable summary to the console via Python's `logging` module at `DEBUG` level. Enable it:
 
 ```python
 import logging
@@ -74,10 +74,10 @@ This mode is zero-dependency and suitable for development. No spans are exported
 **Install `opentelemetry-sdk`, no endpoint configured.**
 
 ```bash
-pip install python-agency[otel]
+pip install civitas[otel]
 ```
 
-Without `OTEL_EXPORTER_OTLP_ENDPOINT` set, Agency configures OpenTelemetry's built-in `ConsoleSpanExporter`, which writes full OTEL-format JSON spans to stdout. Useful for verifying span structure and attributes before connecting to a real backend.
+Without `OTEL_EXPORTER_OTLP_ENDPOINT` set, Civitas configures OpenTelemetry's built-in `ConsoleSpanExporter`, which writes full OTEL-format JSON spans to stdout. Useful for verifying span structure and attributes before connecting to a real backend.
 
 ```json
 {
@@ -107,11 +107,11 @@ Without `OTEL_EXPORTER_OTLP_ENDPOINT` set, Agency configures OpenTelemetry's bui
 **Install `opentelemetry-sdk` and set `OTEL_EXPORTER_OTLP_ENDPOINT`.**
 
 ```bash
-pip install python-agency[otel]
+pip install civitas[otel]
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 ```
 
-Agency uses `BatchSpanProcessor` which exports spans in a background thread — the message loop is never blocked by network I/O. Spans are buffered and flushed automatically. On `runtime.stop()`, `force_flush()` is called to drain any pending spans.
+Civitas uses `BatchSpanProcessor` which exports spans in a background thread — the message loop is never blocked by network I/O. Spans are buffered and flushed automatically. On `runtime.stop()`, `force_flush()` is called to drain any pending spans.
 
 ### Jaeger (local development)
 
@@ -187,9 +187,9 @@ class MyAgent(AgentProcess):
                 messages=[{"role": "user", "content": message.payload["question"]}],
             )
             # Enrich the span with response data
-            span.set_attribute("agency.llm.tokens_in", response.tokens_in)
-            span.set_attribute("agency.llm.tokens_out", response.tokens_out)
-            span.set_attribute("agency.llm.cost_usd", response.cost_usd)
+            span.set_attribute("civitas.llm.tokens_in", response.tokens_in)
+            span.set_attribute("civitas.llm.tokens_out", response.tokens_out)
+            span.set_attribute("civitas.llm.cost_usd", response.cost_usd)
 
         return self.reply({"answer": response.content})
 ```
@@ -205,7 +205,7 @@ class MyAgent(AgentProcess):
 
         with self.tool_span("web_search") as span:
             result = await tool.execute(query=message.payload["query"])
-            span.set_attribute("agency.tool.result_count", len(result["results"]))
+            span.set_attribute("civitas.tool.result_count", len(result["results"]))
 
         return self.reply({"results": result["results"]})
 ```
@@ -241,34 +241,34 @@ Always call `span.end()` in a `finally` block. Unclosed spans are not exported.
 
 ## Span attribute reference
 
-All Agency-emitted attributes follow the `agency.*` and `llm.*` / `tool.*` namespace conventions:
+All Civitas-emitted attributes follow the `civitas.*` and `llm.*` / `tool.*` namespace conventions:
 
 ### Message spans
 
 | Attribute | Type | Description |
 |---|---|---|
-| `agency.sender` | string | Name of the sending agent |
-| `agency.recipient` | string | Name of the target agent |
-| `agency.message_type` | string | Value of `message.type` |
-| `agency.message_id` | string | UUID7 message ID |
+| `civitas.sender` | string | Name of the sending agent |
+| `civitas.recipient` | string | Name of the target agent |
+| `civitas.message_type` | string | Value of `message.type` |
+| `civitas.message_id` | string | UUID7 message ID |
 
 ### Agent lifecycle spans
 
 | Attribute | Type | Description |
 |---|---|---|
-| `agency.agent.name` | string | Agent name |
-| `agency.message_type` | string | Type of message being handled |
-| `agency.attempt` | int | Retry attempt number (0 = first delivery) |
+| `civitas.agent.name` | string | Agent name |
+| `civitas.message_type` | string | Type of message being handled |
+| `civitas.attempt` | int | Retry attempt number (0 = first delivery) |
 
 ### Supervisor spans
 
 | Attribute | Type | Description |
 |---|---|---|
-| `agency.supervisor` | string | Supervisor name |
-| `agency.child` | string | Name of the restarted child |
-| `agency.restart_count` | int | Restart number for this child |
-| `agency.strategy` | string | `ONE_FOR_ONE` / `ONE_FOR_ALL` / `REST_FOR_ONE` |
-| `agency.error` | string | Exception that caused the restart |
+| `civitas.supervisor` | string | Supervisor name |
+| `civitas.child` | string | Name of the restarted child |
+| `civitas.restart_count` | int | Restart number for this child |
+| `civitas.strategy` | string | `ONE_FOR_ONE` / `ONE_FOR_ALL` / `REST_FOR_ONE` |
+| `civitas.error` | string | Exception that caused the restart |
 
 ### LLM spans
 
@@ -321,8 +321,8 @@ class ExportBackend(Protocol):
 Example — sending spans to a custom HTTP endpoint:
 
 ```python
-from agency.observability.export_backend import ExportBackend
-from agency.observability.span_queue import SpanData
+from civitas.observability.export_backend import ExportBackend
+from civitas.observability.span_queue import SpanData
 import aiohttp
 
 class HttpBackend:
@@ -350,7 +350,7 @@ class HttpBackend:
 Use `FanOutBackend` to export to multiple backends simultaneously:
 
 ```python
-from agency.observability.export_backend import FanOutBackend, ConsoleBackend
+from civitas.observability.export_backend import FanOutBackend, ConsoleBackend
 
 backend = FanOutBackend([
     ConsoleBackend(),
@@ -373,7 +373,7 @@ Standard OTEL SDK environment variables (`OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATT
 
 ## Cost attribution
 
-Every LLM span carries `llm.cost_usd`. Aggregating this attribute by `agency.agent.name` in your OTEL backend gives you per-agent cost attribution over time:
+Every LLM span carries `llm.cost_usd`. Aggregating this attribute by `civitas.agent.name` in your OTEL backend gives you per-agent cost attribution over time:
 
 ```
 orchestrator   $0.0421  (3 LLM calls)

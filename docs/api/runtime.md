@@ -1,13 +1,13 @@
 # Runtime
 
-Assembles and manages the full Agency runtime. Wires transport, registry,
+Assembles and manages the full Civitas runtime. Wires transport, registry,
 serializer, tracer, plugins, and the supervision tree.
 
 See [Deployment](../deployment.md) and [Topology & CLI](../topology.md) for usage.
 
 ---
 
-::: agency.runtime.Runtime
+::: civitas.runtime.Runtime
     options:
       members:
         - from_config
@@ -22,7 +22,7 @@ See [Deployment](../deployment.md) and [Topology & CLI](../topology.md) for usag
 
 ---
 
-::: agency.components.ComponentSet
+::: civitas.components.ComponentSet
     options:
       members:
         - inject
@@ -30,6 +30,6 @@ See [Deployment](../deployment.md) and [Topology & CLI](../topology.md) for usag
 
 ---
 
-::: agency.components.build_component_set
+::: civitas.components.build_component_set
     options:
       show_source: true

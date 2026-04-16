@@ -1,7 +1,7 @@
 """Agent definitions shared by supervisor and worker processes (Level 2)."""
 
-from agency import AgentProcess
-from agency.messages import Message
+from civitas import AgentProcess
+from civitas.messages import Message
 
 
 class FrontendAgent(AgentProcess):

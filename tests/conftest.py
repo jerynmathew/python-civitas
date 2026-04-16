@@ -3,9 +3,9 @@
 import asyncio
 from collections.abc import Callable
 
-from agency import AgentProcess
-from agency.messages import Message
-from agency.process import ProcessStatus
+from civitas import AgentProcess
+from civitas.messages import Message
+from civitas.process import ProcessStatus
 
 
 async def wait_for_status(

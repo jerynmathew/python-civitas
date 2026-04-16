@@ -9,7 +9,7 @@ worker_a and worker_b.
 import asyncio
 from pathlib import Path
 
-from agency.worker import Worker
+from civitas.worker import Worker
 
 TOPOLOGY = Path(__file__).parent / "topology.yaml"
 

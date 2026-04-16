@@ -2,14 +2,14 @@
 
 import pytest
 
-from agency.bus import MessageBus
-from agency.errors import MessageRoutingError, MessageValidationError
-from agency.messages import Message, _uuid7
-from agency.observability.tracer import Tracer
-from agency.process import AgentProcess
-from agency.registry import LocalRegistry
-from agency.serializer import MsgpackSerializer
-from agency.transport.inprocess import InProcessTransport
+from civitas.bus import MessageBus
+from civitas.errors import MessageRoutingError, MessageValidationError
+from civitas.messages import Message, _uuid7
+from civitas.observability.tracer import Tracer
+from civitas.process import AgentProcess
+from civitas.registry import LocalRegistry
+from civitas.serializer import MsgpackSerializer
+from civitas.transport.inprocess import InProcessTransport
 
 
 class CollectorAgent(AgentProcess):

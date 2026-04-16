@@ -3,10 +3,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["agency"]
+packages = ["civitas"]
 
 [project]
-name = "python-agency"
+name = "civitas"
 version = "0.1.0"
 description = "The production runtime for Python agents"
 requires-python = ">=3.12"
@@ -19,10 +19,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/anthropics/python-agency"
-Repository = "https://github.com/anthropics/python-agency"
-Documentation = "https://github.com/anthropics/python-agency#readme"
-"Bug Tracker" = "https://github.com/anthropics/python-agency/issues"
+Homepage = "https://github.com/jerynmathew/python-civitas"
+Repository = "https://github.com/jerynmathew/python-civitas"
+Documentation = "https://github.com/jerynmathew/python-civitas#readme"
+"Bug Tracker" = "https://github.com/jerynmathew/python-civitas/issues"
 
 [project.optional-dependencies]
 otel      = [
@@ -57,36 +57,36 @@ docs      = [
 ]
 
 [project.scripts]
-agency = "agency.cli:main"
+civitas = "civitas.cli:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "--cov=agency --cov-report=term-missing --cov-fail-under=85"
+addopts = "--cov=civitas --cov-report=term-missing --cov-fail-under=85"
 
 [tool.coverage.run]
 branch = true
 omit = [
     # Requires live infra (ZMQ IPC/TCP, NATS server) — covered in test_m2_1/m2_2
-    "agency/transport/zmq.py",
-    "agency/transport/nats.py",
-    "agency/transport/__init__.py",   # protocol definition only
+    "civitas/transport/zmq.py",
+    "civitas/transport/nats.py",
+    "civitas/transport/__init__.py",   # protocol definition only
     # Require live API keys — unit-tested via mocks
-    "agency/plugins/anthropic.py",
-    "agency/plugins/openai.py",
-    "agency/plugins/gemini.py",
-    "agency/plugins/mistral.py",
-    "agency/plugins/litellm.py",
+    "civitas/plugins/anthropic.py",
+    "civitas/plugins/openai.py",
+    "civitas/plugins/gemini.py",
+    "civitas/plugins/mistral.py",
+    "civitas/plugins/litellm.py",
     # Fiddler integration is a planned stub with no callable implementation yet
-    "agency/plugins/fiddler.py",
+    "civitas/plugins/fiddler.py",
     # Adapter coverage lives in test_m2_6_adapters.py (excluded to avoid
     # inflating the threshold with tests that mock optional deps)
-    "agency/adapters/*",
+    "civitas/adapters/*",
     # CLI and dashboard require Typer/Rich setup — covered in test_m3_1/m3_3
-    "agency/cli/*",
-    "agency/dashboard/*",
+    "civitas/cli/*",
+    "civitas/dashboard/*",
     # Entry point shim
-    "agency/__main__.py",
+    "civitas/__main__.py",
 ]
 
 [tool.coverage.report]
@@ -117,7 +117,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["agency"]
+known-first-party = ["civitas"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -129,7 +129,7 @@ warn_return_any = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["msgpack.*", "zmq.*", "nats.*", "litellm.*", "openai.*", "google.generativeai.*", "mistralai.*"]
+module = ["msgpack.*", "zmq.*", "nats.*", "litellm.*", "openai.*", "google", "google.*", "mistralai.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

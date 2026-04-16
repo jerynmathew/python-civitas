@@ -13,11 +13,11 @@ import pytest
 # F11-5: skip entire module if pyzmq is not installed
 pytest.importorskip("zmq", reason="pyzmq not installed — skipping ZMQ transport tests")
 
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message, _uuid7
-from agency.process import ProcessStatus
-from agency.serializer import MsgpackSerializer
-from agency.transport.zmq import ZMQProxy, ZMQTransport
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message, _uuid7
+from civitas.process import ProcessStatus
+from civitas.serializer import MsgpackSerializer
+from civitas.transport.zmq import ZMQProxy, ZMQTransport
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -350,7 +350,7 @@ async def test_worker_hosts_agent_cross_transport(zmq_addrs):
     Simulates the M2.1 multi-process scenario: Runtime (Process A) sends
     messages to an agent hosted in a Worker (Process B) via ZMQ.
     """
-    from agency.worker import Worker
+    from civitas.worker import Worker
 
     frontend, backend = zmq_addrs
 
@@ -388,7 +388,7 @@ async def test_worker_hosts_agent_cross_transport(zmq_addrs):
 
 async def test_heartbeat_response(zmq_addrs):
     """Agent in Worker responds to heartbeat pings from supervisor."""
-    from agency.worker import Worker
+    from civitas.worker import Worker
 
     frontend, backend = zmq_addrs
 
@@ -411,7 +411,7 @@ async def test_heartbeat_response(zmq_addrs):
 
     try:
         # Send a heartbeat via the bus and expect an ack
-        from agency.messages import _new_span_id
+        from civitas.messages import _new_span_id
 
         heartbeat = Message(
             type="_agency.heartbeat",
@@ -430,7 +430,7 @@ async def test_heartbeat_response(zmq_addrs):
 
 async def test_worker_stop_cleans_up(zmq_addrs):
     """Worker stops all agents and disconnects cleanly."""
-    from agency.worker import Worker
+    from civitas.worker import Worker
 
     frontend, backend = zmq_addrs
 
@@ -473,7 +473,7 @@ async def test_worker_stop_cleans_up(zmq_addrs):
 
 async def test_worker_restart_command(zmq_addrs):
     """Worker handles restart commands from supervisor."""
-    from agency.worker import Worker
+    from civitas.worker import Worker
 
     frontend, backend = zmq_addrs
 
@@ -554,7 +554,7 @@ async def test_supervisor_remote_child_registration(zmq_addrs):
 
 async def test_registry_remote_stub():
     """Registry supports remote agent entries for cross-process lookup."""
-    from agency.registry import LocalRegistry
+    from civitas.registry import LocalRegistry
 
     reg = LocalRegistry()
     reg.register_remote("remote_1")

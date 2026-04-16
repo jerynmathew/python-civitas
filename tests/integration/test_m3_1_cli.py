@@ -11,30 +11,30 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from agency.cli import app
+from civitas.cli import app
 
 runner = CliRunner()
 
 
 # ---------------------------------------------------------------------------
-# agency version
+# civitas version
 # ---------------------------------------------------------------------------
 
 
 def test_version():
-    """agency version prints version info."""
+    """civitas version prints version info."""
     result = runner.invoke(app, ["version"])
     assert result.exit_code == 0
     assert "0.1.0" in result.output
 
 
 # ---------------------------------------------------------------------------
-# agency init
+# civitas init
 # ---------------------------------------------------------------------------
 
 
 def test_init_scaffolds_project():
-    """agency init creates project directory with expected files."""
+    """civitas init creates project directory with expected files."""
     with tempfile.TemporaryDirectory() as tmpdir:
         result = runner.invoke(app, ["init", "my_project", "--dir", tmpdir])
         assert result.exit_code == 0
@@ -49,11 +49,11 @@ def test_init_scaffolds_project():
 
 
 def test_init_pyproject_has_agency_dep():
-    """Scaffolded pyproject.toml includes python-agency dependency."""
+    """Scaffolded pyproject.toml includes civitas dependency."""
     with tempfile.TemporaryDirectory() as tmpdir:
         runner.invoke(app, ["init", "dep_test", "--dir", tmpdir])
         content = (Path(tmpdir) / "dep_test" / "pyproject.toml").read_text()
-        assert "python-agency" in content
+        assert "civitas" in content
 
 
 def test_init_topology_is_valid_yaml():
@@ -78,7 +78,7 @@ def test_init_agents_contains_agent_class():
 
 
 def test_init_rejects_existing_directory():
-    """agency init refuses to overwrite an existing directory."""
+    """civitas init refuses to overwrite an existing directory."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create the directory first
         (Path(tmpdir) / "existing").mkdir()
@@ -96,18 +96,18 @@ def test_init_run_script_is_functional():
 
 
 # ---------------------------------------------------------------------------
-# agency run
+# civitas run
 # ---------------------------------------------------------------------------
 
 
 def test_run_missing_topology():
-    """agency run with nonexistent topology file shows error."""
+    """civitas run with nonexistent topology file shows error."""
     result = runner.invoke(app, ["run", "--topology", "/nonexistent/topology.yaml"])
     assert result.exit_code == 1
 
 
 def test_run_help():
-    """agency run --help shows transport and process options."""
+    """civitas run --help shows transport and process options."""
     result = runner.invoke(app, ["run", "--help"])
     assert result.exit_code == 0
     assert "--topology" in result.output
@@ -116,25 +116,25 @@ def test_run_help():
 
 
 # ---------------------------------------------------------------------------
-# agency state
+# civitas state
 # ---------------------------------------------------------------------------
 
 
 def test_state_list_no_db():
-    """agency state list with no database shows friendly message."""
+    """civitas state list with no database shows friendly message."""
     result = runner.invoke(app, ["state", "list", "--db", "/nonexistent/state.db"])
     assert result.exit_code == 0
 
 
 def test_state_list_shows_agents():
-    """agency state list shows agents in a Rich table."""
+    """civitas state list shows agents in a Rich table."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
 
     try:
         import asyncio
 
-        from agency.plugins.sqlite_store import SQLiteStateStore
+        from civitas.plugins.sqlite_store import SQLiteStateStore
 
         store = SQLiteStateStore(db_path)
         asyncio.run(store.set("agent_a", {"count": 42}))
@@ -151,14 +151,14 @@ def test_state_list_shows_agents():
 
 
 def test_state_clear_specific_agent():
-    """agency state clear <name> removes state for that agent."""
+    """civitas state clear <name> removes state for that agent."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
 
     try:
         import asyncio
 
-        from agency.plugins.sqlite_store import SQLiteStateStore
+        from civitas.plugins.sqlite_store import SQLiteStateStore
 
         store = SQLiteStateStore(db_path)
         asyncio.run(store.set("agent_a", {"v": 1}))
@@ -179,14 +179,14 @@ def test_state_clear_specific_agent():
 
 
 def test_state_clear_all():
-    """agency state clear (no name) removes all agent states."""
+    """civitas state clear (no name) removes all agent states."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
 
     try:
         import asyncio
 
-        from agency.plugins.sqlite_store import SQLiteStateStore
+        from civitas.plugins.sqlite_store import SQLiteStateStore
 
         store = SQLiteStateStore(db_path)
         asyncio.run(store.set("agent_a", {"v": 1}))
@@ -204,12 +204,12 @@ def test_state_clear_all():
 
 
 def test_state_clear_nonexistent_agent():
-    """agency state clear for unknown agent shows message."""
+    """civitas state clear for unknown agent shows message."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
 
     try:
-        from agency.plugins.sqlite_store import SQLiteStateStore
+        from civitas.plugins.sqlite_store import SQLiteStateStore
 
         store = SQLiteStateStore(db_path)
         asyncio.run(store.close())
@@ -239,7 +239,7 @@ def test_run_transport_override_flag():
 
 
 def test_init_rejects_invalid_identifier():
-    """agency init rejects names that are not valid Python identifiers."""
+    """civitas init rejects names that are not valid Python identifiers."""
     with tempfile.TemporaryDirectory() as tmpdir:
         result = runner.invoke(app, ["init", "my-project", "--dir", tmpdir])
         assert result.exit_code == 1
@@ -284,12 +284,12 @@ def test_topology_validate_no_supervision():
 
 
 def test_python_m_agency():
-    """python -m agency works as entry point."""
+    """python -m civitas works as entry point."""
     import subprocess
 
     venv_python = str(Path(__file__).resolve().parents[2] / ".venv" / "bin" / "python")
     result = subprocess.run(
-        [venv_python, "-m", "agency", "version"],
+        [venv_python, "-m", "civitas", "version"],
         capture_output=True,
         text=True,
         timeout=10,

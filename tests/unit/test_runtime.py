@@ -7,10 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from agency import AgentProcess, Runtime, Supervisor
-from agency.config import Settings
-from agency.errors import ConfigurationError as AgencyConfigError
-from agency.messages import Message
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.config import Settings
+from civitas.errors import ConfigurationError as AgencyConfigError
+from civitas.messages import Message
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -307,7 +307,7 @@ def test_example_production_yaml_supervision_structure() -> None:
 
     mock_loaded = {"model_providers": [], "state_store": None}
     path = _EXAMPLES_DIR / "production.yaml"
-    with patch("agency.plugins.loader.load_plugins_from_config", return_value=mock_loaded):
+    with patch("civitas.plugins.loader.load_plugins_from_config", return_value=mock_loaded):
         rt = Runtime.from_config(path, agent_classes=_ANY)
     assert rt._root_supervisor is not None
     assert rt._root_supervisor.name == "root"
@@ -320,8 +320,8 @@ def test_example_production_yaml_supervision_structure() -> None:
 
 def test_build_component_set_custom_serializer() -> None:
     """build_component_set uses the provided serializer instance directly."""
-    from agency.components import build_component_set
-    from agency.serializer import JsonSerializer
+    from civitas.components import build_component_set
+    from civitas.serializer import JsonSerializer
 
     custom = JsonSerializer()
     cs = build_component_set(serializer=custom)
@@ -332,10 +332,10 @@ def test_build_component_set_json_serializer_from_settings() -> None:
     """build_component_set picks JsonSerializer when settings.serializer == 'json'."""
     from unittest.mock import patch
 
-    from agency.components import build_component_set
-    from agency.serializer import JsonSerializer
+    from civitas.components import build_component_set
+    from civitas.serializer import JsonSerializer
 
-    with patch("agency.components.settings") as mock_settings:
+    with patch("civitas.components.settings") as mock_settings:
         mock_settings.serializer = "json"
         cs = build_component_set()
     assert isinstance(cs.serializer, JsonSerializer)

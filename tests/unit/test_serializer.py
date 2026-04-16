@@ -2,9 +2,9 @@
 
 import pytest
 
-from agency.errors import DeserializationError
-from agency.messages import Message
-from agency.serializer import JsonSerializer, MsgpackSerializer
+from civitas.errors import DeserializationError
+from civitas.messages import Message
+from civitas.serializer import JsonSerializer, MsgpackSerializer
 
 
 def test_msgpack_roundtrip():

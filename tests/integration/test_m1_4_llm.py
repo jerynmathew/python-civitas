@@ -6,11 +6,11 @@ Uses a mock ModelProvider — no real API calls.
 import asyncio
 from typing import Any
 
-from agency import AgentProcess, Runtime, Supervisor
-from agency.errors import ErrorAction
-from agency.messages import Message
-from agency.plugins.model import ModelResponse
-from agency.plugins.tools import ToolRegistry
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.errors import ErrorAction
+from civitas.messages import Message
+from civitas.plugins.model import ModelResponse
+from civitas.plugins.tools import ToolRegistry
 
 # ------------------------------------------------------------------
 # Mock ModelProvider
@@ -196,8 +196,8 @@ async def test_agent_invokes_tool():
     )
     await runtime.start()
     try:
-        result = await runtime.ask("tool_agent", {"query": "python agency"})
-        assert result.payload["tool_result"]["results"][0] == "Result for: python agency"
+        result = await runtime.ask("tool_agent", {"query": "python civitas"})
+        assert result.payload["tool_result"]["results"][0] == "Result for: python civitas"
     finally:
         await runtime.stop()
 

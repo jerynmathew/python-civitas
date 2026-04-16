@@ -1,6 +1,6 @@
 # Plugins
 
-Agency's plugin system covers everything outside the core runtime: LLM providers, tools, state stores, and observability exporters. Every plugin is a Python protocol — no base class to inherit, no registration ceremony. Any class with the right method signatures works.
+Civitas's plugin system covers everything outside the core runtime: LLM providers, tools, state stores, and observability exporters. Every plugin is a Python protocol — no base class to inherit, no registration ceremony. Any class with the right method signatures works.
 
 ---
 
@@ -47,13 +47,13 @@ Plugins are injected by `Runtime` at startup. Agents access them via `self.llm`,
 ## Install
 
 ```bash
-pip install python-agency                   # core only
-pip install python-agency[anthropic]        # + Anthropic LLM provider
-pip install python-agency[litellm]          # + 100+ models via LiteLLM
-pip install python-agency[otel]             # + OpenTelemetry tracing
-pip install python-agency[zmq]              # + ZMQ multi-process transport
-pip install python-agency[nats]             # + NATS distributed transport
-pip install python-agency[anthropic,otel]   # typical dev setup
+pip install civitas                   # core only
+pip install civitas[anthropic]        # + Anthropic LLM provider
+pip install civitas[litellm]          # + 100+ models via LiteLLM
+pip install civitas[otel]             # + OpenTelemetry tracing
+pip install civitas[zmq]              # + ZMQ multi-process transport
+pip install civitas[nats]             # + NATS distributed transport
+pip install civitas[anthropic,otel]   # typical dev setup
 ```
 
 ---
@@ -88,12 +88,12 @@ class ModelResponse:
 ### AnthropicProvider
 
 ```bash
-pip install python-agency[anthropic]
+pip install civitas[anthropic]
 export ANTHROPIC_API_KEY=sk-...
 ```
 
 ```python
-from agency.plugins.anthropic import AnthropicProvider
+from civitas.plugins.anthropic import AnthropicProvider
 
 runtime = Runtime(
     supervisor=Supervisor("root", children=[...]),
@@ -139,11 +139,11 @@ For models not in the pricing table, `cost_usd` is `None`.
 Covers OpenAI, Google Gemini, AWS Bedrock, Azure, Cohere, Mistral, and 100+ other providers via [LiteLLM](https://docs.litellm.ai).
 
 ```bash
-pip install python-agency[litellm]
+pip install civitas[litellm]
 ```
 
 ```python
-from agency.plugins.litellm import LiteLLMProvider
+from civitas.plugins.litellm import LiteLLMProvider
 
 # OpenAI
 runtime = Runtime(
@@ -171,7 +171,7 @@ Agent code is identical regardless of which provider is configured — only the 
 Any class with a `chat()` method satisfying the signature works:
 
 ```python
-from agency.plugins.model import ModelResponse
+from civitas.plugins.model import ModelResponse
 
 class MyProvider:
     """Custom provider wrapping a local model."""
@@ -218,7 +218,7 @@ class ToolProvider(Protocol):
 ### Registering tools
 
 ```python
-from agency.plugins.tools import ToolRegistry
+from civitas.plugins.tools import ToolRegistry
 
 tools = ToolRegistry()
 tools.register(WebSearchTool())
@@ -329,7 +329,7 @@ class StateStore(Protocol):
 ### InMemoryStateStore (default)
 
 ```python
-from agency.plugins.state import InMemoryStateStore
+from civitas.plugins.state import InMemoryStateStore
 
 runtime = Runtime(
     supervisor=...,
@@ -342,7 +342,7 @@ State survives supervisor restarts within the same process lifetime. State is lo
 ### SQLiteStateStore
 
 ```python
-from agency.plugins.sqlite_store import SQLiteStateStore
+from civitas.plugins.sqlite_store import SQLiteStateStore
 
 runtime = Runtime(
     supervisor=...,
@@ -370,9 +370,9 @@ class WorkflowAgent(AgentProcess):
 **CLI state management:**
 
 ```bash
-agency state list                  # show all agents with persisted state
-agency state show <agent-name>     # inspect a specific agent's state
-agency state clear <agent-name>    # reset an agent to a clean start
+civitas state list                  # show all agents with persisted state
+civitas state show <agent-name>     # inspect a specific agent's state
+civitas state clear <agent-name>    # reset an agent to a clean start
 ```
 
 ### Writing a custom StateStore
@@ -393,16 +393,16 @@ class RedisStateStore:
 
     async def get(self, agent_name: str) -> dict | None:
         await self._ensure_connected()
-        data = await self._redis.get(f"agency:state:{agent_name}")
+        data = await self._redis.get(f"civitas:state:{agent_name}")
         return json.loads(data) if data else None
 
     async def set(self, agent_name: str, state: dict) -> None:
         await self._ensure_connected()
-        await self._redis.set(f"agency:state:{agent_name}", json.dumps(state))
+        await self._redis.set(f"civitas:state:{agent_name}", json.dumps(state))
 
     async def delete(self, agent_name: str) -> None:
         await self._ensure_connected()
-        await self._redis.delete(f"agency:state:{agent_name}")
+        await self._redis.delete(f"civitas:state:{agent_name}")
 
 runtime = Runtime(
     supervisor=...,
@@ -434,7 +434,7 @@ plugins:
 ```
 
 Plugin resolution order:
-1. **Python entrypoints** — installed packages that register under `agency.model`, `agency.exporter`, `agency.state`, or `agency.transport`
+1. **Python entrypoints** — installed packages that register under `civitas.model`, `civitas.exporter`, `civitas.state`, or `civitas.transport`
 2. **Built-in names** — `anthropic`, `litellm`, `console`, `in_memory`, `sqlite`, `in_process`, `zmq`, `nats`
 3. **Dotted import path** — e.g. `myapp.plugins.MyProvider`
 
@@ -443,10 +443,10 @@ Plugin resolution order:
 To make a third-party plugin loadable by name from YAML, register it in your package's `pyproject.toml`:
 
 ```toml
-[project.entry-points."agency.model"]
+[project.entry-points."civitas.model"]
 my_provider = "mypkg.providers:MyProvider"
 
-[project.entry-points."agency.state"]
+[project.entry-points."civitas.state"]
 redis = "mypkg.stores:RedisStateStore"
 ```
 
@@ -471,9 +471,9 @@ plugins:
 If a plugin fails to load — missing dependency, wrong constructor args, bad import path — `PluginError` is raised at startup with a clear message:
 
 ```
-agency.errors.PluginError: Failed to load model plugin 'anthropic':
+civitas.errors.PluginError: Failed to load model plugin 'anthropic':
   No module named 'anthropic'
-  Hint: pip install python-agency[anthropic]
+  Hint: pip install civitas[anthropic]
 ```
 
 This fails fast at `Runtime.start()`, before any agents are started, so there's no ambiguity about what went wrong.

@@ -6,8 +6,8 @@ Demonstrates send, ask, broadcast, and pattern-based routing.
 
 import asyncio
 
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
 
 
 class Researcher(AgentProcess):

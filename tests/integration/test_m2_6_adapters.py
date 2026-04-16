@@ -11,12 +11,12 @@ from typing import Any
 
 import pytest
 
-from agency import AgentProcess, Runtime, Supervisor
-from agency.adapters.langgraph import LangGraphAgent
-from agency.adapters.openai import OpenAIAgent
-from agency.errors import ErrorAction
-from agency.messages import Message
-from agency.process import ProcessStatus
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.adapters.langgraph import LangGraphAgent
+from civitas.adapters.openai import OpenAIAgent
+from civitas.errors import ErrorAction
+from civitas.messages import Message
+from civitas.process import ProcessStatus
 from tests.conftest import wait_for, wait_for_status  # noqa: F401 — used via wait_for_status
 
 # ---------------------------------------------------------------------------
@@ -338,7 +338,7 @@ async def test_openai_unregistered_handoff_logs_warning(caplog):
         )
         await runtime.start()
         try:
-            with caplog.at_level(logging.WARNING, logger="agency.adapters.openai"):
+            with caplog.at_level(logging.WARNING, logger="civitas.adapters.openai"):
                 result = await runtime.ask("oai_handoff", {"input": "trigger handoff"})
             # Agent should return its reply, not crash
             assert result.payload["output"] == "done"
@@ -378,7 +378,7 @@ async def test_langgraph_input_schema_coercion():
 
 def test_crewai_stub_raises_not_implemented():
     """F10-5: CrewAIAgent raises NotImplementedError on instantiation."""
-    from agency.adapters.crewai import CrewAIAgent
+    from civitas.adapters.crewai import CrewAIAgent
 
     with pytest.raises(NotImplementedError, match="not yet implemented"):
         CrewAIAgent("test")

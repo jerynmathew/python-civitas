@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
       - run: uv sync --extra dev
-      - run: uv run ruff check agency tests
-      - run: uv run ruff format --check agency tests
-      - run: uv run mypy agency
-      - run: uv run pytest --cov=agency --cov-fail-under=85 -q
+      - run: uv run ruff check civitas tests
+      - run: uv run ruff format --check civitas tests
+      - run: uv run mypy civitas
+      - run: uv run pytest --cov=civitas --cov-fail-under=85 -q

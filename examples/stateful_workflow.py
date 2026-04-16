@@ -12,9 +12,9 @@ Usage:
 
 import asyncio
 
-from agency import AgentProcess, Runtime, Supervisor
-from agency.messages import Message
-from agency.plugins.sqlite_store import SQLiteStateStore
+from civitas import AgentProcess, Runtime, Supervisor
+from civitas.messages import Message
+from civitas.plugins.sqlite_store import SQLiteStateStore
 
 TOTAL_STEPS = 7
 
@@ -27,7 +27,7 @@ class WorkflowAgent(AgentProcess):
         if step > 0:
             print(
                 f"Resuming workflow from step {step} of {TOTAL_STEPS} "
-                f"(restored from agency_state.db)"
+                f"(restored from civitas_state.db)"
             )
         else:
             print(f"Starting fresh workflow ({TOTAL_STEPS} steps)")
@@ -62,7 +62,7 @@ class WorkflowAgent(AgentProcess):
 
 
 async def main():
-    store = SQLiteStateStore("agency_state.db")
+    store = SQLiteStateStore("civitas_state.db")
     runtime = Runtime(
         supervisor=Supervisor("root", children=[WorkflowAgent("workflow")]),
         state_store=store,

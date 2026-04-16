@@ -4,14 +4,14 @@
 # worker_a and worker_b run in the "worker" process; frontend stays in
 # the supervisor process.
 #
-# Install: pip install python-agency[zmq]
+# Install: pip install civitas[zmq]
 #
 # Run:
 #   Terminal 1 (supervisor process — also starts the ZMQ proxy):
-#     agency run --topology examples/deployment/level2_multi_process/topology.yaml
+#     civitas run --topology examples/deployment/level2_multi_process/topology.yaml
 #
 #   Terminal 2 (worker process):
-#     agency run --topology examples/deployment/level2_multi_process/topology.yaml \
+#     civitas run --topology examples/deployment/level2_multi_process/topology.yaml \
 #                --process worker
 #
 # Or programmatically — see run_supervisor.py and run_worker.py

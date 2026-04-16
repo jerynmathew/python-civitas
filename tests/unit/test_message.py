@@ -2,7 +2,7 @@
 
 import pytest
 
-from agency.messages import SYSTEM_MESSAGE_TYPES, Message, _uuid7
+from civitas.messages import SYSTEM_MESSAGE_TYPES, Message, _uuid7
 
 
 def test_uuid7_format():

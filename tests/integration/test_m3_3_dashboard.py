@@ -9,8 +9,8 @@ from rich.layout import Layout
 from rich.table import Table
 from rich.tree import Tree
 
-from agency.dashboard.collector import MetricsCollector
-from agency.dashboard.renderer import (
+from civitas.dashboard.collector import MetricsCollector
+from civitas.dashboard.renderer import (
     render_cost_attribution,
     render_dashboard,
     render_message_stats,
@@ -245,7 +245,7 @@ def test_dashboard_command_registered():
     """Dashboard command is accessible via the CLI."""
     from typer.testing import CliRunner
 
-    from agency.cli import app
+    from civitas.cli import app
 
     runner = CliRunner()
     result = runner.invoke(app, ["dashboard", "--help"])

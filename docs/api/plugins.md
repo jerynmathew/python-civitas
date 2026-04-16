@@ -9,19 +9,19 @@ See [Plugins](../plugins.md) for a full authoring guide.
 
 ## ModelProvider
 
-::: agency.plugins.model.ModelProvider
+::: civitas.plugins.model.ModelProvider
     options:
       show_source: false
 
 ---
 
-::: agency.plugins.model.ModelResponse
+::: civitas.plugins.model.ModelResponse
     options:
       show_source: false
 
 ---
 
-::: agency.plugins.model.ToolCall
+::: civitas.plugins.model.ToolCall
     options:
       show_source: false
 
@@ -29,7 +29,7 @@ See [Plugins](../plugins.md) for a full authoring guide.
 
 ## Implementations
 
-::: agency.plugins.anthropic.AnthropicProvider
+::: civitas.plugins.anthropic.AnthropicProvider
     options:
       members:
         - chat
@@ -37,23 +37,19 @@ See [Plugins](../plugins.md) for a full authoring guide.
 
 ---
 
-::: agency.plugins.litellm.LiteLLMProvider
-    options:
-      members:
-        - chat
-      show_source: true
+<!-- LiteLLMProvider: Phase 2 stub — autodoc reference removed until class is implemented -->
 
 ---
 
 ## ToolProvider & ToolRegistry
 
-::: agency.plugins.tools.ToolProvider
+::: civitas.plugins.tools.ToolProvider
     options:
       show_source: false
 
 ---
 
-::: agency.plugins.tools.ToolRegistry
+::: civitas.plugins.tools.ToolRegistry
     options:
       members:
         - register
@@ -66,19 +62,19 @@ See [Plugins](../plugins.md) for a full authoring guide.
 
 ## StateStore
 
-::: agency.plugins.state.StateStore
+::: civitas.plugins.state.StateStore
     options:
       show_source: false
 
 ---
 
-::: agency.plugins.state.InMemoryStateStore
+::: civitas.plugins.state.InMemoryStateStore
     options:
       show_source: true
 
 ---
 
-::: agency.plugins.sqlite_store.SQLiteStateStore
+::: civitas.plugins.sqlite_store.SQLiteStateStore
     options:
       members:
         - get
@@ -91,6 +87,6 @@ See [Plugins](../plugins.md) for a full authoring guide.
 
 ## Plugin Loading
 
-::: agency.plugins.loader.load_plugins_from_config
+::: civitas.plugins.loader.load_plugins_from_config
     options:
       show_source: true

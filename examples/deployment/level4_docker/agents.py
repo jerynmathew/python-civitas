@@ -1,7 +1,7 @@
 """Agent definitions for the Docker Compose deployment example (Level 4)."""
 
-from agency import AgentProcess
-from agency.messages import Message
+from civitas import AgentProcess
+from civitas.messages import Message
 
 
 class FrontendAgent(AgentProcess):

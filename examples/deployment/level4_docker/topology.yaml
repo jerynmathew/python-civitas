@@ -1,10 +1,10 @@
 # Deployment Level 4: Containerized (Docker Compose)
 #
-# This file is the input to `agency deploy docker-compose`.
+# This file is the input to `civitas deploy docker-compose`.
 # The Dockerfile, docker-compose.yml, and .env are generated from it.
 #
 # Generate and run:
-#   agency deploy docker-compose \
+#   civitas deploy docker-compose \
 #     --topology examples/deployment/level4_docker/topology.yaml \
 #     --output   examples/deployment/level4_docker/
 #
@@ -29,7 +29,7 @@ plugins:
   state:
     type: sqlite
     config:
-      db_path: /data/agency.db    # mount a volume here in production
+      db_path: /data/civitas.db    # mount a volume here in production
 
 supervision:
   name: root
