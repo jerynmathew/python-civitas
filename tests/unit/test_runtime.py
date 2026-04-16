@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import logging
 import textwrap
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from civitas import AgentProcess, Runtime, Supervisor
+from civitas.components import build_component_set
 from civitas.config import Settings
 from civitas.errors import ConfigurationError as AgencyConfigError
 from civitas.messages import Message
+from civitas.serializer import JsonSerializer
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -303,8 +307,6 @@ def test_example_topology_parses(example_file: str) -> None:
 
 def test_example_production_yaml_supervision_structure() -> None:
     """production.yaml supervision tree parses; plugin loading is mocked (F12-9)."""
-    from unittest.mock import patch
-
     mock_loaded = {"model_providers": [], "state_store": None}
     path = _EXAMPLES_DIR / "production.yaml"
     with patch("civitas.plugins.loader.load_plugins_from_config", return_value=mock_loaded):
@@ -344,9 +346,6 @@ def test_all_agents_with_supervisor_returns_agents() -> None:
 
 def test_from_config_loads_single_model_provider(tmp_path: Path) -> None:
     """YAML with one model provider injects it into the Runtime constructor."""
-    import textwrap
-    from unittest.mock import MagicMock, patch
-
     yaml_file = tmp_path / "plugins.yaml"
     yaml_file.write_text(
         textwrap.dedent("""\
@@ -371,10 +370,6 @@ def test_from_config_multiple_providers_warns(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     """When YAML has >1 model providers, a warning is logged and the first is used."""
-    import logging
-    import textwrap
-    from unittest.mock import MagicMock, patch
-
     yaml_file = tmp_path / "two_providers.yaml"
     yaml_file.write_text(
         textwrap.dedent("""\
@@ -400,9 +395,6 @@ def test_from_config_multiple_providers_warns(
 
 def test_from_config_loads_state_store(tmp_path: Path) -> None:
     """YAML with a state store injects it into the Runtime constructor."""
-    import textwrap
-    from unittest.mock import MagicMock, patch
-
     yaml_file = tmp_path / "state.yaml"
     yaml_file.write_text(
         textwrap.dedent("""\
@@ -456,10 +448,6 @@ async def test_stop_no_supervisor_skips_supervisor_stop() -> None:
 @pytest.mark.asyncio
 async def test_start_uses_prebuilt_components() -> None:
     """Runtime started with components= skips build_component_set (line 239)."""
-    from unittest.mock import patch
-
-    from civitas.components import build_component_set
-
     # Build a real in-process ComponentSet, then pass it explicitly so that
     # build_component_set should NOT be called internally.
     cs = build_component_set()
@@ -499,8 +487,6 @@ async def test_send_before_start_raises() -> None:
 
 def test_from_config_unknown_node_raises(tmp_path: Path) -> None:
     """_build_node() raises ValueError for nodes with no recognized keys (line 142)."""
-    import textwrap
-
     yaml_file = tmp_path / "bad_node.yaml"
     yaml_file.write_text(
         textwrap.dedent("""\
@@ -516,8 +502,6 @@ def test_from_config_unknown_node_raises(tmp_path: Path) -> None:
 
 def test_from_config_zmq_transport_all_params(tmp_path: Path) -> None:
     """YAML with zmq transport + all config keys is parsed (branches 166->168, 168->170, 170->181)."""
-    import textwrap
-
     yaml_file = tmp_path / "zmq.yaml"
     yaml_file.write_text(
         textwrap.dedent("""\
@@ -539,8 +523,6 @@ def test_from_config_zmq_transport_all_params(tmp_path: Path) -> None:
 
 def test_from_config_nats_transport_with_jetstream(tmp_path: Path) -> None:
     """YAML with nats transport + jetstream key is parsed (branch 173->175)."""
-    import textwrap
-
     yaml_file = tmp_path / "nats.yaml"
     yaml_file.write_text(
         textwrap.dedent("""\
@@ -566,9 +548,6 @@ def test_from_config_nats_transport_with_jetstream(tmp_path: Path) -> None:
 
 def test_build_component_set_custom_serializer() -> None:
     """build_component_set uses the provided serializer instance directly."""
-    from civitas.components import build_component_set
-    from civitas.serializer import JsonSerializer
-
     custom = JsonSerializer()
     cs = build_component_set(serializer=custom)
     assert cs.serializer is custom
@@ -576,11 +555,6 @@ def test_build_component_set_custom_serializer() -> None:
 
 def test_build_component_set_json_serializer_from_settings() -> None:
     """build_component_set picks JsonSerializer when settings.serializer == 'json'."""
-    from unittest.mock import patch
-
-    from civitas.components import build_component_set
-    from civitas.serializer import JsonSerializer
-
     with patch("civitas.components.settings") as mock_settings:
         mock_settings.serializer = "json"
         cs = build_component_set()

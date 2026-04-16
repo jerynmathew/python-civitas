@@ -6,12 +6,16 @@ framework agents as AgentProcesses with supervision, tracing, and messaging.
 Uses mock framework objects to avoid requiring langgraph/openai-agents deps.
 """
 
+import logging
+import sys
 from dataclasses import dataclass
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from civitas import AgentProcess, Runtime, Supervisor
+from civitas.adapters.crewai import CrewAIAgent
 from civitas.adapters.langgraph import LangGraphAgent
 from civitas.adapters.openai import OpenAIAgent
 from civitas.errors import ErrorAction
@@ -188,9 +192,6 @@ async def test_langgraph_non_dict_output():
 
 async def test_openai_agent_runs():
     """OpenAI Agent runs inside an Agency AgentProcess."""
-    import sys
-    from unittest.mock import AsyncMock, MagicMock
-
     # Mock the 'agents' module since it's not installed
     agents_module = MagicMock()
     mock_runner = MagicMock()
@@ -225,9 +226,6 @@ async def test_openai_agent_runs():
 
 async def test_openai_agent_handoff_maps_to_send():
     """OpenAI Agent handoffs map to Agency messages between processes."""
-    import sys
-    from unittest.mock import AsyncMock, MagicMock
-
     agents_module = MagicMock()
 
     # Create a handoff target
@@ -286,9 +284,6 @@ async def test_openai_error_escalates():
 
 async def test_openai_missing_input_returns_error():
     """F10-2: missing 'input' key returns error reply instead of running with empty string."""
-    import sys
-    from unittest.mock import MagicMock
-
     agents_module = MagicMock()
     sys.modules["agents"] = agents_module
 
@@ -312,10 +307,6 @@ async def test_openai_missing_input_returns_error():
 
 async def test_openai_unregistered_handoff_logs_warning(caplog):
     """F10-1: handoff to unregistered agent logs warning instead of crashing."""
-    import logging
-    import sys
-    from unittest.mock import AsyncMock, MagicMock
-
     mock_handoff_item = MagicMock()
     mock_handoff_item.agent = MagicMock()
     mock_handoff_item.agent.name = "nonexistent_agent"
@@ -378,8 +369,6 @@ async def test_langgraph_input_schema_coercion():
 
 def test_crewai_stub_raises_not_implemented():
     """F10-5: CrewAIAgent raises NotImplementedError on instantiation."""
-    from civitas.adapters.crewai import CrewAIAgent
-
     with pytest.raises(NotImplementedError, match="not yet implemented"):
         CrewAIAgent("test")
 
@@ -391,9 +380,6 @@ def test_crewai_stub_raises_not_implemented():
 
 async def test_langgraph_and_openai_coexist():
     """Both adapters can run in the same supervision tree."""
-    import sys
-    from unittest.mock import AsyncMock, MagicMock
-
     agents_module = MagicMock()
     mock_runner = MagicMock()
     mock_runner.run = AsyncMock(return_value=MockRunResult(final_output="OpenAI says hi"))

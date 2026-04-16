@@ -6,12 +6,15 @@ manages state, and switches transports via flags.
 
 import asyncio
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 
+import yaml
 from typer.testing import CliRunner
 
 from civitas.cli import app
+from civitas.plugins.sqlite_store import SQLiteStateStore
 
 runner = CliRunner()
 
@@ -58,8 +61,6 @@ def test_init_pyproject_has_agency_dep():
 
 def test_init_topology_is_valid_yaml():
     """Scaffolded topology.yaml is valid YAML with supervision section."""
-    import yaml
-
     with tempfile.TemporaryDirectory() as tmpdir:
         runner.invoke(app, ["init", "yaml_test", "--dir", tmpdir])
         content = (Path(tmpdir) / "yaml_test" / "topology.yaml").read_text()
@@ -132,10 +133,6 @@ def test_state_list_shows_agents():
         db_path = f.name
 
     try:
-        import asyncio
-
-        from civitas.plugins.sqlite_store import SQLiteStateStore
-
         store = SQLiteStateStore(db_path)
         asyncio.run(store.set("agent_a", {"count": 42}))
         asyncio.run(store.set("agent_b", {"step": 3, "data": "hello"}))
@@ -156,10 +153,6 @@ def test_state_clear_specific_agent():
         db_path = f.name
 
     try:
-        import asyncio
-
-        from civitas.plugins.sqlite_store import SQLiteStateStore
-
         store = SQLiteStateStore(db_path)
         asyncio.run(store.set("agent_a", {"v": 1}))
         asyncio.run(store.set("agent_b", {"v": 2}))
@@ -184,10 +177,6 @@ def test_state_clear_all():
         db_path = f.name
 
     try:
-        import asyncio
-
-        from civitas.plugins.sqlite_store import SQLiteStateStore
-
         store = SQLiteStateStore(db_path)
         asyncio.run(store.set("agent_a", {"v": 1}))
         asyncio.run(store.set("agent_b", {"v": 2}))
@@ -209,8 +198,6 @@ def test_state_clear_nonexistent_agent():
         db_path = f.name
 
     try:
-        from civitas.plugins.sqlite_store import SQLiteStateStore
-
         store = SQLiteStateStore(db_path)
         asyncio.run(store.close())
 
@@ -285,8 +272,6 @@ def test_topology_validate_no_supervision():
 
 def test_python_m_agency():
     """python -m civitas works as entry point."""
-    import subprocess
-
     venv_python = str(Path(__file__).resolve().parents[2] / ".venv" / "bin" / "python")
     result = subprocess.run(
         [venv_python, "-m", "civitas", "version"],

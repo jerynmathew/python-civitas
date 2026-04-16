@@ -13,6 +13,7 @@ import pytest
 
 from civitas import AgentProcess, Runtime, Supervisor
 from civitas.messages import Message
+from civitas.plugins.loader import load_plugin
 from civitas.plugins.sqlite_store import SQLiteStateStore
 from civitas.plugins.state import InMemoryStateStore
 
@@ -414,8 +415,6 @@ async def test_checkpoint_with_in_memory_store():
 
 async def test_sqlite_store_loads_via_plugin_system():
     """SQLiteStateStore can be loaded via the plugin system."""
-    from civitas.plugins.loader import load_plugin
-
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
 

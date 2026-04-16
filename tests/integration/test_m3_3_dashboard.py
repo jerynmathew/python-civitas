@@ -8,7 +8,9 @@ tested via visual inspection.
 from rich.layout import Layout
 from rich.table import Table
 from rich.tree import Tree
+from typer.testing import CliRunner
 
+from civitas.cli import app
 from civitas.dashboard.collector import MetricsCollector
 from civitas.dashboard.renderer import (
     render_cost_attribution,
@@ -243,10 +245,6 @@ def test_render_dashboard_layout():
 
 def test_dashboard_command_registered():
     """Dashboard command is accessible via the CLI."""
-    from typer.testing import CliRunner
-
-    from civitas.cli import app
-
     runner = CliRunner()
     result = runner.invoke(app, ["dashboard", "--help"])
     assert result.exit_code == 0

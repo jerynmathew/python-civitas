@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -203,8 +204,6 @@ class TestOnRestartCommand:
 
 async def test_wait_until_stopped_unblocks_after_stop() -> None:
     """wait_until_stopped() returns once stop() is called."""
-    import asyncio
-
     cs = _mock_cs()
     agent = NullAgent("a")
     agent._start = AsyncMock()  # type: ignore[method-assign]

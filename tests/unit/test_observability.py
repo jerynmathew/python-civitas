@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -352,8 +353,6 @@ def test_span_end_pushes_error_status_to_queue() -> None:
 
 def test_span_set_error_with_otel_span() -> None:
     """set_error() calls record_exception on the underlying OTEL span (line 65->exit)."""
-    from unittest.mock import MagicMock
-
     span = Span("test", "t1", "s1")
     mock_otel_span = MagicMock()
     span._otel_span = mock_otel_span
@@ -370,8 +369,6 @@ def test_span_set_error_with_otel_span() -> None:
 
 def test_tracer_flush_calls_provider_force_flush() -> None:
     """Tracer.flush() delegates to provider.force_flush() when OTEL is active (line 333)."""
-    from unittest.mock import MagicMock
-
     tracer = Tracer()
     if not tracer._use_otel:
         pytest.skip("opentelemetry-sdk not installed")

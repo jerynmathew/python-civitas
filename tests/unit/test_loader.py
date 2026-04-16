@@ -6,7 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from civitas.plugins.loader import PluginError, resolve_plugin_class
+from civitas.plugins.loader import PluginError, load_plugin, resolve_plugin_class
+from civitas.plugins.state import InMemoryStateStore
 
 # ---------------------------------------------------------------------------
 # Entrypoint resolution (lines 71-76 in loader.py)
@@ -51,8 +52,6 @@ def test_resolve_entrypoint_name_mismatch_falls_through() -> None:
     with patch("civitas.plugins.loader.entry_points", return_value=[wrong_ep]):
         cls = resolve_plugin_class("state", "in_memory")
 
-    from civitas.plugins.state import InMemoryStateStore
-
     assert cls is InMemoryStateStore
     wrong_ep.load.assert_not_called()
 
@@ -72,8 +71,6 @@ def test_import_dotted_no_module_part_raises() -> None:
 
 def test_load_plugin_constructor_type_error() -> None:
     """load_plugin wraps a constructor TypeError in a PluginError."""
-    from civitas.plugins.loader import load_plugin
-
     # in_memory takes no config kwargs — passing an unexpected kwarg triggers TypeError
     with pytest.raises(PluginError, match="Constructor error"):
         load_plugin("state", "in_memory", {"totally_invalid_kwarg": True})

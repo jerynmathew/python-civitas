@@ -1,5 +1,8 @@
 """Tests for Message construction, serialization round-trip, and UUID7 generation."""
 
+import datetime
+import time
+
 import pytest
 
 from civitas.messages import SYSTEM_MESSAGE_TYPES, Message, _uuid7
@@ -17,8 +20,6 @@ def test_uuid7_format():
 
 def test_uuid7_time_sortable():
     """UUID7s generated at different times should sort in order."""
-    import time
-
     a = _uuid7()
     time.sleep(0.01)  # 10ms — reliably advances wall clock by at least 1ms
     b = _uuid7()
@@ -101,8 +102,6 @@ def test_from_dict_ignores_unknown_keys():
 
 def test_payload_with_non_serializable_raises():
     """Message raises ValueError when payload contains non-JSON-serializable values."""
-    import datetime
-
     with pytest.raises(ValueError, match="JSON-serializable"):
         Message(payload={"dt": datetime.datetime.now()})
 

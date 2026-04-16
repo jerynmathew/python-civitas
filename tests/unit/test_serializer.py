@@ -1,5 +1,8 @@
 """Tests for Serializer protocol and msgpack/json implementations."""
 
+import json
+
+import msgpack  # type: ignore[import-untyped]
 import pytest
 
 from civitas.errors import DeserializationError
@@ -143,8 +146,6 @@ def test_msgpack_bytes_fed_to_json_raises():
 
 def test_schema_version_in_msgpack_output():
     """Msgpack-serialized bytes include schema_version field."""
-    import msgpack  # type: ignore[import-untyped]
-
     msg = Message(type="test")
     raw = msgpack.unpackb(MsgpackSerializer().serialize(msg), raw=False)
     assert raw["schema_version"] == 1
@@ -152,8 +153,6 @@ def test_schema_version_in_msgpack_output():
 
 def test_schema_version_in_json_output():
     """JSON-serialized bytes include schema_version field."""
-    import json
-
     msg = Message(type="test")
     raw = json.loads(JsonSerializer().serialize(msg).decode("utf-8"))
     assert raw["schema_version"] == 1

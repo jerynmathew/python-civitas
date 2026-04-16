@@ -19,10 +19,11 @@ import time
 import pytest
 
 from civitas import AgentProcess, Runtime, Supervisor
-from civitas.messages import Message, _uuid7
+from civitas.messages import Message, _new_span_id, _uuid7
 from civitas.process import ProcessStatus
 from civitas.serializer import MsgpackSerializer
 from civitas.transport.nats import NATSTransport
+from civitas.worker import Worker
 
 # ---------------------------------------------------------------------------
 # NATS server fixture — start/stop a local nats-server per test session
@@ -351,7 +352,6 @@ async def test_worker_nats_hosts_agent(nats_url):
     Simulates distributed scenario: Runtime sends messages to an agent
     hosted in a Worker via NATS server.
     """
-    from civitas.worker import Worker
 
     class Orchestrator(AgentProcess):
         async def handle(self, message: Message) -> Message | None:
@@ -382,8 +382,6 @@ async def test_worker_nats_hosts_agent(nats_url):
 
 async def test_worker_nats_heartbeat_response(nats_url):
     """Agent in Worker responds to heartbeat pings over NATS."""
-    from civitas.worker import Worker
-
     runtime = Runtime(
         supervisor=Supervisor("root", children=[]),
         transport="nats",
@@ -399,8 +397,6 @@ async def test_worker_nats_heartbeat_response(nats_url):
     await worker.start()
 
     try:
-        from civitas.messages import _new_span_id
-
         heartbeat = Message(
             type="_agency.heartbeat",
             sender="test_supervisor",
@@ -418,8 +414,6 @@ async def test_worker_nats_heartbeat_response(nats_url):
 
 async def test_worker_nats_stop_cleans_up(nats_url):
     """Worker stops all agents and disconnects cleanly over NATS."""
-    from civitas.worker import Worker
-
     runtime = Runtime(
         supervisor=Supervisor("root", children=[]),
         transport="nats",

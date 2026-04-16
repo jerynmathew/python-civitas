@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from civitas.messages import Message
 from civitas.serializer import MsgpackSerializer
 from civitas.transport.inprocess import InProcessTransport
 
@@ -45,8 +46,6 @@ async def test_publish_to_unregistered_address_is_noop() -> None:
 
 async def test_request_no_handler_raises() -> None:
     """request() raises RuntimeError when no handler is registered for the address (line 72)."""
-    from civitas.messages import Message
-
     t = _transport()
     serializer = MsgpackSerializer()
     await t.start()

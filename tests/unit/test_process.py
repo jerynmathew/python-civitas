@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from civitas.errors import ErrorAction
 from civitas.messages import Message
+from civitas.observability.tracer import Span
 from civitas.process import AgentProcess, Mailbox, ProcessStatus
 from tests.conftest import wait_for
 
@@ -369,7 +371,7 @@ def test_default_shutdown_timeout():
 def _make_agent_with_tracer() -> tuple[TrackingAgent, Any]:
     """Return a TrackingAgent wired with an in-memory test tracer."""
     pytest.importorskip("opentelemetry", reason="opentelemetry-sdk not installed")
-    from civitas.plugins.otel import create_test_tracer
+    from civitas.plugins.otel import create_test_tracer  # optional dep — gated by importorskip
 
     agent = TrackingAgent("obs_agent")
     tracer, exporter = create_test_tracer()
@@ -379,8 +381,6 @@ def _make_agent_with_tracer() -> tuple[TrackingAgent, Any]:
 
 def test_llm_span_no_tracer_yields_dummy():
     """llm_span() yields a dummy Span when no tracer is attached."""
-    from civitas.observability.tracer import Span
-
     agent = TrackingAgent()
     with agent.llm_span("claude-sonnet") as span:
         assert isinstance(span, Span)
@@ -388,8 +388,6 @@ def test_llm_span_no_tracer_yields_dummy():
 
 def test_tool_span_no_tracer_yields_dummy():
     """tool_span() yields a dummy Span when no tracer is attached."""
-    from civitas.observability.tracer import Span
-
     agent = TrackingAgent()
     with agent.tool_span("web_search") as span:
         assert isinstance(span, Span)
@@ -398,8 +396,6 @@ def test_tool_span_no_tracer_yields_dummy():
 def test_llm_span_with_tracer_creates_span():
     """llm_span() creates a real span when a tracer is attached."""
     agent, exporter = _make_agent_with_tracer()
-    from civitas.messages import Message
-
     agent._current_message = Message(sender="x", recipient="obs_agent", trace_id="t1")
     with agent.llm_span("test-model", tokens_in=100) as span:
         span.set_attribute("civitas.llm.tokens_out", 50)
@@ -411,8 +407,6 @@ def test_llm_span_with_tracer_creates_span():
 def test_tool_span_with_tracer_creates_span():
     """tool_span() creates a real span when a tracer is attached."""
     agent, exporter = _make_agent_with_tracer()
-    from civitas.messages import Message
-
     agent._current_message = Message(sender="x", recipient="obs_agent", trace_id="t1")
     with agent.tool_span("web_search") as span:
         span.set_attribute("result", "ok")
@@ -462,8 +456,6 @@ async def test_handle_default_returns_none():
 
 async def test_checkpoint_with_store_persists_state():
     """checkpoint() calls store.set() when a store is configured (line 170)."""
-    from unittest.mock import AsyncMock
-
     agent = TrackingAgent()
     mock_store = AsyncMock()
     agent.store = mock_store
@@ -488,8 +480,6 @@ async def test_checkpoint_without_store_is_noop():
 
 async def test_send_propagates_trace_from_current_message():
     """send() uses trace_id/span_id from _current_message (lines 194-196)."""
-    from unittest.mock import AsyncMock, MagicMock
-
     agent = TrackingAgent()
     mock_bus = MagicMock()
     mock_bus.route = AsyncMock()
@@ -508,8 +498,6 @@ async def test_send_propagates_trace_from_current_message():
 
 async def test_send_without_current_message_uses_empty_trace():
     """send() with no _current_message uses empty trace (branch 194->198)."""
-    from unittest.mock import AsyncMock, MagicMock
-
     agent = TrackingAgent()
     mock_bus = MagicMock()
     mock_bus.route = AsyncMock()
@@ -532,13 +520,9 @@ async def test_ask_requires_bus():
 
 async def test_ask_propagates_trace_from_current_message():
     """ask() uses trace_id/span_id from _current_message (lines 221-223)."""
-    from unittest.mock import AsyncMock, MagicMock
-
-    from civitas.messages import Message as Msg
-
     agent = TrackingAgent()
     mock_bus = MagicMock()
-    reply_msg = Msg(type="reply", sender="target", recipient="tracker")
+    reply_msg = Message(type="reply", sender="target", recipient="tracker")
     mock_bus.request = AsyncMock(return_value=reply_msg)
     agent._bus = mock_bus
 
@@ -555,13 +539,9 @@ async def test_ask_propagates_trace_from_current_message():
 
 async def test_ask_without_current_message_uses_empty_trace():
     """ask() with no _current_message uses empty trace (branch 221->225)."""
-    from unittest.mock import AsyncMock, MagicMock
-
-    from civitas.messages import Message as Msg
-
     agent = TrackingAgent()
     mock_bus = MagicMock()
-    reply_msg = Msg(type="reply", sender="target", recipient="tracker")
+    reply_msg = Message(type="reply", sender="target", recipient="tracker")
     mock_bus.request = AsyncMock(return_value=reply_msg)
     agent._bus = mock_bus
     # _current_message is None by default
@@ -587,8 +567,6 @@ async def test_broadcast_requires_bus():
 
 async def test_heartbeat_auto_response():
     """_agency.heartbeat messages receive an _agency.heartbeat_ack reply (lines 372-379)."""
-    from unittest.mock import AsyncMock, MagicMock
-
     agent = TrackingAgent()
     mock_bus = MagicMock()
     mock_bus.route = AsyncMock()
