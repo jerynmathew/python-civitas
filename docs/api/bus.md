@@ -3,7 +3,7 @@
 Central message router. Routes messages from sender to recipient by name,
 delegates physical delivery to the Transport, and generates tracing spans.
 
-See [Architecture](../architecture.md#message-flow--end-to-end) for the routing
+See [Architecture](../architecture.md#message-flow-end-to-end) for the routing
 resolution order.
 
 ---
