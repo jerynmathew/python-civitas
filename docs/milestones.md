@@ -33,6 +33,7 @@ Development progress across all phases of Civitas.
 | 4 | [Capability-Aware Registry](#m44-capability-aware-registry) | ⏳ Planned | v0.5 |
 | 4 | [HTTP Gateway](#http-gateway) | ⏳ Planned | v0.4 |
 | 4 | [Gateway API Surface](#gateway-api-surface) | ⏳ Planned | v0.4 |
+| 4 | [Postgres StateStore + Migration](#postgres-statestore--migration) | 💡 Idea | v0.4 |
 | 4 | [Visual Topology Editor](#m41-visual-topology-editor) | ⏸️ Deferred | — |
 | 5 | [Prompt Library & Playground](#prompt-library--playground) | 💡 Idea | v0.5+ |
 | 5 | [LLM Gateway](#llm-gateway) | 💡 Idea | v0.5+ |
@@ -278,6 +279,28 @@ Minimal integration surface on top of HTTPGateway: declarative routes, Pydantic 
 | Swagger UI at `GET /docs`, ReDoc at `GET /redoc` | ⏳ |
 | YAML-declared routes and schemas (no decorators required) | ⏳ |
 | ≥ 15 unit tests + ≥ 3 integration tests | ⏳ |
+
+---
+
+### Postgres StateStore + Migration
+
+**Status: 💡 Idea — to be specced | Priority: 🔴 High**
+
+SQLite works for single-process deployments (Level 1) but breaks under concurrent cross-process writes (ZMQ Level 2+, NATS Level 3). `PostgresStateStore` extends the existing `StateStore` protocol — switching backends is a topology YAML change with no agent code changes. `civitas state migrate` handles moving existing state between backends with a dry-run mode.
+
+The spec needs to resolve: connection pool sizing, schema compatibility guarantees between backends, whether migration supports live (dual-write) or maintenance-window-only mode, and PgBouncer integration for high-concurrency deployments.
+
+| Idea | Notes |
+|------|-------|
+| `PostgresStateStore` plugin — same `StateStore` protocol, asyncpg backend | `civitas[postgres]` extra |
+| Backend swap via topology YAML — no agent code changes | `backend: postgres`, `url: !ENV DATABASE_URL` |
+| Connection pool config — pool size, max overflow, timeout | Configurable in topology YAML |
+| `civitas state migrate --from sqlite:... --to postgres://...` | Dry-run by default; `--execute` to apply |
+| Schema compatibility — identical key-value layout across backends | Migration is a straight copy, no transformation |
+| Maintenance-window migration (stop → copy → restart) | Supported in v0.4 |
+| Zero-downtime migration (dual-write + drain) | Deferred — complex; only needed for critical state |
+| PgBouncer integration notes in deployment guide | Connection pooler config for high-concurrency deployments |
+| Spec | design/postgres-statestore.md — to be written |
 
 ---
 
