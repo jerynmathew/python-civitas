@@ -34,6 +34,7 @@ Development progress across all phases of Civitas.
 | 4 | [HTTP Gateway](#http-gateway) | ⏳ Planned | v0.4 |
 | 4 | [Gateway API Surface](#gateway-api-surface) | ⏳ Planned | v0.4 |
 | 4 | [Visual Topology Editor](#m41-visual-topology-editor) | ⏸️ Deferred | — |
+| 5 | [Prompt Library & Playground](#prompt-library--playground) | 💡 Idea | v0.5+ |
 | 5 | [LLM Gateway](#llm-gateway) | 💡 Idea | v0.5+ |
 | 5 | [Tools Gateway](#tools-gateway) | 💡 Idea | v0.5+ |
 | 5 | [Skills Gateway](#skills-gateway) | 💡 Idea | v0.5+ |
@@ -299,6 +300,29 @@ Web-based drag-and-drop editor for designing agent topologies visually.
 ## Phase 5 — Agentic Platform
 
 Ideas awaiting full design specs. Each is a supervised GenServer (or group of GenServers) that runs inside the user's deployment — not external services, not SaaS. The SaaS boundary sits above these: hosted registries, managed observability, and multi-tenant governance are separate concerns.
+
+---
+
+### Prompt Library & Playground
+
+**Status: 💡 Idea — to be specced | Priority: 🔴 High**
+
+Prompts as first-class versioned entities, stored and served by a supervised `PromptStore(GenServer)`. Agents load instructions by name rather than hardcoding strings — prompt changes never require a code deploy. The playground (CLI + dashboard tab) lets you test a prompt version against a live agent before promoting it.
+
+This is one of the strongest SaaS upgrade stories: the OSS `PromptStore` runs in your deployment; a hosted version adds a web UI for non-engineers, team collaboration, cross-deployment promotion, and output analytics.
+
+| Idea | Notes |
+|------|-------|
+| `PromptStore(GenServer)` — versioned prompt storage on the bus | Agents call `call("prompt_store", {"agent": "assistant", "slot": "system"})` |
+| SQLite backend (runtime-mutable) + YAML dir backend (git-tracked) | User chooses per deployment |
+| Named version aliases — `latest`, `stable`, `experimental` | Pinned per agent per environment in topology YAML |
+| Per-agent, per-slot prompt mapping | Each agent can have multiple slots: `system`, `few_shot`, `tools` |
+| Hot-swap support — reload prompt without restarting agent | Agent subscribes to prompt update events |
+| `civitas playground` CLI — interactive session with a specified prompt version | Test against live runtime before promoting |
+| Dashboard tab — side-by-side prompt diff, test messages, output comparison | Lightweight eval harness backed by EvalLoop (M2.5) |
+| A/B traffic splitting between prompt versions | Random split; metrics tracked via OTEL spans |
+| SaaS layer — web UI, team collaboration, cross-deployment promotion, analytics | `design/prompt-library.md — to be written` |
+| Spec | design/prompt-library.md — to be written |
 
 ---
 
