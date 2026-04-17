@@ -30,6 +30,7 @@ Development progress across all phases of Civitas.
 | 4 | [Dynamic Agent Spawning](#m41b-dynamic-agent-spawning) | ⏳ Planned | v0.4 |
 | 4 | [Security Hardening](#m42-security-hardening) | ⏳ Planned | v0.4 |
 | 4 | [Capability-Aware Registry](#m44-capability-aware-registry) | ⏳ Planned | v0.5 |
+| 4 | [HTTP Gateway](#http-gateway) | ⏳ Planned | v0.4 |
 | 4 | [Visual Topology Editor](#m41-visual-topology-editor) | ⏸️ Deferred | — |
 
 ---
@@ -229,6 +230,27 @@ Agents and LLMs discover capabilities at runtime — no pre-wiring needed.
 | `KeywordBackend` (default) and `LocalEmbedBackend` (`civitas[search]`) | ⏳ |
 | Schema versioning (semver) with forward compatibility | ⏳ |
 | 25+ test cases covering all registry operations | ⏳ |
+
+---
+
+### HTTP Gateway
+
+**Status: ⏳ Planned — v0.4 | Priority: 🔴 High**
+
+Supervised edge process bridging external HTTP/gRPC traffic into the Civitas message bus. See [design spec](design/http-gateway.md).
+
+| Deliverable | Status |
+|-------------|--------|
+| `HTTPGateway(AgentProcess)` — ASGI app, request translation, route table | ⏳ |
+| HTTP/1.1 + HTTP/2 via Hypercorn (`civitas[http]`) | ⏳ |
+| HTTP/3 / QUIC via aioquic — `Alt-Svc` header, 0-RTT (`civitas[http3]`) | ⏳ |
+| gRPC generic service — unary + streaming RPC mapping (`civitas[grpc]`) | ⏳ |
+| Custom `.proto` loading from `proto_dir` | ⏳ |
+| TLS config from `settings` / topology YAML / env vars | ⏳ |
+| Topology YAML support (`type: http_gateway`) | ⏳ |
+| Graceful drain on supervisor shutdown | ⏳ |
+| ≥ 20 unit tests + ≥ 5 integration tests | ⏳ |
+| Documentation + examples for all four protocols | ⏳ |
 
 ---
 

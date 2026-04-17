@@ -124,5 +124,6 @@ nav:
 
   - Design:
     - GenServer (M3.5): design/genserver.md
+    - HTTP Gateway (M4.x): design/http-gateway.md
 
   - Contributing: contributing.md
