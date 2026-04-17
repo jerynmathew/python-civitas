@@ -125,5 +125,6 @@ nav:
   - Design:
     - GenServer (M3.5): design/genserver.md
     - HTTP Gateway (M4.x): design/http-gateway.md
+    - Gateway API Surface (M4.x): design/gateway-api-surface.md
 
   - Contributing: contributing.md
