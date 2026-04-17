@@ -1535,6 +1535,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#http-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTTP Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#m41-visual-topology-editor" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1566,6 +1577,8 @@
   
     
     
+      
+        
       
         
       
@@ -1631,6 +1644,34 @@
     
   
     GenServer (M3.5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/http-gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Gateway (M4.x)
   
 
     
@@ -1905,6 +1946,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#http-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTTP Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#m41-visual-topology-editor" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2047,6 +2099,12 @@
 <td><a href="#m44-capability-aware-registry">Capability-Aware Registry</a></td>
 <td>⏳ Planned</td>
 <td>v0.5</td>
+</tr>
+<tr>
+<td>4</td>
+<td><a href="#http-gateway">HTTP Gateway</a></td>
+<td>⏳ Planned</td>
+<td>v0.4</td>
 </tr>
 <tr>
 <td>4</td>
@@ -2539,6 +2597,60 @@
 </tr>
 <tr>
 <td>25+ test cases covering all registry operations</td>
+<td>⏳</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="http-gateway">HTTP Gateway<a class="headerlink" href="#http-gateway" title="Permanent link">&para;</a></h3>
+<p><strong>Status: ⏳ Planned — v0.4 | Priority: 🔴 High</strong></p>
+<p>Supervised edge process bridging external HTTP/gRPC traffic into the Civitas message bus. See <a href="../design/http-gateway/">design spec</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Deliverable</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HTTPGateway(AgentProcess)</code> — ASGI app, request translation, route table</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>HTTP/1.1 + HTTP/2 via Hypercorn (<code>civitas[http]</code>)</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>HTTP/3 / QUIC via aioquic — <code>Alt-Svc</code> header, 0-RTT (<code>civitas[http3]</code>)</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>gRPC generic service — unary + streaming RPC mapping (<code>civitas[grpc]</code>)</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>Custom <code>.proto</code> loading from <code>proto_dir</code></td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>TLS config from <code>settings</code> / topology YAML / env vars</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>Topology YAML support (<code>type: http_gateway</code>)</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>Graceful drain on supervisor shutdown</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>≥ 20 unit tests + ≥ 5 integration tests</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>Documentation + examples for all four protocols</td>
 <td>⏳</td>
 </tr>
 </tbody>
