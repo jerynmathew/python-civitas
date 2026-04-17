@@ -1572,6 +1572,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#phase-5-agentic-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 5 — Agentic Platform
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 5 — Agentic Platform">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#llm-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLM Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tools-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tools Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#skills-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skills Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2024,6 +2074,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#phase-5-agentic-platform" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 5 — Agentic Platform
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 5 — Agentic Platform">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#llm-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLM Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tools-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tools Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#skills-gateway" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skills Gateway
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2071,6 +2171,10 @@
 <tr>
 <td>⏸️</td>
 <td>Deferred</td>
+</tr>
+<tr>
+<td>💡</td>
+<td>Idea — to be specced</td>
 </tr>
 </tbody>
 </table>
@@ -2169,6 +2273,24 @@
 <td><a href="#m41-visual-topology-editor">Visual Topology Editor</a></td>
 <td>⏸️ Deferred</td>
 <td>—</td>
+</tr>
+<tr>
+<td>5</td>
+<td><a href="#llm-gateway">LLM Gateway</a></td>
+<td>💡 Idea</td>
+<td>v0.5+</td>
+</tr>
+<tr>
+<td>5</td>
+<td><a href="#tools-gateway">Tools Gateway</a></td>
+<td>💡 Idea</td>
+<td>v0.5+</td>
+</tr>
+<tr>
+<td>5</td>
+<td><a href="#skills-gateway">Skills Gateway</a></td>
+<td>💡 Idea</td>
+<td>v0.5+</td>
 </tr>
 </tbody>
 </table>
@@ -2798,6 +2920,138 @@
 <tr>
 <td>Round-trip: imported YAML renders correctly</td>
 <td>⏸️</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="phase-5-agentic-platform">Phase 5 — Agentic Platform<a class="headerlink" href="#phase-5-agentic-platform" title="Permanent link">&para;</a></h2>
+<p>Ideas awaiting full design specs. Each is a supervised GenServer (or group of GenServers) that runs inside the user's deployment — not external services, not SaaS. The SaaS boundary sits above these: hosted registries, managed observability, and multi-tenant governance are separate concerns.</p>
+<hr />
+<h3 id="llm-gateway">LLM Gateway<a class="headerlink" href="#llm-gateway" title="Permanent link">&para;</a></h3>
+<p><strong>Status: 💡 Idea — to be specced | Priority: 🔴 High</strong></p>
+<p>A supervised <code>GenServer</code> that sits between agents and LLM providers. All agents call <code>call("llm_gateway", {...})</code> instead of hitting providers directly. The gateway owns provider routing, fallback chains, cost tracking, rate limiting, and response caching — as supervised stateful processes on the bus.</p>
+<p><strong>What this is not:</strong> a replacement for LiteLLM proxy or Portkey. The implementation will wrap one of those (or expose the same interface) rather than re-implement provider routing for 100+ models.</p>
+<table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Provider routing by cost / latency / capability</td>
+<td>Route <code>claude-opus-4-7</code> to Anthropic, fall back to <code>gpt-4o</code> on quota exhaustion</td>
+</tr>
+<tr>
+<td>Fallback chains</td>
+<td>Configurable ordered provider list per model tier</td>
+</tr>
+<tr>
+<td>Semantic + exact response caching</td>
+<td><code>CacheStore(GenServer)</code> child; <code>civitas[llm-cache]</code> extra</td>
+</tr>
+<tr>
+<td>Per-agent cost tracking</td>
+<td>Accumulate token spend by agent name; expose via <code>civitas dashboard</code></td>
+</tr>
+<tr>
+<td>Rate limiting per agent</td>
+<td>Prevents a single agent from exhausting provider quota</td>
+</tr>
+<tr>
+<td>LiteLLM proxy integration</td>
+<td><code>LiteLLMGateway</code> subclass as first implementation</td>
+</tr>
+<tr>
+<td>Spec</td>
+<td>design/llm-gateway.md — to be written</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="tools-gateway">Tools Gateway<a class="headerlink" href="#tools-gateway" title="Permanent link">&para;</a></h3>
+<p><strong>Status: 💡 Idea — to be specced | Priority: 🔴 High</strong></p>
+<p>A supervised <code>GenServer</code> that aggregates tool sources — local tool registries, MCP servers, remote APIs — and presents a unified tool namespace to all agents on the bus. Agents call <code>self.tools.get("gateway://web_search")</code> without knowing where the tool lives or how it is authenticated.</p>
+<p>Extends the MCP integration work (M3.4): MCP servers are one source among several that the gateway aggregates.</p>
+<table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unified tool namespace across local + MCP + remote sources</td>
+<td>Single address scheme: <code>gateway://source/tool_name</code></td>
+</tr>
+<tr>
+<td>Per-agent credential isolation</td>
+<td>Agent A's API keys never visible to Agent B</td>
+</tr>
+<tr>
+<td>Tool call sandboxing</td>
+<td>Filesystem + network isolation for untrusted tool execution</td>
+</tr>
+<tr>
+<td>Schema normalisation</td>
+<td>Tools from different sources exposed with a consistent schema</td>
+</tr>
+<tr>
+<td>Health monitoring + circuit breaker</td>
+<td>Unhealthy tool sources removed from routing automatically</td>
+</tr>
+<tr>
+<td>Tool call spans in OTEL traces</td>
+<td>Every tool invocation appears as a child span</td>
+</tr>
+<tr>
+<td>Spec</td>
+<td>design/tools-gateway.md — to be written</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="skills-gateway">Skills Gateway<a class="headerlink" href="#skills-gateway" title="Permanent link">&para;</a></h3>
+<p><strong>Status: 💡 Idea — to be specced | Priority: 🟡 Medium</strong></p>
+<p>A supervised registry of composable agent workflows — "skills" — that can be discovered and invoked by name or capability. A skill is a named, versioned sequence of tool calls, LLM steps, or sub-agent invocations exposed as a single callable unit on the bus.</p>
+<p>Extends the Capability-Aware Registry (M4.4): where M4.4 answers "which agent can do X?", the Skills Gateway answers "invoke skill X, wherever it runs."</p>
+<table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@skill</code> decorator — declare a reusable workflow on any agent</td>
+<td>Versioned, named, queryable by capability tags</td>
+</tr>
+<tr>
+<td>Skill discovery by capability / input type</td>
+<td><code>gateway.find_skill("summarise", input_type="text/html")</code></td>
+</tr>
+<tr>
+<td>Cross-agent skill composition</td>
+<td>Skills can invoke other skills; gateway handles routing</td>
+</tr>
+<tr>
+<td>Skill versioning with semver + forward compatibility</td>
+<td>Old callers work when a skill is upgraded</td>
+</tr>
+<tr>
+<td>Local + remote skill sources</td>
+<td>Skills can live in the local registry or a remote Civitas deployment</td>
+</tr>
+<tr>
+<td>Hosted skills marketplace</td>
+<td>Future SaaS layer — shared skills across organisations</td>
+</tr>
+<tr>
+<td>Spec</td>
+<td>design/skills-gateway.md — to be written</td>
 </tr>
 </tbody>
 </table>
