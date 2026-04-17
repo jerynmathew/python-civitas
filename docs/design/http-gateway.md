@@ -42,9 +42,9 @@ graph TD
 
     subgraph "Edge — supervised process"
         GW["HTTPGateway\n(AgentProcess)"]
-        H1["HTTP/1.1 + HTTP/2\n(hypercorn ASGI)"]
-        H3["HTTP/3 / QUIC\n(hypercorn + aioquic)"]
-        GR["gRPC server\n(grpclib)"]
+        H1["HTTP/1.1 + HTTP/2\n(uvicorn ASGI)"]
+        H3["HTTP/3 / QUIC\n(aioquic)"]
+        GR["gRPC server\n(grpclib / grpcio)"]
     end
 
     subgraph "Civitas bus"
@@ -115,9 +115,25 @@ Custom route tables are supported via topology YAML (see below).
 
 ## HTTP/1.1 and HTTP/2
 
-**Server:** [Hypercorn](https://hypercorn.readthedocs.io) — ASGI server supporting HTTP/1.1 and HTTP/2 with a single codebase. Hypercorn negotiates HTTP/2 via ALPN on TLS connections transparently.
+**Server:** [uvicorn](https://www.uvicorn.org/) with the `[standard]` extra — ASGI server built on two C-backed components:
 
-**Interface:** Standard ASGI app. `HTTPGateway` implements `__call__(scope, receive, send)` internally, wrapping Hypercorn.
+- **[uvloop](https://github.com/MagicStack/uvloop)** — drop-in replacement for the asyncio event loop, wrapping [libuv](https://libuv.org/) (the C event loop powering Node.js). Delivers 2–4× throughput over the default asyncio loop.
+- **[httptools](https://github.com/MagicStack/httptools)** — HTTP/1.1 parser built on [llhttp](https://github.com/nodejs/llhttp) (C). Used by uvicorn for HTTP/1.1 request parsing.
+
+HTTP/2 is negotiated via ALPN on TLS connections — uvicorn handles this transparently when TLS is configured.
+
+!!! note "Windows compatibility"
+    uvloop uses libuv APIs that are not available on Windows. The gateway installs uvloop on Linux/macOS and silently falls back to the default asyncio event loop on Windows:
+
+    ```python
+    try:
+        import uvloop
+        uvloop.install()
+    except ImportError:
+        pass  # default asyncio event loop (Windows or uvloop not installed)
+    ```
+
+**Interface:** Standard ASGI app. `HTTPGateway` implements `__call__(scope, receive, send)` internally, run by uvicorn.
 
 ```python
 from civitas.gateway import HTTPGateway
@@ -133,15 +149,15 @@ gateway = HTTPGateway(
 ```
 
 **HTTP/2 specifics:**
-- Stream multiplexing is handled by Hypercorn — each stream maps to one Civitas `call()`
+- Stream multiplexing is handled by uvicorn — each stream maps to one Civitas `call()`
 - Server push is not exposed in v1 (deferred — requires explicit push directives from agents)
-- `h2` package required: `pip install civitas[http2]`
+- `pip install civitas[http]` installs `uvicorn[standard]` (pulls in uvloop + httptools automatically)
 
 ---
 
 ## HTTP/3 / QUIC
 
-**Server:** Hypercorn with [aioquic](https://github.com/aioquic/aioquic) backend.
+**Server:** [aioquic](https://github.com/aioquic/aioquic) — pure-Python QUIC and HTTP/3 implementation.
 
 HTTP/3 runs over QUIC — a multiplexed, encrypted transport over UDP. Key benefits over HTTP/2:
 - **0-RTT connection resumption** — repeat clients connect with zero round-trip handshake
@@ -164,15 +180,41 @@ gateway = HTTPGateway(
 
 The `Alt-Svc: h3=":8443"` header is automatically injected into HTTP/1.1 and HTTP/2 responses, advertising the QUIC endpoint to clients that support it.
 
-**Required extra:** `pip install civitas[http3]` (installs `hypercorn[h3]` + `aioquic`)
+**Required extra:** `pip install civitas[http3]` (installs `aioquic>=1.0`)
+
+### Why aioquic (and what's next)
+
+aioquic is the established Python QUIC library and adequate for most deployments. The QUIC ecosystem is maturing fast — [quiche](https://github.com/cloudflare/quiche) (Cloudflare's QUIC implementation in Rust) exposes Python bindings via [quiche-python](https://github.com/cloudflare/quiche/tree/master/quiche/examples). When those bindings stabilise for production use, `civitas[http3]` will transparently upgrade to the Rust backend for near-native QUIC performance. No API changes to `HTTPGateway` are needed — only the underlying driver swaps.
 
 ---
 
 ## gRPC
 
-**Server:** [grpclib](https://github.com/vmagamedov/grpclib) — pure Python async gRPC, no C extension required.
+gRPC uses HTTP/2 as transport and Protocol Buffers (protobuf) as the serialization format. Civitas exposes a **generic reflection service** so clients don't need pre-generated stubs for basic use.
 
-gRPC uses HTTP/2 as transport and Protocol Buffers (protobuf) as the serialization format. Civitas exposes a **generic reflection service** so clients don't need pre-generated stubs for basic use:
+### Default: grpclib (pure Python async)
+
+**Server:** [grpclib](https://github.com/vmagamedov/grpclib) — pure Python async gRPC, no C extension required. Integrates cleanly with asyncio and requires no native build tooling.
+
+**Install:** `pip install civitas[grpc]` (installs `grpclib>=0.4` + `protobuf>=4`)
+
+### Production: grpcio (C core)
+
+For high-throughput deployments, `grpcio` (Google's official Python gRPC library) uses a C core for serialization, compression, and connection management — significantly faster under load.
+
+**Install:** `pip install civitas[grpc-fast]` (installs `grpcio>=1.62` + `protobuf>=4`)
+
+When `grpcio` is present, `HTTPGateway` automatically uses it. When only `grpclib` is present, it falls back gracefully. Both expose the same `HTTPGateway` API.
+
+```python
+# Same API regardless of grpclib vs grpcio backend
+gateway = HTTPGateway(
+    name="api",
+    host="0.0.0.0",
+    port=8080,
+    grpc_port=50051,
+)
+```
 
 ### Generic service (no proto required)
 
@@ -221,8 +263,6 @@ gateway:
         service: AssistantService
         agent: assistant          # routes all RPCs to this agent name
 ```
-
-**Required extra:** `pip install civitas[grpc]` (installs `grpclib` + `protobuf`)
 
 ---
 
@@ -278,32 +318,35 @@ supervision:
 1. `civitas/gateway/__init__.py` — `HTTPGateway(AgentProcess)`
 2. `civitas/gateway/asgi.py` — ASGI app, request translation, response mapping
 3. `civitas/gateway/router.py` — route table (path → agent name, mode)
-4. Hypercorn runner inside `on_start()` / `on_stop()`
+4. uvicorn runner inside `on_start()` / `on_stop()` with uvloop install (Linux/macOS only)
 5. TLS config from `settings` or topology YAML
-6. `civitas[http]` extra: `hypercorn>=0.17`
+6. `civitas[http]` extra: `uvicorn[standard]>=0.30` (pulls in uvloop + httptools)
 
 ### Phase 2 — HTTP/3 / QUIC (v0.4)
 
 1. Add `port_quic` config option to `HTTPGateway`
-2. Enable Hypercorn QUIC backend when `enable_http3=True`
-3. Auto-inject `Alt-Svc` header
-4. `civitas[http3]` extra: `hypercorn[h3]>=0.17`, `aioquic>=1.0`
+2. Run aioquic QUIC server alongside uvicorn on the UDP port
+3. Auto-inject `Alt-Svc` header into HTTP/1.1 and HTTP/2 responses
+4. `civitas[http3]` extra: `aioquic>=1.0`
+5. Document quiche-python upgrade path for when Rust bindings stabilise
 
 ### Phase 3 — gRPC (v0.5)
 
-1. `civitas/gateway/grpc.py` — generic `CivitasGateway` service via grpclib
+1. `civitas/gateway/grpc.py` — generic `CivitasGateway` service; detect grpcio vs grpclib
 2. `.proto` file bundled with the package
 3. Optional custom proto loading from `proto_dir`
 4. RPC → message type mapping (unary, client-streaming, server-streaming, bidirectional)
 5. `civitas[grpc]` extra: `grpclib>=0.4`, `protobuf>=4`
+6. `civitas[grpc-fast]` extra: `grpcio>=1.62`, `protobuf>=4`
 
 ### Phase 4 — Advanced (v0.5+)
 
-- gRPC reflection service (clients can introspect available services without .proto files)
+- gRPC reflection service (clients introspect available services without .proto files)
 - HTTP/2 server push
 - WebSocket upgrade (maps to long-lived `cast()` sessions)
 - Rate limiting via `RateLimiter` GenServer (built-in integration)
 - Request authentication middleware (JWT, API key, mTLS client certs)
+- Evaluate quiche-python (Rust QUIC) as drop-in replacement for aioquic
 
 ---
 
@@ -318,13 +361,14 @@ supervision:
 
 ## Dependencies summary
 
-| Extra | Installs | Enables |
-|-------|----------|---------|
-| `civitas[http]` | `hypercorn>=0.17` | HTTP/1.1 + HTTP/2 |
-| `civitas[http3]` | `hypercorn[h3]>=0.17`, `aioquic>=1.0` | HTTP/3 / QUIC |
-| `civitas[grpc]` | `grpclib>=0.4`, `protobuf>=4` | gRPC |
+| Extra | Installs | Enables | Backend |
+|-------|----------|---------|---------|
+| `civitas[http]` | `uvicorn[standard]>=0.30` | HTTP/1.1 + HTTP/2 | C (uvloop + httptools) |
+| `civitas[http3]` | `aioquic>=1.0` | HTTP/3 / QUIC | Pure Python (Rust upgrade path via quiche) |
+| `civitas[grpc]` | `grpclib>=0.4`, `protobuf>=4` | gRPC | Pure Python async |
+| `civitas[grpc-fast]` | `grpcio>=1.62`, `protobuf>=4` | gRPC (high throughput) | C core (Google) |
 
-All three can be installed together: `pip install civitas[http,http3,grpc]`
+All can be installed together: `pip install civitas[http,http3,grpc]` or `pip install civitas[http,http3,grpc-fast]`
 
 ---
 
@@ -338,6 +382,7 @@ All three can be installed together: `pip install civitas[http,http3,grpc]`
 | Q4 | TLS termination — in-process or via sidecar (Envoy, nginx)? | Both; in-process for simplicity, sidecar for production mTLS |
 | Q5 | How do WebSocket upgrades map to the bus? | Long-lived session — each WebSocket frame → `cast()`; close event → `call()` teardown |
 | Q6 | Should route tables support middleware chains (auth, rate-limit, logging)? | Yes, via pluggable middleware list in topology YAML — spec separately |
+| Q7 | When should `civitas[grpc-fast]` become the default? | When grpcio's asyncio support matures fully — currently requires careful loop management |
 
 ---
 
@@ -353,6 +398,8 @@ All three can be installed together: `pip install civitas[http,http3,grpc]`
 - [ ] `HTTPGateway` stops cleanly on `Supervisor` shutdown — drains in-flight requests
 - [ ] Topology YAML `type: http_gateway` supported by `civitas topology validate`
 - [ ] `civitas topology show` displays gateway nodes with protocol annotations
+- [ ] uvloop installed and active on Linux/macOS; asyncio fallback on Windows
+- [ ] grpcio detected and preferred over grpclib when `civitas[grpc-fast]` is installed
 - [ ] ≥ 20 unit tests (routing, translation, timeout, error mapping)
 - [ ] ≥ 5 integration tests (real HTTP client → gateway → agent → response)
 - [ ] Documented with examples for all four protocols
