@@ -454,21 +454,24 @@ docker compose up --scale worker-worker=3
 
 ## Documentation
 
+Full documentation is available at **[jerynmathew.github.io/python-civitas](https://jerynmathew.github.io/python-civitas/)**.
+
 | | |
 |---|---|
-| [Getting Started](docs/getting-started.md) | Install, hello agent, first supervised system |
-| [Core Concepts](docs/concepts.md) | AgentProcess, Supervisor, MessageBus, Transport |
-| [Supervision](docs/supervision.md) | Strategies, backoff, escalation, heartbeats |
-| [Messaging](docs/messaging.md) | send, ask, broadcast, backpressure, trace propagation |
-| [Transports](docs/transports.md) | InProcess → ZMQ → NATS, switching levels |
-| [Observability](docs/observability.md) | OTEL spans, console exporter, Jaeger setup |
-| [Plugins](docs/plugins.md) | ModelProvider, ToolProvider, StateStore, custom plugins |
-| [Topology YAML](docs/topology.md) | Schema reference, CLI commands |
-| [Deployment](docs/deployment.md) | Level 1–4 deployment ladder |
-| [Framework Adapters](docs/adapters.md) | LangGraph, OpenAI SDK integration |
-| [Architecture](docs/architecture.md) | Runtime internals, component wiring |
-| [FAQ](docs/faq.md) | Why not Temporal? Why not LangGraph? GIL concerns |
-| [Contributing](CONTRIBUTING.md) | Dev setup, test strategy, plugin authoring |
+| [Getting Started](https://jerynmathew.github.io/python-civitas/getting-started/) | Install, hello agent, first supervised system |
+| [Core Concepts](https://jerynmathew.github.io/python-civitas/concepts/) | AgentProcess, Supervisor, MessageBus, Transport |
+| [Supervision](https://jerynmathew.github.io/python-civitas/supervision/) | Strategies, backoff, escalation, heartbeats |
+| [Messaging](https://jerynmathew.github.io/python-civitas/messaging/) | send, ask, broadcast, backpressure, trace propagation |
+| [Transports](https://jerynmathew.github.io/python-civitas/transports/) | InProcess → ZMQ → NATS, switching levels |
+| [Observability](https://jerynmathew.github.io/python-civitas/observability/) | OTEL spans, console exporter, Jaeger setup |
+| [Plugins](https://jerynmathew.github.io/python-civitas/plugins/) | ModelProvider, ToolProvider, StateStore, custom plugins |
+| [Topology YAML](https://jerynmathew.github.io/python-civitas/topology/) | Schema reference, CLI commands |
+| [CLI Reference](https://jerynmathew.github.io/python-civitas/cli/) | All commands, options, and examples |
+| [Deployment](https://jerynmathew.github.io/python-civitas/deployment/) | Level 1–4 deployment ladder |
+| [Framework Adapters](https://jerynmathew.github.io/python-civitas/adapters/) | LangGraph, OpenAI SDK integration |
+| [Architecture](https://jerynmathew.github.io/python-civitas/architecture/) | Runtime internals, component wiring |
+| [FAQ](https://jerynmathew.github.io/python-civitas/faq/) | Why not Temporal? Why not LangGraph? GIL concerns |
+| [Contributing](https://jerynmathew.github.io/python-civitas/contributing/) | Dev setup, test strategy, plugin authoring |
 
 ---
 
