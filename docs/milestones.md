@@ -12,6 +12,7 @@ Development progress across all phases of Civitas.
 | 🔄 | In Progress |
 | ⏳ | Planned |
 | ⏸️ | Deferred |
+| 💡 | Idea — to be specced |
 
 ---
 
@@ -33,6 +34,9 @@ Development progress across all phases of Civitas.
 | 4 | [HTTP Gateway](#http-gateway) | ⏳ Planned | v0.4 |
 | 4 | [Gateway API Surface](#gateway-api-surface) | ⏳ Planned | v0.4 |
 | 4 | [Visual Topology Editor](#m41-visual-topology-editor) | ⏸️ Deferred | — |
+| 5 | [LLM Gateway](#llm-gateway) | 💡 Idea | v0.5+ |
+| 5 | [Tools Gateway](#tools-gateway) | 💡 Idea | v0.5+ |
+| 5 | [Skills Gateway](#skills-gateway) | 💡 Idea | v0.5+ |
 
 ---
 
@@ -289,3 +293,69 @@ Web-based drag-and-drop editor for designing agent topologies visually.
 | Supervision strategy configuration via UI | ⏸️ |
 | Export to valid Civitas topology YAML | ⏸️ |
 | Round-trip: imported YAML renders correctly | ⏸️ |
+
+---
+
+## Phase 5 — Agentic Platform
+
+Ideas awaiting full design specs. Each is a supervised GenServer (or group of GenServers) that runs inside the user's deployment — not external services, not SaaS. The SaaS boundary sits above these: hosted registries, managed observability, and multi-tenant governance are separate concerns.
+
+---
+
+### LLM Gateway
+
+**Status: 💡 Idea — to be specced | Priority: 🔴 High**
+
+A supervised `GenServer` that sits between agents and LLM providers. All agents call `call("llm_gateway", {...})` instead of hitting providers directly. The gateway owns provider routing, fallback chains, cost tracking, rate limiting, and response caching — as supervised stateful processes on the bus.
+
+**What this is not:** a replacement for LiteLLM proxy or Portkey. The implementation will wrap one of those (or expose the same interface) rather than re-implement provider routing for 100+ models.
+
+| Idea | Notes |
+|------|-------|
+| Provider routing by cost / latency / capability | Route `claude-opus-4-7` to Anthropic, fall back to `gpt-4o` on quota exhaustion |
+| Fallback chains | Configurable ordered provider list per model tier |
+| Semantic + exact response caching | `CacheStore(GenServer)` child; `civitas[llm-cache]` extra |
+| Per-agent cost tracking | Accumulate token spend by agent name; expose via `civitas dashboard` |
+| Rate limiting per agent | Prevents a single agent from exhausting provider quota |
+| LiteLLM proxy integration | `LiteLLMGateway` subclass as first implementation |
+| Spec | design/llm-gateway.md — to be written |
+
+---
+
+### Tools Gateway
+
+**Status: 💡 Idea — to be specced | Priority: 🔴 High**
+
+A supervised `GenServer` that aggregates tool sources — local tool registries, MCP servers, remote APIs — and presents a unified tool namespace to all agents on the bus. Agents call `self.tools.get("gateway://web_search")` without knowing where the tool lives or how it is authenticated.
+
+Extends the MCP integration work (M3.4): MCP servers are one source among several that the gateway aggregates.
+
+| Idea | Notes |
+|------|-------|
+| Unified tool namespace across local + MCP + remote sources | Single address scheme: `gateway://source/tool_name` |
+| Per-agent credential isolation | Agent A's API keys never visible to Agent B |
+| Tool call sandboxing | Filesystem + network isolation for untrusted tool execution |
+| Schema normalisation | Tools from different sources exposed with a consistent schema |
+| Health monitoring + circuit breaker | Unhealthy tool sources removed from routing automatically |
+| Tool call spans in OTEL traces | Every tool invocation appears as a child span |
+| Spec | design/tools-gateway.md — to be written |
+
+---
+
+### Skills Gateway
+
+**Status: 💡 Idea — to be specced | Priority: 🟡 Medium**
+
+A supervised registry of composable agent workflows — "skills" — that can be discovered and invoked by name or capability. A skill is a named, versioned sequence of tool calls, LLM steps, or sub-agent invocations exposed as a single callable unit on the bus.
+
+Extends the Capability-Aware Registry (M4.4): where M4.4 answers "which agent can do X?", the Skills Gateway answers "invoke skill X, wherever it runs."
+
+| Idea | Notes |
+|------|-------|
+| `@skill` decorator — declare a reusable workflow on any agent | Versioned, named, queryable by capability tags |
+| Skill discovery by capability / input type | `gateway.find_skill("summarise", input_type="text/html")` |
+| Cross-agent skill composition | Skills can invoke other skills; gateway handles routing |
+| Skill versioning with semver + forward compatibility | Old callers work when a skill is upgraded |
+| Local + remote skill sources | Skills can live in the local registry or a remote Civitas deployment |
+| Hosted skills marketplace | Future SaaS layer — shared skills across organisations |
+| Spec | design/skills-gateway.md — to be written |
