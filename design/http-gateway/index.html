@@ -1555,6 +1555,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="HTTP/3 / QUIC">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-aioquic-and-whats-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why aioquic (and what's next)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1568,6 +1585,28 @@
   
     <nav class="md-nav" aria-label="gRPC">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#default-grpclib-pure-python-async" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default: grpclib (pure Python async)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-grpcio-c-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production: grpcio (C core)
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#generic-service-no-proto-required" class="md-nav__link">
@@ -1895,6 +1934,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="HTTP/3 / QUIC">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-aioquic-and-whats-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why aioquic (and what's next)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1908,6 +1964,28 @@
   
     <nav class="md-nav" aria-label="gRPC">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#default-grpclib-pure-python-async" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default: grpclib (pure Python async)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-grpcio-c-core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production: grpcio (C core)
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#generic-service-no-proto-required" class="md-nav__link">
@@ -2148,9 +2226,9 @@
 
     subgraph "Edge — supervised process"
         GW["HTTPGateway\n(AgentProcess)"]
-        H1["HTTP/1.1 + HTTP/2\n(hypercorn ASGI)"]
-        H3["HTTP/3 / QUIC\n(hypercorn + aioquic)"]
-        GR["gRPC server\n(grpclib)"]
+        H1["HTTP/1.1 + HTTP/2\n(uvicorn ASGI)"]
+        H3["HTTP/3 / QUIC\n(aioquic)"]
+        GR["gRPC server\n(grpclib / grpcio)"]
     end
 
     subgraph "Civitas bus"
@@ -2255,67 +2333,98 @@
 </table>
 <hr />
 <h2 id="http11-and-http2">HTTP/1.1 and HTTP/2<a class="headerlink" href="#http11-and-http2" title="Permanent link">&para;</a></h2>
-<p><strong>Server:</strong> <a href="https://hypercorn.readthedocs.io">Hypercorn</a> — ASGI server supporting HTTP/1.1 and HTTP/2 with a single codebase. Hypercorn negotiates HTTP/2 via ALPN on TLS connections transparently.</p>
-<p><strong>Interface:</strong> Standard ASGI app. <code>HTTPGateway</code> implements <code>__call__(scope, receive, send)</code> internally, wrapping Hypercorn.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">civitas.gateway</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPGateway</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">gateway</span> <span class="o">=</span> <span class="n">HTTPGateway</span><span class="p">(</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;api&quot;</span><span class="p">,</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">port</span><span class="o">=</span><span class="mi">8080</span><span class="p">,</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">tls_cert</span><span class="o">=</span><span class="s2">&quot;certs/server.crt&quot;</span><span class="p">,</span>   <span class="c1"># enables HTTP/2 via ALPN</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">tls_key</span><span class="o">=</span><span class="s2">&quot;certs/server.key&quot;</span><span class="p">,</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">request_timeout</span><span class="o">=</span><span class="mf">30.0</span><span class="p">,</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="p">)</span>
+<p><strong>Server:</strong> <a href="https://www.uvicorn.org/">uvicorn</a> with the <code>[standard]</code> extra — ASGI server built on two C-backed components:</p>
+<ul>
+<li><strong><a href="https://github.com/MagicStack/uvloop">uvloop</a></strong> — drop-in replacement for the asyncio event loop, wrapping <a href="https://libuv.org/">libuv</a> (the C event loop powering Node.js). Delivers 2–4× throughput over the default asyncio loop.</li>
+<li><strong><a href="https://github.com/MagicStack/httptools">httptools</a></strong> — HTTP/1.1 parser built on <a href="https://github.com/nodejs/llhttp">llhttp</a> (C). Used by uvicorn for HTTP/1.1 request parsing.</li>
+</ul>
+<p>HTTP/2 is negotiated via ALPN on TLS connections — uvicorn handles this transparently when TLS is configured.</p>
+<div class="admonition note">
+<p class="admonition-title">Windows compatibility</p>
+<p>uvloop uses libuv APIs that are not available on Windows. The gateway installs uvloop on Linux/macOS and silently falls back to the default asyncio event loop on Windows:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">try</span><span class="p">:</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="kn">import</span><span class="w"> </span><span class="nn">uvloop</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">uvloop</span><span class="o">.</span><span class="n">install</span><span class="p">()</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="k">pass</span>  <span class="c1"># default asyncio event loop (Windows or uvloop not installed)</span>
+</span></code></pre></div>
+</div>
+<p><strong>Interface:</strong> Standard ASGI app. <code>HTTPGateway</code> implements <code>__call__(scope, receive, send)</code> internally, run by uvicorn.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">civitas.gateway</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPGateway</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">gateway</span> <span class="o">=</span> <span class="n">HTTPGateway</span><span class="p">(</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;api&quot;</span><span class="p">,</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">port</span><span class="o">=</span><span class="mi">8080</span><span class="p">,</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">tls_cert</span><span class="o">=</span><span class="s2">&quot;certs/server.crt&quot;</span><span class="p">,</span>   <span class="c1"># enables HTTP/2 via ALPN</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">tls_key</span><span class="o">=</span><span class="s2">&quot;certs/server.key&quot;</span><span class="p">,</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">request_timeout</span><span class="o">=</span><span class="mf">30.0</span><span class="p">,</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="p">)</span>
 </span></code></pre></div>
 <p><strong>HTTP/2 specifics:</strong>
-- Stream multiplexing is handled by Hypercorn — each stream maps to one Civitas <code>call()</code>
+- Stream multiplexing is handled by uvicorn — each stream maps to one Civitas <code>call()</code>
 - Server push is not exposed in v1 (deferred — requires explicit push directives from agents)
-- <code>h2</code> package required: <code>pip install civitas[http2]</code></p>
+- <code>pip install civitas[http]</code> installs <code>uvicorn[standard]</code> (pulls in uvloop + httptools automatically)</p>
 <hr />
 <h2 id="http3-quic">HTTP/3 / QUIC<a class="headerlink" href="#http3-quic" title="Permanent link">&para;</a></h2>
-<p><strong>Server:</strong> Hypercorn with <a href="https://github.com/aioquic/aioquic">aioquic</a> backend.</p>
+<p><strong>Server:</strong> <a href="https://github.com/aioquic/aioquic">aioquic</a> — pure-Python QUIC and HTTP/3 implementation.</p>
 <p>HTTP/3 runs over QUIC — a multiplexed, encrypted transport over UDP. Key benefits over HTTP/2:
 - <strong>0-RTT connection resumption</strong> — repeat clients connect with zero round-trip handshake
 - <strong>Head-of-line blocking eliminated</strong> — lost UDP packets don't stall other streams
 - <strong>Connection migration</strong> — clients can change IP (mobile handoff) without reconnecting</p>
 <p><strong>QUIC requires TLS</strong> — there is no plaintext QUIC. Certificate required.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">gateway</span> <span class="o">=</span> <span class="n">HTTPGateway</span><span class="p">(</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;api&quot;</span><span class="p">,</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">port</span><span class="o">=</span><span class="mi">8080</span><span class="p">,</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">port_quic</span><span class="o">=</span><span class="mi">8443</span><span class="p">,</span>                 <span class="c1"># separate UDP port for QUIC</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">tls_cert</span><span class="o">=</span><span class="s2">&quot;certs/server.crt&quot;</span><span class="p">,</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">tls_key</span><span class="o">=</span><span class="s2">&quot;certs/server.key&quot;</span><span class="p">,</span>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">enable_http3</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>              <span class="c1"># adds Alt-Svc header to HTTP/1.1 and HTTP/2 responses</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">gateway</span> <span class="o">=</span> <span class="n">HTTPGateway</span><span class="p">(</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;api&quot;</span><span class="p">,</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">port</span><span class="o">=</span><span class="mi">8080</span><span class="p">,</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">port_quic</span><span class="o">=</span><span class="mi">8443</span><span class="p">,</span>                 <span class="c1"># separate UDP port for QUIC</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">tls_cert</span><span class="o">=</span><span class="s2">&quot;certs/server.crt&quot;</span><span class="p">,</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">tls_key</span><span class="o">=</span><span class="s2">&quot;certs/server.key&quot;</span><span class="p">,</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="n">enable_http3</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>              <span class="c1"># adds Alt-Svc header to HTTP/1.1 and HTTP/2 responses</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="p">)</span>
 </span></code></pre></div>
 <p>The <code>Alt-Svc: h3=":8443"</code> header is automatically injected into HTTP/1.1 and HTTP/2 responses, advertising the QUIC endpoint to clients that support it.</p>
-<p><strong>Required extra:</strong> <code>pip install civitas[http3]</code> (installs <code>hypercorn[h3]</code> + <code>aioquic</code>)</p>
+<p><strong>Required extra:</strong> <code>pip install civitas[http3]</code> (installs <code>aioquic&gt;=1.0</code>)</p>
+<h3 id="why-aioquic-and-whats-next">Why aioquic (and what's next)<a class="headerlink" href="#why-aioquic-and-whats-next" title="Permanent link">&para;</a></h3>
+<p>aioquic is the established Python QUIC library and adequate for most deployments. The QUIC ecosystem is maturing fast — <a href="https://github.com/cloudflare/quiche">quiche</a> (Cloudflare's QUIC implementation in Rust) exposes Python bindings via <a href="https://github.com/cloudflare/quiche/tree/master/quiche/examples">quiche-python</a>. When those bindings stabilise for production use, <code>civitas[http3]</code> will transparently upgrade to the Rust backend for near-native QUIC performance. No API changes to <code>HTTPGateway</code> are needed — only the underlying driver swaps.</p>
 <hr />
 <h2 id="grpc">gRPC<a class="headerlink" href="#grpc" title="Permanent link">&para;</a></h2>
-<p><strong>Server:</strong> <a href="https://github.com/vmagamedov/grpclib">grpclib</a> — pure Python async gRPC, no C extension required.</p>
-<p>gRPC uses HTTP/2 as transport and Protocol Buffers (protobuf) as the serialization format. Civitas exposes a <strong>generic reflection service</strong> so clients don't need pre-generated stubs for basic use:</p>
+<p>gRPC uses HTTP/2 as transport and Protocol Buffers (protobuf) as the serialization format. Civitas exposes a <strong>generic reflection service</strong> so clients don't need pre-generated stubs for basic use.</p>
+<h3 id="default-grpclib-pure-python-async">Default: grpclib (pure Python async)<a class="headerlink" href="#default-grpclib-pure-python-async" title="Permanent link">&para;</a></h3>
+<p><strong>Server:</strong> <a href="https://github.com/vmagamedov/grpclib">grpclib</a> — pure Python async gRPC, no C extension required. Integrates cleanly with asyncio and requires no native build tooling.</p>
+<p><strong>Install:</strong> <code>pip install civitas[grpc]</code> (installs <code>grpclib&gt;=0.4</code> + <code>protobuf&gt;=4</code>)</p>
+<h3 id="production-grpcio-c-core">Production: grpcio (C core)<a class="headerlink" href="#production-grpcio-c-core" title="Permanent link">&para;</a></h3>
+<p>For high-throughput deployments, <code>grpcio</code> (Google's official Python gRPC library) uses a C core for serialization, compression, and connection management — significantly faster under load.</p>
+<p><strong>Install:</strong> <code>pip install civitas[grpc-fast]</code> (installs <code>grpcio&gt;=1.62</code> + <code>protobuf&gt;=4</code>)</p>
+<p>When <code>grpcio</code> is present, <code>HTTPGateway</code> automatically uses it. When only <code>grpclib</code> is present, it falls back gracefully. Both expose the same <code>HTTPGateway</code> API.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Same API regardless of grpclib vs grpcio backend</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">gateway</span> <span class="o">=</span> <span class="n">HTTPGateway</span><span class="p">(</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;api&quot;</span><span class="p">,</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">port</span><span class="o">=</span><span class="mi">8080</span><span class="p">,</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="n">grpc_port</span><span class="o">=</span><span class="mi">50051</span><span class="p">,</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="p">)</span>
+</span></code></pre></div>
 <h3 id="generic-service-no-proto-required">Generic service (no proto required)<a class="headerlink" href="#generic-service-no-proto-required" title="Permanent link">&para;</a></h3>
-<div class="language-protobuf highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1">// Automatically served by HTTPGateway</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kd">service</span><span class="w"> </span><span class="n">CivitasGateway</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="k">rpc</span><span class="w"> </span><span class="n">Call</span><span class="p">(</span><span class="n">Request</span><span class="p">)</span><span class="w"> </span><span class="k">returns</span><span class="w"> </span><span class="p">(</span><span class="n">Response</span><span class="p">);</span><span class="w">         </span><span class="c1">// → call()</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="k">rpc</span><span class="w"> </span><span class="n">Cast</span><span class="p">(</span><span class="n">Request</span><span class="p">)</span><span class="w"> </span><span class="k">returns</span><span class="w"> </span><span class="p">(</span><span class="n">google.protobuf.Empty</span><span class="p">);</span><span class="w"> </span><span class="c1">// → cast()</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="k">rpc</span><span class="w"> </span><span class="n">Stream</span><span class="p">(</span><span class="n">Request</span><span class="p">)</span><span class="w"> </span><span class="k">returns</span><span class="w"> </span><span class="p">(</span><span class="n">stream</span><span class="w"> </span><span class="n">Response</span><span class="p">);</span><span class="w"> </span><span class="c1">// → call() + stream reply chunks</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="p">}</span>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="kd">message</span><span class="w"> </span><span class="nc">Request</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="na">recipient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
-</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="na">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
-</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">    </span><span class="kt">bytes</span><span class="w">  </span><span class="na">payload_json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span><span class="w">    </span><span class="c1">// JSON-encoded payload</span>
-</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="na">correlation_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
-</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="na">trace_parent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span><span class="p">;</span>
-</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="p">}</span>
-</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
-</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="kd">message</span><span class="w"> </span><span class="nc">Response</span><span class="w"> </span><span class="p">{</span>
-</span><span id="__span-3-17"><a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="w">    </span><span class="kt">bytes</span><span class="w">  </span><span class="na">payload_json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
-</span><span id="__span-3-18"><a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="na">error</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
-</span><span id="__span-3-19"><a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="p">}</span>
+<div class="language-protobuf highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1">// Automatically served by HTTPGateway</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kd">service</span><span class="w"> </span><span class="n">CivitasGateway</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="k">rpc</span><span class="w"> </span><span class="n">Call</span><span class="p">(</span><span class="n">Request</span><span class="p">)</span><span class="w"> </span><span class="k">returns</span><span class="w"> </span><span class="p">(</span><span class="n">Response</span><span class="p">);</span><span class="w">         </span><span class="c1">// → call()</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="k">rpc</span><span class="w"> </span><span class="n">Cast</span><span class="p">(</span><span class="n">Request</span><span class="p">)</span><span class="w"> </span><span class="k">returns</span><span class="w"> </span><span class="p">(</span><span class="n">google.protobuf.Empty</span><span class="p">);</span><span class="w"> </span><span class="c1">// → cast()</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="k">rpc</span><span class="w"> </span><span class="n">Stream</span><span class="p">(</span><span class="n">Request</span><span class="p">)</span><span class="w"> </span><span class="k">returns</span><span class="w"> </span><span class="p">(</span><span class="n">stream</span><span class="w"> </span><span class="n">Response</span><span class="p">);</span><span class="w"> </span><span class="c1">// → call() + stream reply chunks</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="p">}</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="kd">message</span><span class="w"> </span><span class="nc">Request</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="na">recipient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="na">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">    </span><span class="kt">bytes</span><span class="w">  </span><span class="na">payload_json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span><span class="w">    </span><span class="c1">// JSON-encoded payload</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="na">correlation_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="na">trace_parent</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span><span class="p">;</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="p">}</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
+</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="kd">message</span><span class="w"> </span><span class="nc">Response</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">    </span><span class="kt">bytes</span><span class="w">  </span><span class="na">payload_json</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="na">error</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="p">}</span>
 </span></code></pre></div>
 <h3 id="rpc-civitas-mapping">RPC → Civitas mapping<a class="headerlink" href="#rpc-civitas-mapping" title="Permanent link">&para;</a></h3>
 <table>
@@ -2351,56 +2460,55 @@
 </table>
 <h3 id="custom-proto-stubs-optional">Custom proto stubs (optional)<a class="headerlink" href="#custom-proto-stubs-optional" title="Permanent link">&para;</a></h3>
 <p>For typed APIs, agents can expose a <code>.proto</code> definition. The gateway loads it at startup and maps each RPC method to a Civitas agent name:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># topology.yaml</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nt">gateway</span><span class="p">:</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">grpc</span><span class="p">:</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="nt">proto_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">protos/</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="nt">services</span><span class="p">:</span>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">proto</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">protos/assistant.proto</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">        </span><span class="nt">service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AssistantService</span>
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">        </span><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">assistant</span><span class="w">          </span><span class="c1"># routes all RPCs to this agent name</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># topology.yaml</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nt">gateway</span><span class="p">:</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">grpc</span><span class="p">:</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="nt">proto_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">protos/</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">    </span><span class="nt">services</span><span class="p">:</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">proto</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">protos/assistant.proto</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">        </span><span class="nt">service</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AssistantService</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">        </span><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">assistant</span><span class="w">          </span><span class="c1"># routes all RPCs to this agent name</span>
 </span></code></pre></div>
-<p><strong>Required extra:</strong> <code>pip install civitas[grpc]</code> (installs <code>grpclib</code> + <code>protobuf</code>)</p>
 <hr />
 <h2 id="topology-yaml">Topology YAML<a class="headerlink" href="#topology-yaml" title="Permanent link">&para;</a></h2>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">supervision</span><span class="p">:</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">root</span>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ONE_FOR_ONE</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span><span class="nt">children</span><span class="p">:</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">api</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http_gateway</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">      </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">civitas.gateway</span>
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">      </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HTTPGateway</span>
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">      </span><span class="nt">config</span><span class="p">:</span>
-</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">        </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.0.0.0&quot;</span>
-</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">        </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
-</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">        </span><span class="nt">port_quic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8443</span>
-</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="w">        </span><span class="nt">enable_http3</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="w">        </span><span class="nt">tls_cert</span><span class="p">:</span><span class="w"> </span><span class="kt">!ENV</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GATEWAY_TLS_CERT</span>
-</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="w">        </span><span class="nt">tls_key</span><span class="p">:</span><span class="w"> </span><span class="kt">!ENV</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GATEWAY_TLS_KEY</span>
-</span><span id="__span-5-16"><a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="w">        </span><span class="nt">request_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30.0</span>
-</span><span id="__span-5-17"><a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="w">        </span><span class="nt">grpc</span><span class="p">:</span>
-</span><span id="__span-5-18"><a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="w">          </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</span><span id="__span-5-19"><a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="w">          </span><span class="nt">proto_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">protos/</span>
-</span><span id="__span-5-20"><a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="w">        </span><span class="nt">routes</span><span class="p">:</span>
-</span><span id="__span-5-21"><a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/v1/chat</span>
-</span><span id="__span-5-22"><a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a><span class="w">            </span><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">assistant</span>
-</span><span id="__span-5-23"><a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a><span class="w">            </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
-</span><span id="__span-5-24"><a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a><span class="w">            </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">call</span>
-</span><span id="__span-5-25"><a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/v1/notify</span>
-</span><span id="__span-5-26"><a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a><span class="w">            </span><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notifier</span>
-</span><span id="__span-5-27"><a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a><span class="w">            </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
-</span><span id="__span-5-28"><a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a><span class="w">            </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cast</span>
-</span><span id="__span-5-29"><a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>
-</span><span id="__span-5-30"><a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">assistant</span>
-</span><span id="__span-5-31"><a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a><span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent</span>
-</span><span id="__span-5-32"><a id="__codelineno-5-32" name="__codelineno-5-32" href="#__codelineno-5-32"></a><span class="w">      </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">myapp.agents</span>
-</span><span id="__span-5-33"><a id="__codelineno-5-33" name="__codelineno-5-33" href="#__codelineno-5-33"></a><span class="w">      </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AssistantAgent</span>
-</span><span id="__span-5-34"><a id="__codelineno-5-34" name="__codelineno-5-34" href="#__codelineno-5-34"></a>
-</span><span id="__span-5-35"><a id="__codelineno-5-35" name="__codelineno-5-35" href="#__codelineno-5-35"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notifier</span>
-</span><span id="__span-5-36"><a id="__codelineno-5-36" name="__codelineno-5-36" href="#__codelineno-5-36"></a><span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gen_server</span>
-</span><span id="__span-5-37"><a id="__codelineno-5-37" name="__codelineno-5-37" href="#__codelineno-5-37"></a><span class="w">      </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">myapp.services</span>
-</span><span id="__span-5-38"><a id="__codelineno-5-38" name="__codelineno-5-38" href="#__codelineno-5-38"></a><span class="w">      </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">NotifierService</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">supervision</span><span class="p">:</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">root</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ONE_FOR_ONE</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span><span class="nt">children</span><span class="p">:</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">api</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http_gateway</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">      </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">civitas.gateway</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">      </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HTTPGateway</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">      </span><span class="nt">config</span><span class="p">:</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">        </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;0.0.0.0&quot;</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">        </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">        </span><span class="nt">port_quic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8443</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="w">        </span><span class="nt">enable_http3</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="w">        </span><span class="nt">tls_cert</span><span class="p">:</span><span class="w"> </span><span class="kt">!ENV</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GATEWAY_TLS_CERT</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="w">        </span><span class="nt">tls_key</span><span class="p">:</span><span class="w"> </span><span class="kt">!ENV</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GATEWAY_TLS_KEY</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="w">        </span><span class="nt">request_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30.0</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="w">        </span><span class="nt">grpc</span><span class="p">:</span>
+</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="w">          </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="w">          </span><span class="nt">proto_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">protos/</span>
+</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="w">        </span><span class="nt">routes</span><span class="p">:</span>
+</span><span id="__span-7-21"><a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/v1/chat</span>
+</span><span id="__span-7-22"><a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a><span class="w">            </span><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">assistant</span>
+</span><span id="__span-7-23"><a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a><span class="w">            </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
+</span><span id="__span-7-24"><a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a><span class="w">            </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">call</span>
+</span><span id="__span-7-25"><a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/v1/notify</span>
+</span><span id="__span-7-26"><a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a><span class="w">            </span><span class="nt">agent</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notifier</span>
+</span><span id="__span-7-27"><a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a><span class="w">            </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">POST</span>
+</span><span id="__span-7-28"><a id="__codelineno-7-28" name="__codelineno-7-28" href="#__codelineno-7-28"></a><span class="w">            </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cast</span>
+</span><span id="__span-7-29"><a id="__codelineno-7-29" name="__codelineno-7-29" href="#__codelineno-7-29"></a>
+</span><span id="__span-7-30"><a id="__codelineno-7-30" name="__codelineno-7-30" href="#__codelineno-7-30"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">assistant</span>
+</span><span id="__span-7-31"><a id="__codelineno-7-31" name="__codelineno-7-31" href="#__codelineno-7-31"></a><span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent</span>
+</span><span id="__span-7-32"><a id="__codelineno-7-32" name="__codelineno-7-32" href="#__codelineno-7-32"></a><span class="w">      </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">myapp.agents</span>
+</span><span id="__span-7-33"><a id="__codelineno-7-33" name="__codelineno-7-33" href="#__codelineno-7-33"></a><span class="w">      </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AssistantAgent</span>
+</span><span id="__span-7-34"><a id="__codelineno-7-34" name="__codelineno-7-34" href="#__codelineno-7-34"></a>
+</span><span id="__span-7-35"><a id="__codelineno-7-35" name="__codelineno-7-35" href="#__codelineno-7-35"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notifier</span>
+</span><span id="__span-7-36"><a id="__codelineno-7-36" name="__codelineno-7-36" href="#__codelineno-7-36"></a><span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gen_server</span>
+</span><span id="__span-7-37"><a id="__codelineno-7-37" name="__codelineno-7-37" href="#__codelineno-7-37"></a><span class="w">      </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">myapp.services</span>
+</span><span id="__span-7-38"><a id="__codelineno-7-38" name="__codelineno-7-38" href="#__codelineno-7-38"></a><span class="w">      </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">NotifierService</span>
 </span></code></pre></div>
 <hr />
 <h2 id="implementation-plan">Implementation plan<a class="headerlink" href="#implementation-plan" title="Permanent link">&para;</a></h2>
@@ -2409,32 +2517,35 @@
 <li><code>civitas/gateway/__init__.py</code> — <code>HTTPGateway(AgentProcess)</code></li>
 <li><code>civitas/gateway/asgi.py</code> — ASGI app, request translation, response mapping</li>
 <li><code>civitas/gateway/router.py</code> — route table (path → agent name, mode)</li>
-<li>Hypercorn runner inside <code>on_start()</code> / <code>on_stop()</code></li>
+<li>uvicorn runner inside <code>on_start()</code> / <code>on_stop()</code> with uvloop install (Linux/macOS only)</li>
 <li>TLS config from <code>settings</code> or topology YAML</li>
-<li><code>civitas[http]</code> extra: <code>hypercorn&gt;=0.17</code></li>
+<li><code>civitas[http]</code> extra: <code>uvicorn[standard]&gt;=0.30</code> (pulls in uvloop + httptools)</li>
 </ol>
 <h3 id="phase-2-http3-quic-v04">Phase 2 — HTTP/3 / QUIC (v0.4)<a class="headerlink" href="#phase-2-http3-quic-v04" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Add <code>port_quic</code> config option to <code>HTTPGateway</code></li>
-<li>Enable Hypercorn QUIC backend when <code>enable_http3=True</code></li>
-<li>Auto-inject <code>Alt-Svc</code> header</li>
-<li><code>civitas[http3]</code> extra: <code>hypercorn[h3]&gt;=0.17</code>, <code>aioquic&gt;=1.0</code></li>
+<li>Run aioquic QUIC server alongside uvicorn on the UDP port</li>
+<li>Auto-inject <code>Alt-Svc</code> header into HTTP/1.1 and HTTP/2 responses</li>
+<li><code>civitas[http3]</code> extra: <code>aioquic&gt;=1.0</code></li>
+<li>Document quiche-python upgrade path for when Rust bindings stabilise</li>
 </ol>
 <h3 id="phase-3-grpc-v05">Phase 3 — gRPC (v0.5)<a class="headerlink" href="#phase-3-grpc-v05" title="Permanent link">&para;</a></h3>
 <ol>
-<li><code>civitas/gateway/grpc.py</code> — generic <code>CivitasGateway</code> service via grpclib</li>
+<li><code>civitas/gateway/grpc.py</code> — generic <code>CivitasGateway</code> service; detect grpcio vs grpclib</li>
 <li><code>.proto</code> file bundled with the package</li>
 <li>Optional custom proto loading from <code>proto_dir</code></li>
 <li>RPC → message type mapping (unary, client-streaming, server-streaming, bidirectional)</li>
 <li><code>civitas[grpc]</code> extra: <code>grpclib&gt;=0.4</code>, <code>protobuf&gt;=4</code></li>
+<li><code>civitas[grpc-fast]</code> extra: <code>grpcio&gt;=1.62</code>, <code>protobuf&gt;=4</code></li>
 </ol>
 <h3 id="phase-4-advanced-v05">Phase 4 — Advanced (v0.5+)<a class="headerlink" href="#phase-4-advanced-v05" title="Permanent link">&para;</a></h3>
 <ul>
-<li>gRPC reflection service (clients can introspect available services without .proto files)</li>
+<li>gRPC reflection service (clients introspect available services without .proto files)</li>
 <li>HTTP/2 server push</li>
 <li>WebSocket upgrade (maps to long-lived <code>cast()</code> sessions)</li>
 <li>Rate limiting via <code>RateLimiter</code> GenServer (built-in integration)</li>
 <li>Request authentication middleware (JWT, API key, mTLS client certs)</li>
+<li>Evaluate quiche-python (Rust QUIC) as drop-in replacement for aioquic</li>
 </ul>
 <hr />
 <h2 id="what-httpgateway-does-not-do">What HTTPGateway does NOT do<a class="headerlink" href="#what-httpgateway-does-not-do" title="Permanent link">&para;</a></h2>
@@ -2452,27 +2563,37 @@
 <th>Extra</th>
 <th>Installs</th>
 <th>Enables</th>
+<th>Backend</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>civitas[http]</code></td>
-<td><code>hypercorn&gt;=0.17</code></td>
+<td><code>uvicorn[standard]&gt;=0.30</code></td>
 <td>HTTP/1.1 + HTTP/2</td>
+<td>C (uvloop + httptools)</td>
 </tr>
 <tr>
 <td><code>civitas[http3]</code></td>
-<td><code>hypercorn[h3]&gt;=0.17</code>, <code>aioquic&gt;=1.0</code></td>
+<td><code>aioquic&gt;=1.0</code></td>
 <td>HTTP/3 / QUIC</td>
+<td>Pure Python (Rust upgrade path via quiche)</td>
 </tr>
 <tr>
 <td><code>civitas[grpc]</code></td>
 <td><code>grpclib&gt;=0.4</code>, <code>protobuf&gt;=4</code></td>
 <td>gRPC</td>
+<td>Pure Python async</td>
+</tr>
+<tr>
+<td><code>civitas[grpc-fast]</code></td>
+<td><code>grpcio&gt;=1.62</code>, <code>protobuf&gt;=4</code></td>
+<td>gRPC (high throughput)</td>
+<td>C core (Google)</td>
 </tr>
 </tbody>
 </table>
-<p>All three can be installed together: <code>pip install civitas[http,http3,grpc]</code></p>
+<p>All can be installed together: <code>pip install civitas[http,http3,grpc]</code> or <code>pip install civitas[http,http3,grpc-fast]</code></p>
 <hr />
 <h2 id="open-questions">Open questions<a class="headerlink" href="#open-questions" title="Permanent link">&para;</a></h2>
 <table>
@@ -2514,6 +2635,11 @@
 <td>Should route tables support middleware chains (auth, rate-limit, logging)?</td>
 <td>Yes, via pluggable middleware list in topology YAML — spec separately</td>
 </tr>
+<tr>
+<td>Q7</td>
+<td>When should <code>civitas[grpc-fast]</code> become the default?</td>
+<td>When grpcio's asyncio support matures fully — currently requires careful loop management</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -2529,6 +2655,8 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>HTTPGateway</code> stops cleanly on <code>Supervisor</code> shutdown — drains in-flight requests</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Topology YAML <code>type: http_gateway</code> supported by <code>civitas topology validate</code></li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>civitas topology show</code> displays gateway nodes with protocol annotations</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> uvloop installed and active on Linux/macOS; asyncio fallback on Windows</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> grpcio detected and preferred over grpclib when <code>civitas[grpc-fast]</code> is installed</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ≥ 20 unit tests (routing, translation, timeout, error mapping)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> ≥ 5 integration tests (real HTTP client → gateway → agent → response)</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Documented with examples for all four protocols</li>
