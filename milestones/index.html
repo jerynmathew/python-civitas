@@ -1557,6 +1557,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#postgres-statestore-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Postgres StateStore + Migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#m41-visual-topology-editor" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2070,6 +2081,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#postgres-statestore-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Postgres StateStore + Migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#m41-visual-topology-editor" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2288,6 +2310,12 @@
 <td>4</td>
 <td><a href="#gateway-api-surface">Gateway API Surface</a></td>
 <td>⏳ Planned</td>
+<td>v0.4</td>
+</tr>
+<tr>
+<td>4</td>
+<td><a href="#postgres-statestore--migration">Postgres StateStore + Migration</a></td>
+<td>💡 Idea</td>
 <td>v0.4</td>
 </tr>
 <tr>
@@ -2914,6 +2942,57 @@
 <tr>
 <td>≥ 15 unit tests + ≥ 3 integration tests</td>
 <td>⏳</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="postgres-statestore-migration">Postgres StateStore + Migration<a class="headerlink" href="#postgres-statestore-migration" title="Permanent link">&para;</a></h3>
+<p><strong>Status: 💡 Idea — to be specced | Priority: 🔴 High</strong></p>
+<p>SQLite works for single-process deployments (Level 1) but breaks under concurrent cross-process writes (ZMQ Level 2+, NATS Level 3). <code>PostgresStateStore</code> extends the existing <code>StateStore</code> protocol — switching backends is a topology YAML change with no agent code changes. <code>civitas state migrate</code> handles moving existing state between backends with a dry-run mode.</p>
+<p>The spec needs to resolve: connection pool sizing, schema compatibility guarantees between backends, whether migration supports live (dual-write) or maintenance-window-only mode, and PgBouncer integration for high-concurrency deployments.</p>
+<table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PostgresStateStore</code> plugin — same <code>StateStore</code> protocol, asyncpg backend</td>
+<td><code>civitas[postgres]</code> extra</td>
+</tr>
+<tr>
+<td>Backend swap via topology YAML — no agent code changes</td>
+<td><code>backend: postgres</code>, <code>url: !ENV DATABASE_URL</code></td>
+</tr>
+<tr>
+<td>Connection pool config — pool size, max overflow, timeout</td>
+<td>Configurable in topology YAML</td>
+</tr>
+<tr>
+<td><code>civitas state migrate --from sqlite:... --to postgres://...</code></td>
+<td>Dry-run by default; <code>--execute</code> to apply</td>
+</tr>
+<tr>
+<td>Schema compatibility — identical key-value layout across backends</td>
+<td>Migration is a straight copy, no transformation</td>
+</tr>
+<tr>
+<td>Maintenance-window migration (stop → copy → restart)</td>
+<td>Supported in v0.4</td>
+</tr>
+<tr>
+<td>Zero-downtime migration (dual-write + drain)</td>
+<td>Deferred — complex; only needed for critical state</td>
+</tr>
+<tr>
+<td>PgBouncer integration notes in deployment guide</td>
+<td>Connection pooler config for high-concurrency deployments</td>
+</tr>
+<tr>
+<td>Spec</td>
+<td>design/postgres-statestore.md — to be written</td>
 </tr>
 </tbody>
 </table>
