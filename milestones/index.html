@@ -1585,6 +1585,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#prompt-library-playground" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prompt Library &amp; Playground
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#llm-gateway" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2087,6 +2098,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#prompt-library-playground" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prompt Library &amp; Playground
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#llm-gateway" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2273,6 +2295,12 @@
 <td><a href="#m41-visual-topology-editor">Visual Topology Editor</a></td>
 <td>⏸️ Deferred</td>
 <td>—</td>
+</tr>
+<tr>
+<td>5</td>
+<td><a href="#prompt-library--playground">Prompt Library &amp; Playground</a></td>
+<td>💡 Idea</td>
+<td>v0.5+</td>
 </tr>
 <tr>
 <td>5</td>
@@ -2926,6 +2954,61 @@
 <hr />
 <h2 id="phase-5-agentic-platform">Phase 5 — Agentic Platform<a class="headerlink" href="#phase-5-agentic-platform" title="Permanent link">&para;</a></h2>
 <p>Ideas awaiting full design specs. Each is a supervised GenServer (or group of GenServers) that runs inside the user's deployment — not external services, not SaaS. The SaaS boundary sits above these: hosted registries, managed observability, and multi-tenant governance are separate concerns.</p>
+<hr />
+<h3 id="prompt-library-playground">Prompt Library &amp; Playground<a class="headerlink" href="#prompt-library-playground" title="Permanent link">&para;</a></h3>
+<p><strong>Status: 💡 Idea — to be specced | Priority: 🔴 High</strong></p>
+<p>Prompts as first-class versioned entities, stored and served by a supervised <code>PromptStore(GenServer)</code>. Agents load instructions by name rather than hardcoding strings — prompt changes never require a code deploy. The playground (CLI + dashboard tab) lets you test a prompt version against a live agent before promoting it.</p>
+<p>This is one of the strongest SaaS upgrade stories: the OSS <code>PromptStore</code> runs in your deployment; a hosted version adds a web UI for non-engineers, team collaboration, cross-deployment promotion, and output analytics.</p>
+<table>
+<thead>
+<tr>
+<th>Idea</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PromptStore(GenServer)</code> — versioned prompt storage on the bus</td>
+<td>Agents call <code>call("prompt_store", {"agent": "assistant", "slot": "system"})</code></td>
+</tr>
+<tr>
+<td>SQLite backend (runtime-mutable) + YAML dir backend (git-tracked)</td>
+<td>User chooses per deployment</td>
+</tr>
+<tr>
+<td>Named version aliases — <code>latest</code>, <code>stable</code>, <code>experimental</code></td>
+<td>Pinned per agent per environment in topology YAML</td>
+</tr>
+<tr>
+<td>Per-agent, per-slot prompt mapping</td>
+<td>Each agent can have multiple slots: <code>system</code>, <code>few_shot</code>, <code>tools</code></td>
+</tr>
+<tr>
+<td>Hot-swap support — reload prompt without restarting agent</td>
+<td>Agent subscribes to prompt update events</td>
+</tr>
+<tr>
+<td><code>civitas playground</code> CLI — interactive session with a specified prompt version</td>
+<td>Test against live runtime before promoting</td>
+</tr>
+<tr>
+<td>Dashboard tab — side-by-side prompt diff, test messages, output comparison</td>
+<td>Lightweight eval harness backed by EvalLoop (M2.5)</td>
+</tr>
+<tr>
+<td>A/B traffic splitting between prompt versions</td>
+<td>Random split; metrics tracked via OTEL spans</td>
+</tr>
+<tr>
+<td>SaaS layer — web UI, team collaboration, cross-deployment promotion, analytics</td>
+<td><code>design/prompt-library.md — to be written</code></td>
+</tr>
+<tr>
+<td>Spec</td>
+<td>design/prompt-library.md — to be written</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h3 id="llm-gateway">LLM Gateway<a class="headerlink" href="#llm-gateway" title="Permanent link">&para;</a></h3>
 <p><strong>Status: 💡 Idea — to be specced | Priority: 🔴 High</strong></p>
