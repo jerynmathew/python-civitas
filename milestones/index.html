@@ -357,6 +357,28 @@
   
   
   
+    
+    
+      <li class="md-tabs__item">
+        <a href="../rfc/0001-tool-retrieval/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  RFCs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
     <li class="md-tabs__item">
       <a href="../contributing/" class="md-tabs__link">
         
@@ -1618,10 +1640,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#tools-gateway" class="md-nav__link">
+  <a href="#fabrica-tools-gateway" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Tools Gateway
+        Fabrica — Tools Gateway
       
     </span>
   </a>
@@ -1785,6 +1807,99 @@
     
   
     Gateway API Surface (M4.x)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RFCs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    RFCs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rfc/0001-tool-retrieval/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RFC 0001 — Selective Tool Retrieval
   
 
     
@@ -2142,10 +2257,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#tools-gateway" class="md-nav__link">
+  <a href="#fabrica-tools-gateway" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Tools Gateway
+        Fabrica — Tools Gateway
       
     </span>
   </a>
@@ -2338,7 +2453,7 @@
 </tr>
 <tr>
 <td>5</td>
-<td><a href="#tools-gateway">Tools Gateway</a></td>
+<td><a href="#fabrica--tools-gateway">Fabrica — Tools Gateway</a></td>
 <td>💡 Idea</td>
 <td>v0.5+</td>
 </tr>
@@ -2588,7 +2703,9 @@
 <hr />
 <h3 id="m34-mcp-integration">M3.4 — MCP Integration<a class="headerlink" href="#m34-mcp-integration" title="Permanent link">&para;</a></h3>
 <p><strong>Status: ⏳ Planned — v0.3 | Priority: 🔴 High</strong></p>
-<p>Agents consume MCP tools and expose themselves as MCP tool servers — no manual wiring.</p>
+<p>MCP protocol plumbing — the wire layer between Civitas agents and MCP tool servers. Agents call tools by direct address (<code>mcp://server/tool</code>); the runtime handles handshake, transport, schema negotiation, and tracing. Agents also expose themselves as MCP servers so external LLM clients can discover and call them.</p>
+<p><strong>Scope:</strong> protocol only. Tool discovery (finding the right tool from a large set without passing all schemas to the LLM) is intentionally deferred — it depends on a global ToolStore (M4.4) and is the core concern of Fabrica (civitas-forge).</p>
+<p><strong>Dependency chain:</strong> M3.4 → M4.4 (ToolStore) → Fabrica (retrieval)</p>
 <table>
 <thead>
 <tr>
@@ -2598,15 +2715,19 @@
 </thead>
 <tbody>
 <tr>
-<td><code>self.tools.get("mcp://server/tool")</code> API on <code>AgentProcess</code></td>
+<td><code>self.tools.get("mcp://server/tool")</code> — direct-addressed tool call on <code>AgentProcess</code></td>
 <td>⏳</td>
 </tr>
 <tr>
-<td>Automatic MCP handshake, transport, and schema negotiation</td>
+<td>Automatic MCP handshake, transport, and schema negotiation (JSON-RPC 2.0)</td>
 <td>⏳</td>
 </tr>
 <tr>
-<td>Agents expose themselves as MCP tool servers</td>
+<td>Tool registration into agent <code>ToolRegistry</code> on MCP connect — seeds M4.4 ToolStore</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>Agents expose themselves as MCP tool servers (<code>list_tools</code>, <code>call_tool</code>)</td>
 <td>⏳</td>
 </tr>
 <tr>
@@ -2617,8 +2738,16 @@
 <td>Connection pooling with circuit breakers</td>
 <td>⏳</td>
 </tr>
+<tr>
+<td>≥ 10 unit tests + ≥ 2 integration tests</td>
+<td>⏳</td>
+</tr>
 </tbody>
 </table>
+<p><strong>Explicitly out of scope for M3.4:</strong>
+- Semantic or keyword tool retrieval (<code>find_tools</code>) — Fabrica
+- Unified cross-agent tool namespace — M4.4 ToolStore
+- Per-agent credential isolation for tool sources — M4.2 Security Hardening</p>
 <hr />
 <h3 id="m35-genserver">M3.5 — GenServer<a class="headerlink" href="#m35-genserver" title="Permanent link">&para;</a></h3>
 <p><strong>Status: ⏳ Planned — v0.3 | Priority: 🔴 High</strong></p>
@@ -3132,10 +3261,13 @@
 </tbody>
 </table>
 <hr />
-<h3 id="tools-gateway">Tools Gateway<a class="headerlink" href="#tools-gateway" title="Permanent link">&para;</a></h3>
+<h3 id="fabrica-tools-gateway">Fabrica — Tools Gateway<a class="headerlink" href="#fabrica-tools-gateway" title="Permanent link">&para;</a></h3>
 <p><strong>Status: 💡 Idea — to be specced | Priority: 🔴 High</strong></p>
-<p>A supervised <code>GenServer</code> that aggregates tool sources — local tool registries, MCP servers, remote APIs — and presents a unified tool namespace to all agents on the bus. Agents call <code>self.tools.get("gateway://web_search")</code> without knowing where the tool lives or how it is authenticated.</p>
-<p>Extends the MCP integration work (M3.4): MCP servers are one source among several that the gateway aggregates.</p>
+<p><strong>Product:</strong> Fabrica (<code>pip install fabrica</code>) — lives in <code>civitas-io/civitas-forge</code>, not in python-civitas.</p>
+<p>Fabrica solves the tool schema token problem: passing all tool schemas to every LLM call is token-expensive and degrades selection accuracy beyond ~20–30 tools. Instead of N schemas, the LLM receives one <code>find_tools(query)</code> meta-tool and retrieves only the schema it needs.</p>
+<p>Fabrica aggregates tool sources (local ToolStore, MCP servers, Composio, custom), serves a unified namespace, and exposes a retrieval interface. Civitas agents connect to it as a tool source — any other LLM framework can too.</p>
+<p><strong>Dependency chain:</strong> M3.4 (MCP plumbing) → M4.4 (ToolStore) → Fabrica (retrieval)</p>
+<p>See RFC 0001 (<code>docs/rfc/0001-tool-retrieval.md</code>) for the formal problem statement and proposed interface standard.</p>
 <table>
 <thead>
 <tr>
@@ -3145,32 +3277,44 @@
 </thead>
 <tbody>
 <tr>
-<td>Unified tool namespace across local + MCP + remote sources</td>
-<td>Single address scheme: <code>gateway://source/tool_name</code></td>
+<td><code>find_tools(query)</code> meta-tool — one schema sent to LLM, not N</td>
+<td>Keyword backend (default) + embedding backend (<code>fabrica[search]</code>)</td>
 </tr>
 <tr>
-<td>Per-agent credential isolation</td>
-<td>Agent A's API keys never visible to Agent B</td>
+<td>Tool source aggregation — local ToolStore, MCP servers, Composio, custom</td>
+<td>Pluggable <code>ToolSource</code> protocol</td>
+</tr>
+<tr>
+<td>Unified tool namespace across all sources</td>
+<td><code>gateway://source/tool_name</code> address scheme</td>
+</tr>
+<tr>
+<td>Per-source credential isolation</td>
+<td>Each source has its own auth config; agents never see other sources' secrets</td>
 </tr>
 <tr>
 <td>Tool call sandboxing</td>
 <td>Filesystem + network isolation for untrusted tool execution</td>
 </tr>
 <tr>
-<td>Schema normalisation</td>
-<td>Tools from different sources exposed with a consistent schema</td>
+<td>Health monitoring + circuit breaker per source</td>
+<td>Unhealthy sources removed from routing automatically</td>
 </tr>
 <tr>
-<td>Health monitoring + circuit breaker</td>
-<td>Unhealthy tool sources removed from routing automatically</td>
+<td>MCP-compatible interface</td>
+<td>Fabrica itself exposes <code>list_tools</code> + <code>call_tool</code> — any MCP client can connect</td>
 </tr>
 <tr>
-<td>Tool call spans in OTEL traces</td>
-<td>Every tool invocation appears as a child span</td>
+<td>Civitas integration — <code>ToolSource</code> plugin pointing at Fabrica</td>
+<td><code>civitas[fabrica]</code> extra</td>
+</tr>
+<tr>
+<td>SaaS upgrade path — hosted Fabrica with team tool registry, analytics</td>
+<td>Future</td>
 </tr>
 <tr>
 <td>Spec</td>
-<td>design/tools-gateway.md — to be written</td>
+<td><code>civitas-forge/packages/fabrica/</code> — to be created</td>
 </tr>
 </tbody>
 </table>
