@@ -127,4 +127,7 @@ nav:
     - HTTP Gateway (M4.x): design/http-gateway.md
     - Gateway API Surface (M4.x): design/gateway-api-surface.md
 
+  - RFCs:
+    - RFC 0001 — Selective Tool Retrieval: rfc/0001-tool-retrieval.md
+
   - Contributing: contributing.md

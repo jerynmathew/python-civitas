@@ -37,7 +37,7 @@ Development progress across all phases of Civitas.
 | 4 | [Visual Topology Editor](#m41-visual-topology-editor) | ⏸️ Deferred | — |
 | 5 | [Prompt Library & Playground](#prompt-library--playground) | 💡 Idea | v0.5+ |
 | 5 | [LLM Gateway](#llm-gateway) | 💡 Idea | v0.5+ |
-| 5 | [Tools Gateway](#tools-gateway) | 💡 Idea | v0.5+ |
+| 5 | [Fabrica — Tools Gateway](#fabrica--tools-gateway) | 💡 Idea | v0.5+ |
 | 5 | [Skills Gateway](#skills-gateway) | 💡 Idea | v0.5+ |
 
 ---
@@ -140,15 +140,26 @@ Corrective observability loop: an `EvalAgent` subclass monitors agent behaviour 
 
 **Status: ⏳ Planned — v0.3 | Priority: 🔴 High**
 
-Agents consume MCP tools and expose themselves as MCP tool servers — no manual wiring.
+MCP protocol plumbing — the wire layer between Civitas agents and MCP tool servers. Agents call tools by direct address (`mcp://server/tool`); the runtime handles handshake, transport, schema negotiation, and tracing. Agents also expose themselves as MCP servers so external LLM clients can discover and call them.
+
+**Scope:** protocol only. Tool discovery (finding the right tool from a large set without passing all schemas to the LLM) is intentionally deferred — it depends on a global ToolStore (M4.4) and is the core concern of Fabrica (civitas-forge).
+
+**Dependency chain:** M3.4 → M4.4 (ToolStore) → Fabrica (retrieval)
 
 | Deliverable | Status |
 |-------------|--------|
-| `self.tools.get("mcp://server/tool")` API on `AgentProcess` | ⏳ |
-| Automatic MCP handshake, transport, and schema negotiation | ⏳ |
-| Agents expose themselves as MCP tool servers | ⏳ |
+| `self.tools.get("mcp://server/tool")` — direct-addressed tool call on `AgentProcess` | ⏳ |
+| Automatic MCP handshake, transport, and schema negotiation (JSON-RPC 2.0) | ⏳ |
+| Tool registration into agent `ToolRegistry` on MCP connect — seeds M4.4 ToolStore | ⏳ |
+| Agents expose themselves as MCP tool servers (`list_tools`, `call_tool`) | ⏳ |
 | MCP tool calls appear in OTEL traces as tool spans | ⏳ |
 | Connection pooling with circuit breakers | ⏳ |
+| ≥ 10 unit tests + ≥ 2 integration tests | ⏳ |
+
+**Explicitly out of scope for M3.4:**
+- Semantic or keyword tool retrieval (`find_tools`) — Fabrica
+- Unified cross-agent tool namespace — M4.4 ToolStore
+- Per-agent credential isolation for tool sources — M4.2 Security Hardening
 
 ---
 
@@ -369,23 +380,32 @@ A supervised `GenServer` that sits between agents and LLM providers. All agents 
 
 ---
 
-### Tools Gateway
+### Fabrica — Tools Gateway
 
 **Status: 💡 Idea — to be specced | Priority: 🔴 High**
 
-A supervised `GenServer` that aggregates tool sources — local tool registries, MCP servers, remote APIs — and presents a unified tool namespace to all agents on the bus. Agents call `self.tools.get("gateway://web_search")` without knowing where the tool lives or how it is authenticated.
+**Product:** Fabrica (`pip install fabrica`) — lives in `civitas-io/civitas-forge`, not in python-civitas.
 
-Extends the MCP integration work (M3.4): MCP servers are one source among several that the gateway aggregates.
+Fabrica solves the tool schema token problem: passing all tool schemas to every LLM call is token-expensive and degrades selection accuracy beyond ~20–30 tools. Instead of N schemas, the LLM receives one `find_tools(query)` meta-tool and retrieves only the schema it needs.
+
+Fabrica aggregates tool sources (local ToolStore, MCP servers, Composio, custom), serves a unified namespace, and exposes a retrieval interface. Civitas agents connect to it as a tool source — any other LLM framework can too.
+
+**Dependency chain:** M3.4 (MCP plumbing) → M4.4 (ToolStore) → Fabrica (retrieval)
+
+See RFC 0001 (`docs/rfc/0001-tool-retrieval.md`) for the formal problem statement and proposed interface standard.
 
 | Idea | Notes |
 |------|-------|
-| Unified tool namespace across local + MCP + remote sources | Single address scheme: `gateway://source/tool_name` |
-| Per-agent credential isolation | Agent A's API keys never visible to Agent B |
+| `find_tools(query)` meta-tool — one schema sent to LLM, not N | Keyword backend (default) + embedding backend (`fabrica[search]`) |
+| Tool source aggregation — local ToolStore, MCP servers, Composio, custom | Pluggable `ToolSource` protocol |
+| Unified tool namespace across all sources | `gateway://source/tool_name` address scheme |
+| Per-source credential isolation | Each source has its own auth config; agents never see other sources' secrets |
 | Tool call sandboxing | Filesystem + network isolation for untrusted tool execution |
-| Schema normalisation | Tools from different sources exposed with a consistent schema |
-| Health monitoring + circuit breaker | Unhealthy tool sources removed from routing automatically |
-| Tool call spans in OTEL traces | Every tool invocation appears as a child span |
-| Spec | design/tools-gateway.md — to be written |
+| Health monitoring + circuit breaker per source | Unhealthy sources removed from routing automatically |
+| MCP-compatible interface | Fabrica itself exposes `list_tools` + `call_tool` — any MCP client can connect |
+| Civitas integration — `ToolSource` plugin pointing at Fabrica | `civitas[fabrica]` extra |
+| SaaS upgrade path — hosted Fabrica with team tool registry, analytics | Future |
+| Spec | `civitas-forge/packages/fabrica/` — to be created |
 
 ---
 
