@@ -73,6 +73,9 @@ class Runtime:
         self._nats_jetstream = nats_jetstream
         self._nats_stream_name = nats_stream_name
 
+        # MCP server configs parsed from topology YAML
+        self._mcp_configs: list[Any] = []
+
         # Set during start() — exposed for stop(), ask()/send(), and get_agent()
         self._serializer: Serializer | None = None
         self._tracer: Any = None
@@ -196,7 +199,26 @@ class Runtime:
             if loaded["state_store"] is not None:
                 kwargs["state_store"] = loaded["state_store"]
 
-        return cls(**kwargs)
+        runtime = cls(**kwargs)
+
+        # MCP server config — parsed here, connected during start()
+        mcp_section = config.get("mcp", {})
+        if mcp_section.get("servers"):
+            from civitas.mcp.types import MCPServerConfig
+
+            for srv in mcp_section["servers"]:
+                runtime._mcp_configs.append(
+                    MCPServerConfig(
+                        name=srv["name"],
+                        transport=srv["transport"],
+                        command=srv.get("command"),
+                        args=srv.get("args", []),
+                        env=srv.get("env"),
+                        url=srv.get("url"),
+                    )
+                )
+
+        return runtime
 
     def all_agents(self) -> list[AgentProcess]:
         """Return all AgentProcess instances in the supervision tree."""
@@ -322,6 +344,20 @@ class Runtime:
         # Wait for subscriptions to propagate (ZMQ slow joiner mitigation)
         if hasattr(self._transport, "wait_ready"):
             await self._transport.wait_ready()
+
+        # Connect MCP servers declared in topology YAML to all agents
+        if self._mcp_configs:
+            for agent in all_agents:
+                for mcp_cfg in self._mcp_configs:
+                    try:
+                        await agent.connect_mcp(mcp_cfg)
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to connect agent '%s' to MCP server '%s': %s",
+                            agent.name,
+                            mcp_cfg.name,
+                            exc,
+                        )
 
         # 11-12. Start supervision tree (supervisors start their children)
         await self._root_supervisor.start()

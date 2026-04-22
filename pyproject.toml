@@ -44,6 +44,7 @@ otel      = [
     "opentelemetry-exporter-otlp-proto-grpc>=1.20",
 ]
 anthropic = ["anthropic>=0.20"]
+mcp       = ["mcp>=1.0"]
 openai    = ["openai>=1.0"]
 gemini    = ["google-generativeai>=0.8"]
 mistral   = ["mistralai>=1.0"]
@@ -102,6 +103,10 @@ omit = [
     "*/civitas/adapters/*",
     # Dashboard — requires live runtime for meaningful testing
     "*/civitas/dashboard/*",
+    # MCP integration — branches that open stdio subprocesses / SSE sessions
+    # require live MCP server processes; covered by integration tests, not unit
+    "*/civitas/mcp/client.py",
+    "*/civitas/mcp/server.py",
     # Entry point shim
     "*/civitas/__main__.py",
 ]
@@ -150,7 +155,7 @@ warn_return_any = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["msgpack.*", "zmq.*", "nats.*", "litellm.*", "openai.*", "google", "google.*", "mistralai.*"]
+module = ["msgpack.*", "zmq.*", "nats.*", "litellm.*", "openai.*", "google", "google.*", "mistralai.*", "mcp.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

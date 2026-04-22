@@ -116,6 +116,9 @@ class AgentProcess:
         self.tools: ToolRegistry | None = None
         self.store: StateStore | None = None
 
+        # MCP clients opened via connect_mcp() — keyed by server name
+        self._mcp_clients: dict[str, Any] = {}
+
         # Current message context for reply/tracing
         self._current_message: Message | None = None
         self._current_handle_span: Span | None = None
@@ -248,6 +251,35 @@ class AgentProcess:
     async def cast(self, name: str, payload: dict[str, Any]) -> None:
         """Fire-and-forget cast to a GenServer. Returns immediately."""
         await self.send(name, {**payload, "__cast__": True})
+
+    async def connect_mcp(self, config: Any) -> None:
+        """Connect to an MCP server and register its tools into self.tools.
+
+        Idempotent: disconnects any existing client for config.name before reconnecting.
+        Tools are addressable as mcp://server_name/tool_name after this call.
+        """
+        from civitas.mcp.client import MCPClient
+        from civitas.mcp.tool import MCPTool
+
+        existing = self._mcp_clients.get(config.name)
+        if existing is not None:
+            if self.tools is not None:
+                self.tools.deregister_prefix(f"mcp://{config.name}/")
+            try:
+                await existing.disconnect()
+            except Exception:
+                pass
+
+        client = MCPClient(config)
+        await client.connect()
+        schemas = await client.list_tools()
+
+        if self.tools is not None:
+            for schema in schemas:
+                mcp_tool = MCPTool(client, schema, tracer=self._tracer)
+                self.tools.register(mcp_tool)
+
+        self._mcp_clients[config.name] = client
 
     async def broadcast(self, pattern: str, payload: dict[str, Any]) -> None:
         """Send a message to all agents matching a glob pattern."""
@@ -415,6 +447,13 @@ class AgentProcess:
                 )
 
             await self.on_stop()
+
+            for _client in list(self._mcp_clients.values()):
+                try:
+                    await _client.disconnect()
+                except Exception:
+                    pass
+            self._mcp_clients.clear()
 
             if self._tracer is not None:
                 stop_span.end()

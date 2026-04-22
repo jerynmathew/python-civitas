@@ -11,6 +11,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This pr
 
 ## [Unreleased]
 
+### Added
+
+#### M3.5 — GenServer
+
+- `GenServer` — OTP-style generic server process with `handle_call` (synchronous, reply required), `handle_cast` (fire-and-forget), and `handle_info` (timers, internal signals) dispatch
+- `send_after(delay_ms, payload)` — schedules a `handle_info` message to self after a delay; pending tasks cancelled on stop
+- `AgentProcess.call(name, payload)` — synchronous GenServer call (wraps `ask()`, returns payload dict)
+- `AgentProcess.cast(name, payload)` — fire-and-forget GenServer cast
+- `Runtime.call()` / `Runtime.cast()` — runtime-level GenServer messaging
+- `GenServer` exported from `civitas` top-level package
+- `type: gen_server` support in `Runtime.from_config()` YAML topology
+- `[srv]` label in `print_tree()` / `civitas topology show` for GenServer nodes
+
+#### M3.4 — MCP Integration
+
+- `civitas[mcp]` optional extra (`pip install 'civitas[mcp]'`) — wraps `mcp>=1.0` SDK
+- `MCPServerConfig` — config dataclass for stdio and SSE MCP server connections; validated at construction
+- `MCPClient` — persistent-per-agent MCP session with `connect()`, `disconnect()`, `list_tools()`, `call_tool()`; `AsyncExitStack` manages transport + session lifecycle as a unit
+- `MCPTool` — `ToolProvider` wrapping a single MCP tool; name follows `mcp://server_name/tool_name` URI scheme for direct lookup via `self.tools.get()`; emits `civitas.mcp.call` OTEL span
+- `MCPToolError` — raised when an MCP tool call returns `isError=True`
+- `AgentProcess.connect_mcp(config)` — connects to an MCP server and registers all its tools into `self.tools`; idempotent (disconnects and deregisters existing tools for the same server before reconnecting)
+- `ToolRegistry.deregister_prefix(prefix)` — removes all tools whose name starts with a given prefix
+- `mcp.servers` topology YAML key — declare MCP servers in the topology file; `Runtime.from_config()` parses configs and auto-connects all agents on `start()`
+- MCP clients are closed gracefully in the `_message_loop` finally block alongside `on_stop()`
+
 ---
 
 ## [0.1.0] — 2026-04-06

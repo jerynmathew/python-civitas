@@ -45,6 +45,12 @@ class ToolRegistry:
         """Remove a tool by name. No-op if not registered."""
         self._tools.pop(name, None)
 
+    def deregister_prefix(self, prefix: str) -> None:
+        """Remove all tools whose name starts with prefix."""
+        to_remove = [k for k in self._tools if k.startswith(prefix)]
+        for k in to_remove:
+            del self._tools[k]
+
     def get(self, name: str) -> ToolProvider | None:
         """Look up a tool by name."""
         return self._tools.get(name)
