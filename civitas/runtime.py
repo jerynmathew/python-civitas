@@ -12,6 +12,7 @@ import yaml
 from civitas.components import ComponentSet, build_component_set
 from civitas.errors import ConfigurationError
 from civitas.evalloop import EvalAgent
+from civitas.gateway.core import GatewayConfig, HTTPGateway
 from civitas.genserver import GenServer
 from civitas.mcp.types import MCPServerConfig
 from civitas.messages import Message, _new_span_id, _uuid7
@@ -142,6 +143,22 @@ class Runtime:
                     max_corrections_per_window=node.get("max_corrections_per_window", 10),
                     window_seconds=node.get("window_seconds", 60.0),
                 )
+            elif node.get("type") == "http_gateway" and "name" in node:
+                cfg_dict = node.get("config", {})
+                gw_config = GatewayConfig(
+                    host=cfg_dict.get("host", "0.0.0.0"),
+                    port=cfg_dict.get("port", 8080),
+                    port_quic=cfg_dict.get("port_quic"),
+                    tls_cert=cfg_dict.get("tls_cert"),
+                    tls_key=cfg_dict.get("tls_key"),
+                    request_timeout=cfg_dict.get("request_timeout", 30.0),
+                    enable_http3=cfg_dict.get("enable_http3", False),
+                    routes=cfg_dict.get("routes", []),
+                    middleware=cfg_dict.get("middleware", []),
+                    docs_enabled=cfg_dict.get("docs", {}).get("enabled", True),
+                    docs_path=cfg_dict.get("docs", {}).get("path", "/docs"),
+                )
+                return HTTPGateway(name=node["name"], config=gw_config)
             elif "agent" in node:
                 agent_cfg = node["agent"]
                 agent_cls = _resolve_class(agent_cfg["type"])
@@ -248,6 +265,8 @@ class Runtime:
                 status = node.status.value if hasattr(node, "status") else "?"
                 if isinstance(node, EvalAgent):
                     prefix_tag = "[eval]"
+                elif isinstance(node, HTTPGateway):
+                    prefix_tag = "[http]"
                 elif isinstance(node, GenServer):
                     prefix_tag = "[srv]"
                 else:

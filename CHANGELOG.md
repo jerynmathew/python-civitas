@@ -13,6 +13,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This pr
 
 ### Added
 
+#### M4.1 — HTTP Gateway
+
+- `civitas.gateway.HTTPGateway` — supervised `AgentProcess` that translates HTTP ↔ Civitas messages; external clients never touch the bus directly
+- `civitas.gateway.GatewayConfig` — dataclass covering host, port, TLS, HTTP/3 (QUIC), routes, middleware, OpenAPI docs, and request timeout
+- `civitas.gateway.RouteTable` — ordered route matching table; path parameters extracted and merged into `message.payload`; YAML is the authoritative source
+- `civitas.gateway.route` — `@route(method, path, mode=)` decorator to co-locate route metadata on agent methods; used by `civitas topology validate`, never read at runtime
+- `civitas.gateway.contract` — `@contract(request=Model, response=Model)` decorator; wired to `RouteTable.merge_contracts_from()` for automatic 422/500 validation
+- `civitas.gateway.GatewayRequest` / `GatewayResponse` — thin middleware types; middleware receives `(request, next_fn)` and can short-circuit or pass through
+- Middleware chain: global middleware loaded from dotted import paths in `config.middleware`; per-route middleware supported in `RouteEntry`
+- OpenAPI 3.1 spec auto-generated from route table; served at `GET /docs/openapi.json`; Swagger UI served at `GET /docs` (CDN-hosted, zero bundling)
+- Default URL conventions: `POST /agents/{name}` → call, `POST /agents/{name}/cast` → cast, `GET /agents/{name}/state` → call with `{"__op__": "state"}`
+- HTTP/3 / QUIC via `civitas[http3]` (`aioquic`): `H3Server` runs alongside uvicorn; `Alt-Svc` header injected automatically when `enable_http3: true`
+- W3C `traceparent` header parsed and propagated to trace context; `X-Civitas-Type` header overrides the Civitas message type
+- Topology YAML support: `type: http_gateway` node type wired into `Runtime._build_node()`; `civitas topology show` renders `[http]` prefix
+- `examples/http_gateway.py` — end-to-end example with `EchoAgent` and Swagger UI
+- `pyproject.toml` — `civitas[http]` (uvicorn + pydantic) and `civitas[http3]` (+ aioquic) optional extras
+
 #### M4.3 — Codebase Security & Enterprise Posture
 
 - `.github/workflows/security.yml` — three-job security CI workflow running on every PR and weekly:

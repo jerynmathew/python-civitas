@@ -33,8 +33,8 @@ Development progress across all phases of Civitas.
 | 4 | [Security Hardening](#m42-security-hardening) | ⏳ Planned | v0.4 |
 | 4 | [Codebase Security & Enterprise Posture](#m43-codebase-security--enterprise-posture) | ✅ Completed | Apr 2026 |
 | 4 | [Capability-Aware Registry](#m44-capability-aware-registry) | ⏳ Planned | v0.5 |
-| 4 | [HTTP Gateway](#http-gateway) | ⏳ Planned | v0.4 |
-| 4 | [Gateway API Surface](#gateway-api-surface) | ⏳ Planned | v0.4 |
+| 4 | [HTTP Gateway](#http-gateway) | ✅ Completed | Apr 2026 |
+| 4 | [Gateway API Surface](#gateway-api-surface) | ✅ Completed | Apr 2026 |
 | 4 | [Postgres StateStore + Migration](#postgres-statestore--migration) | 💡 Idea | v0.4 |
 | 4 | [Visual Topology Editor](#m41-visual-topology-editor) | ⏸️ Deferred | — |
 | 5 | [Prompt Library & Playground](#prompt-library--playground) | 💡 Idea | v0.5+ |
@@ -454,7 +454,7 @@ Agents and LLMs discover capabilities at runtime — no pre-wiring needed.
 
 ### HTTP Gateway
 
-**Status: ⏳ Planned — v0.4 | Priority: 🔴 High**
+**Status: ✅ Completed — April 2026**
 
 Supervised edge process bridging external HTTP traffic into the Civitas message bus. HTTP/1.1 + HTTP/2 (uvicorn) and HTTP/3 / QUIC (aioquic) in v0.4. gRPC deferred to v0.5. See [design spec](design/http-gateway.md).
 
@@ -539,7 +539,7 @@ Supervised edge process bridging external HTTP traffic into the Civitas message 
 
 ### Gateway API Surface
 
-**Status: ⏳ Planned — v0.4 | Priority: 🔴 High**
+**Status: ✅ Completed — April 2026**
 
 Declarative routes, Pydantic request/response validation, middleware chain, and auto-generated OpenAPI 3.1 docs on top of `HTTPGateway`. See [design spec](design/gateway-api-surface.md).
 

@@ -1,6 +1,6 @@
 # Design: Gateway API Surface
 
-**Status:** In progress — v0.4
+**Status:** Implemented — v0.4
 **Author:** Jeryn Mathew Varghese
 **Last updated:** 2026-04
 
