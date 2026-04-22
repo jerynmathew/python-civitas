@@ -2474,8 +2474,8 @@
 <tr>
 <td>2</td>
 <td><a href="#m25-evalloop">Ecosystem — EvalLoop (local)</a></td>
-<td>⏳ Planned</td>
-<td>v0.3</td>
+<td>✅ Completed</td>
+<td>Apr 2026</td>
 </tr>
 <tr>
 <td>2</td>
@@ -2746,7 +2746,7 @@
 </table>
 <hr />
 <h3 id="m25-evalloop-local">M2.5 — EvalLoop (Local)<a class="headerlink" href="#m25-evalloop-local" title="Permanent link">&para;</a></h3>
-<p><strong>Status: ⏳ Planned — v0.3 | Priority: 🔴 High</strong></p>
+<p><strong>Status: ✅ Completed — April 2026</strong></p>
 <p>Corrective observability loop: a supervised <code>EvalAgent</code> process monitors agent behaviour and injects correction signals back into running agents. Local in-process evaluation only — remote eval engine integrations are M2.6. See <a href="../design/evalloop/">design spec</a>.</p>
 <table>
 <thead>
@@ -2758,92 +2758,91 @@
 <tbody>
 <tr>
 <td><code>civitas/evalloop.py</code> — <code>EvalEvent</code>, <code>CorrectionSignal</code>, <code>EvalAgent</code> base class</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>AgentProcess.emit_eval(event_type, payload, eval_agent)</code> — emit observable events</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>AgentProcess.on_correction(message)</code> — override hook for nudge/redirect signals</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>civitas.eval.halt</code> message type — cleanly stops target agent (on_stop still runs)</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td>Rate limiting — sliding window per target agent (<code>max_corrections_per_window</code>, <code>window_seconds</code>)</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>EvalExporter</code> protocol — interface defined, not implemented (M2.6)</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td>Topology YAML — <code>type: eval_agent</code> shorthand in <code>Runtime.from_config()</code></td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
-<td>≥ 12 unit tests + ≥ 1 integration test</td>
-<td>⏳</td>
+<td>20 unit + integration tests</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>EvalAgent</code> exported from <code>civitas</code> top-level package</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 </tbody>
 </table>
 <h4 id="implementation-checklist">Implementation checklist<a class="headerlink" href="#implementation-checklist" title="Permanent link">&para;</a></h4>
 <ol class="task-list">
 <li><strong>Core module — <code>civitas/evalloop.py</code></strong></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>EvalEvent</code> dataclass: <code>agent_name</code>, <code>event_type</code>, <code>payload</code>, <code>trace_id</code>, <code>message_id</code>, <code>timestamp</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>CorrectionSignal</code> dataclass: <code>severity</code> (nudge / redirect / halt), <code>reason</code>, <code>payload</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>EvalExporter</code> protocol: <code>async export(event: EvalEvent) -&gt; None</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>EvalAgent(AgentProcess)</code> — <code>handle()</code> routes <code>civitas.eval.event</code> messages</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>on_eval_event(event: EvalEvent) -&gt; CorrectionSignal | None</code> — override point</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Rate limiter — sliding window, keyed by target agent name, drops + logs when exceeded</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> For nudge/redirect: send <code>civitas.eval.correction</code> to target agent</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>EvalEvent</code> dataclass: <code>agent_name</code>, <code>event_type</code>, <code>payload</code>, <code>trace_id</code>, <code>message_id</code>, <code>timestamp</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>CorrectionSignal</code> dataclass: <code>severity</code> (nudge / redirect / halt), <code>reason</code>, <code>payload</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>EvalExporter</code> protocol: <code>async export(event: EvalEvent) -&gt; None</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>EvalAgent(AgentProcess)</code> — <code>handle()</code> routes <code>civitas.eval.event</code> messages</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>on_eval_event(event: EvalEvent) -&gt; CorrectionSignal | None</code> — override point</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Rate limiter — sliding window, keyed by target agent name, drops + logs when exceeded</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> For nudge/redirect: send <code>civitas.eval.correction</code> to target agent</li>
 <li class="task-list-item">
-<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> For halt: send <code>civitas.eval.halt</code> to target agent</p>
+<p><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> For halt: send <code>civitas.eval.halt</code> to target agent</p>
 </li>
 <li>
 <p><strong>AgentProcess integration</strong></p>
 </li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>emit_eval(event_type, payload, eval_agent="eval_agent")</code> — sends <code>civitas.eval.event</code>; no-op if bus not wired</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>on_correction(message: Message)</code> — override hook called on <code>civitas.eval.correction</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>emit_eval(event_type, payload, eval_agent="eval_agent")</code> — sends <code>civitas.eval.event</code>; no-op if bus not wired</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>on_correction(message: Message)</code> — override hook called on <code>civitas.eval.correction</code></li>
 <li class="task-list-item">
-<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>civitas.eval.halt</code> handled in <code>_message_loop()</code> — breaks loop, on_stop() still runs</p>
+<p><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>civitas.eval.halt</code> handled in <code>_message_loop()</code> — breaks loop, on_stop() still runs</p>
 </li>
 <li>
 <p><strong>Runtime + package</strong></p>
 </li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>type: eval_agent</code> shorthand in <code>Runtime.from_config()</code> <code>_build_node()</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>type: eval_agent</code> shorthand in <code>Runtime.from_config()</code> <code>_build_node()</code></li>
 <li class="task-list-item">
-<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>EvalAgent</code> exported from <code>civitas.__init__</code></p>
+<p><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>EvalAgent</code> exported from <code>civitas.__init__</code></p>
 </li>
 <li>
 <p><strong>Tests (≥ 12 unit + ≥ 1 integration)</strong></p>
 </li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>EvalEvent</code> and <code>CorrectionSignal</code> field validation</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>on_eval_event()</code> returning None sends no correction</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> nudge signal delivered to <code>on_correction()</code> hook</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> redirect signal delivered to <code>on_correction()</code> hook</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> halt signal stops target agent (status → STOPPED, on_stop runs)</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Rate limiter allows corrections up to the window limit</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Rate limiter drops corrections beyond the window limit</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Rate limiter resets after window_seconds</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>emit_eval()</code> is no-op when bus not wired</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>emit_eval()</code> reaches EvalAgent in a live runtime</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> EvalAgent receives events from multiple agents simultaneously</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>EvalEvent</code> and <code>CorrectionSignal</code> field validation</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>on_eval_event()</code> returning None sends no correction</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> nudge signal delivered to <code>on_correction()</code> hook</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> redirect signal delivered to <code>on_correction()</code> hook</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> halt signal stops target agent (status → STOPPED, on_stop runs)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Rate limiter allows corrections up to the window limit</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Rate limiter drops corrections beyond the window limit</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Rate limiter resets after window_seconds</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>emit_eval()</code> is no-op when bus not wired</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>emit_eval()</code> reaches EvalAgent in a live runtime</li>
 <li class="task-list-item">
-<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Integration: full supervision tree — EvalAgent halts a misbehaving sibling</p>
+<p><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> Integration: full supervision tree — EvalAgent halts a misbehaving sibling</p>
 </li>
 <li>
 <p><strong>Example + release</strong></p>
 </li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>examples/eval_agent.py</code> — research agent with LLM output eval + halt on policy violation</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>CHANGELOG.md</code> entry</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>examples/eval_agent.py</code> — policy enforcement with halt, redirect, nudge</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled checked/><span class="task-list-indicator"></span></label> <code>CHANGELOG.md</code> entry</li>
 </ol>
 <hr />
 <h3 id="m26-remote-eval-exporters">M2.6 — Remote Eval Exporters<a class="headerlink" href="#m26-remote-eval-exporters" title="Permanent link">&para;</a></h3>
