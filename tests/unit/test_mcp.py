@@ -228,7 +228,7 @@ class TestAgentConnectMcp:
             ]
         )
 
-        with patch("civitas.mcp.client.MCPClient", return_value=mock_client_instance):
+        with patch("civitas.process.MCPClient", return_value=mock_client_instance):
             await agent.connect_mcp(cfg)
 
         assert registry.get("mcp://github/create_issue") is not None
@@ -263,7 +263,7 @@ class TestAgentConnectMcp:
         client1 = _make_client()
         client2 = _make_client()
 
-        with patch("civitas.mcp.client.MCPClient", side_effect=[client1, client2]):
+        with patch("civitas.process.MCPClient", side_effect=[client1, client2]):
             await agent.connect_mcp(cfg)
             await agent.connect_mcp(cfg)  # reconnect
 
@@ -290,7 +290,7 @@ class TestAgentConnectMcp:
         mock_client.connect = AsyncMock()
         mock_client.list_tools = AsyncMock(return_value=[])
 
-        with patch("civitas.mcp.client.MCPClient", return_value=mock_client):
+        with patch("civitas.process.MCPClient", return_value=mock_client):
             await agent.connect_mcp(cfg)  # should not raise
 
 
