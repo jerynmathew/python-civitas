@@ -235,6 +235,20 @@ class AgentProcess:
         )
         return await self._bus.request(message, timeout=timeout)
 
+    async def call(
+        self,
+        name: str,
+        payload: dict[str, Any],
+        timeout: float = 5.0,
+    ) -> dict[str, Any]:
+        """Synchronous call to a GenServer. Blocks until reply or timeout."""
+        reply = await self.ask(name, payload, timeout=timeout)
+        return reply.payload
+
+    async def cast(self, name: str, payload: dict[str, Any]) -> None:
+        """Fire-and-forget cast to a GenServer. Returns immediately."""
+        await self.send(name, {**payload, "__cast__": True})
+
     async def broadcast(self, pattern: str, payload: dict[str, Any]) -> None:
         """Send a message to all agents matching a glob pattern."""
         if self._bus is None:

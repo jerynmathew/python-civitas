@@ -2,6 +2,7 @@
 
 Public API:
     AgentProcess  — subclass to create agent processes
+    GenServer     — OTP-style generic server for stateful service processes
     Supervisor    — monitors children, applies restart strategies
     Runtime       — wires components, manages lifecycle
     Worker        — hosts agents in a remote worker process
@@ -15,6 +16,7 @@ from __future__ import annotations
 
 from civitas.components import ComponentSet
 from civitas.errors import CivitasError, ErrorAction
+from civitas.genserver import GenServer
 from civitas.messages import Message
 from civitas.process import AgentProcess
 from civitas.runtime import Runtime
@@ -23,6 +25,7 @@ from civitas.worker import Worker
 
 __all__ = [
     "AgentProcess",
+    "GenServer",
     "Supervisor",
     "Runtime",
     "Worker",

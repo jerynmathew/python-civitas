@@ -134,8 +134,14 @@ class Runtime:
                 agent_cfg = node["agent"]
                 agent_cls = _resolve_class(agent_cfg["type"])
                 return agent_cls(name=agent_cfg["name"])
+            elif (
+                node.get("type") in ("gen_server", "agent") and "module" in node and "class" in node
+            ):
+                cls_path = f"{node['module']}.{node['class']}"
+                agent_cls = _resolve_class(cls_path)
+                return agent_cls(name=node["name"])
             elif "type" in node and "name" in node:
-                # Flat format: {type: "module.Class", name: "agent_name"}
+                # Flat dotted-path format: {type: "module.Class", name: "agent_name"}
                 agent_cls = _resolve_class(node["type"])
                 return agent_cls(name=node["name"])
             else:
@@ -206,12 +212,15 @@ class Runtime:
         lines: list[str] = []
 
         def _walk(node: Supervisor | AgentProcess, prefix: str, is_last: bool) -> None:
+            from civitas.genserver import GenServer
+
             connector = "└── " if is_last else "├── "
             if isinstance(node, Supervisor):
                 label = f"[sup] {node.name} ({node.strategy.value})"
             else:
                 status = node.status.value if hasattr(node, "status") else "?"
-                label = f"{node.name} ({status})"
+                prefix_tag = "[srv]" if isinstance(node, GenServer) else "[agent]"
+                label = f"{prefix_tag} {node.name} ({status})"
             lines.append(f"{prefix}{connector}{label}")
 
             if isinstance(node, Supervisor):
@@ -356,6 +365,20 @@ class Runtime:
         For routing messages use runtime.send/ask instead.
         """
         return self._agents_by_name.get(name)
+
+    async def call(
+        self,
+        agent_name: str,
+        payload: dict[str, Any],
+        timeout: float = 30.0,
+    ) -> dict[str, Any]:
+        """Synchronous call to a GenServer. Blocks until reply or timeout."""
+        reply = await self.ask(agent_name, payload, timeout=timeout)
+        return reply.payload
+
+    async def cast(self, agent_name: str, payload: dict[str, Any]) -> None:
+        """Fire-and-forget cast to a GenServer. Returns immediately."""
+        await self.send(agent_name, {**payload, "__cast__": True})
 
     async def ask(
         self,

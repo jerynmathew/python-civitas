@@ -112,6 +112,7 @@ nav:
     - FAQ: faq.md
     - API Reference:
       - AgentProcess: api/process.md
+      - GenServer: api/genserver.md
       - Supervisor: api/supervisor.md
       - Runtime: api/runtime.md
       - Message: api/messages.md

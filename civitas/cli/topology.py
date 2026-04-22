@@ -124,6 +124,12 @@ def _validate_topology(config: dict[str, Any]) -> _ValidationResult:
                 result.fail("Naming", f"{path}: agent missing 'type'")
             if name:
                 agent_names.append(name)
+        elif node.get("type") in ("gen_server", "agent") and "module" in node and "class" in node:
+            name = node.get("name")
+            if not name:
+                result.fail("Naming", f"{path}: {node['type']} missing 'name'")
+            if name:
+                agent_names.append(name)
         else:
             result.fail("Structure", f"{path}: node is neither 'supervisor' nor 'agent'")
 
@@ -260,6 +266,16 @@ def _build_rich_tree(config: dict[str, Any]) -> Tree:
                 label = f"[green]{name}[/green]  [dim]{agent_type}[/dim]"
                 if "process" in a:
                     label += f"  [yellow]@{a['process']}[/yellow]"
+                parent.add(label)
+            elif child.get("type") == "gen_server" and "module" in child and "class" in child:
+                name = child.get("name", "?")
+                cls_path = f"{child['module']}.{child['class']}"
+                label = f"[blue]{name}[/blue]  [dim]{cls_path}[/dim]  [dim italic]srv[/dim italic]"
+                parent.add(label)
+            elif child.get("type") == "agent" and "module" in child and "class" in child:
+                name = child.get("name", "?")
+                cls_path = f"{child['module']}.{child['class']}"
+                label = f"[green]{name}[/green]  [dim]{cls_path}[/dim]"
                 parent.add(label)
 
     _add_children(tree, sup.get("children", []))
