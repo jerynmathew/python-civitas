@@ -143,24 +143,87 @@ Corrective observability loop: an `EvalAgent` subclass monitors agent behaviour 
 
 MCP protocol plumbing — the wire layer between Civitas agents and MCP tool servers. Agents call tools by direct address (`mcp://server/tool`); the runtime handles handshake, transport, schema negotiation, and tracing. Agents also expose themselves as MCP servers so external LLM clients can discover and call them.
 
-**Scope:** protocol only. Tool discovery (finding the right tool from a large set without passing all schemas to the LLM) is intentionally deferred — it depends on a global ToolStore (M4.4) and is the core concern of Fabrica (civitas-forge).
+**Scope:** protocol wire layer only. Connection pooling, circuit breakers, unified tool namespacing, and semantic retrieval are **not** in scope — they belong to Fabrica. See [design spec](design/mcp-integration.md).
 
-**Dependency chain:** M3.4 → M4.4 (ToolStore) → Fabrica (retrieval)
+**Dependency chain:** M3.4 → M4.4 (ToolStore) → Fabrica (pooling + retrieval)
 
 | Deliverable | Status |
 |-------------|--------|
-| `self.tools.get("mcp://server/tool")` — direct-addressed tool call on `AgentProcess` | ⏳ |
-| Automatic MCP handshake, transport, and schema negotiation (JSON-RPC 2.0) | ⏳ |
-| Tool registration into agent `ToolRegistry` on MCP connect — seeds M4.4 ToolStore | ⏳ |
-| Agents expose themselves as MCP tool servers (`list_tools`, `call_tool`) | ⏳ |
-| MCP tool calls appear in OTEL traces as tool spans | ⏳ |
-| Connection pooling with circuit breakers | ⏳ |
+| `civitas[mcp]` optional extra — `mcp>=1.0` dependency | ⏳ |
+| `MCPClient` — connect (stdio + SSE), `list_tools`, `call_tool`, one-shot per call | ⏳ |
+| `MCPTool(ToolProvider)` — `mcp://server_name/tool_name` name scheme | ⏳ |
+| `AgentProcess.connect_mcp()` — connect + auto-register tools into `self.tools` | ⏳ |
+| `self.tools.get("mcp://server/tool")` resolves to the registered `MCPTool` | ⏳ |
+| `MCPTool.execute()` emits `civitas.mcp.call` OTEL span | ⏳ |
+| `CivitasMCPServer(GenServer)` — exposes `ToolRegistry` as MCP server (stdio) | ⏳ |
+| Topology YAML `mcp.servers` block — auto-connect at agent startup | ⏳ |
 | ≥ 10 unit tests + ≥ 2 integration tests | ⏳ |
 
 **Explicitly out of scope for M3.4:**
+- Connection pooling / persistent sessions — Fabrica (`MCPToolSource`)
+- Circuit breakers per server — Fabrica
 - Semantic or keyword tool retrieval (`find_tools`) — Fabrica
 - Unified cross-agent tool namespace — M4.4 ToolStore
-- Per-agent credential isolation for tool sources — M4.2 Security Hardening
+- Per-agent credential isolation — M4.2 Security Hardening
+
+#### Implementation checklist
+
+Ordered tasks — each step is independently mergeable.
+
+1. **Package setup**
+   - [ ] `civitas/mcp/__init__.py` — package stub
+   - [ ] `civitas/mcp/types.py` — `MCPServerConfig` (name, transport, command/args/env/url), `MCPToolSchema`
+   - [ ] `civitas[mcp]` extra in `pyproject.toml` — `mcp>=1.0`
+
+2. **MCP client**
+   - [ ] `civitas/mcp/client.py` — `MCPClient.__init__(config: MCPServerConfig)`
+   - [ ] `MCPClient.list_tools()` — stdio transport: open subprocess session, call `list_tools`, close
+   - [ ] `MCPClient.list_tools()` — SSE transport: open HTTP session, call `list_tools`, close
+   - [ ] `MCPClient.call_tool(name, arguments)` — stdio transport
+   - [ ] `MCPClient.call_tool(name, arguments)` — SSE transport
+
+3. **MCPTool**
+   - [ ] `civitas/mcp/tool.py` — `MCPTool(ToolProvider)` wrapping `MCPClient` + `MCPToolSchema`
+   - [ ] `MCPTool.name` returns `mcp://server_name/tool_name`
+   - [ ] `MCPTool.schema` returns the JSON Schema from the MCP tool definition
+   - [ ] `MCPTool.execute(**kwargs)` calls `client.call_tool()` and returns result
+   - [ ] `MCPTool.execute()` emits `civitas.mcp.call` OTEL span (attributes: server, tool, transport)
+
+4. **AgentProcess integration**
+   - [ ] `AgentProcess.connect_mcp(config)` — creates `MCPClient`, calls `list_tools`, registers each as `MCPTool` in `self.tools`
+   - [ ] `connect_mcp()` is idempotent: deregisters existing tools for the same server before re-registering
+   - [ ] `self.tools.get("mcp://github/create_issue")` resolves correctly via registered name
+
+5. **MCP server exposure**
+   - [ ] `civitas/mcp/server.py` — `CivitasMCPServer(GenServer)`
+   - [ ] `CivitasMCPServer.init()` — starts MCP stdio server in background task via `mcp.Server`
+   - [ ] `list_tools` handler — returns schemas from injected `ToolRegistry`
+   - [ ] `call_tool` handler — calls the matching `MCPTool.execute()` or raises `ToolNotFoundError`
+
+6. **Topology YAML support**
+   - [ ] Runtime loader reads `mcp.servers` block, creates `MCPServerConfig` instances
+   - [ ] Agents auto-connect configured servers during startup (before first message)
+   - [ ] `mcp.expose.enabled: true` starts `CivitasMCPServer` as a supervised child
+   - [ ] `civitas topology validate` accepts `mcp:` section without errors
+
+7. **Tests (≥ 10 unit, ≥ 2 integration)**
+   - [ ] `MCPServerConfig` validation (missing transport fields, unknown transport)
+   - [ ] `MCPTool.name` follows `mcp://` scheme
+   - [ ] `MCPTool.schema` returns correct JSON Schema
+   - [ ] `MCPTool.execute()` calls `client.call_tool()` with correct args
+   - [ ] `MCPTool.execute()` emits OTEL span
+   - [ ] `connect_mcp()` registers tools in `self.tools`
+   - [ ] `connect_mcp()` deregisters old tools on reconnect (idempotency)
+   - [ ] `self.tools.get("mcp://server/tool")` returns correct tool
+   - [ ] `CivitasMCPServer` `list_tools` returns all registered tools
+   - [ ] `CivitasMCPServer` `call_tool` routes to correct tool
+   - [ ] Integration: agent connects to real stdio MCP echo server, calls a tool
+   - [ ] Integration: `CivitasMCPServer` handles `list_tools` request from real MCP client
+
+8. **Release**
+   - [ ] `CHANGELOG.md` entry under `## [0.3.0]`
+   - [ ] Example: `examples/mcp_agent.py` — agent connecting to a stdio MCP server
+   - [ ] `mkdocs.yml` nav updated with MCP integration design doc
 
 ---
 
