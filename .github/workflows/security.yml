@@ -106,7 +106,7 @@ jobs:
             --strict \
             --desc \
             --format columns \
-            -r <(uv export --format requirements-txt --no-dev 2>/dev/null)
+            -r <(uv export --format requirements-txt --no-dev --no-emit-project 2>/dev/null)
 
   # ---------------------------------------------------------------------------
   # Secret scanning — gitleaks on full commit history

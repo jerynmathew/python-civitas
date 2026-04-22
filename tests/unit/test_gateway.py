@@ -722,7 +722,8 @@ class TestContractDecorator:
         except ImportError:
             pytest.skip("pydantic not installed")
 
-    def test_contract_request_validation_returns_422(self) -> None:
+    @pytest.mark.asyncio
+    async def test_contract_request_validation_returns_422(self) -> None:
         try:
             from pydantic import BaseModel
 
@@ -746,12 +747,9 @@ class TestContractDecorator:
             rt.merge_contracts_from(MyAgent, agent_name="my_agent")
             asgi = GatewayASGI(gateway=gateway, route_table=rt, config=config)
 
-            async def run() -> tuple[int, dict]:
-                return await _http_request(asgi, method="POST", path="/v1/chat", body={"wrong": 1})
-
-            import asyncio
-
-            status, body = asyncio.get_event_loop().run_until_complete(run())
+            status, body = await _http_request(
+                asgi, method="POST", path="/v1/chat", body={"wrong": 1}
+            )
             assert status == 422
             assert "detail" in body
         except ImportError:

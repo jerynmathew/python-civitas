@@ -89,18 +89,13 @@ class HTTPGateway(AgentProcess):
             config=self._gw_config,
         )
 
-        ssl_kwargs: dict[str, str] = {}
-        if self._gw_config.tls_cert:
-            ssl_kwargs["ssl_certfile"] = self._gw_config.tls_cert
-        if self._gw_config.tls_key:
-            ssl_kwargs["ssl_keyfile"] = self._gw_config.tls_key
-
         uv_config = uvicorn.Config(
             app=asgi_app,
             host=self._gw_config.host,
             port=self._gw_config.port,
             log_level="warning",
-            **ssl_kwargs,
+            ssl_certfile=self._gw_config.tls_cert,
+            ssl_keyfile=self._gw_config.tls_key,
         )
         self._uvicorn_server = uvicorn.Server(uv_config)
         self._server_task = asyncio.create_task(
