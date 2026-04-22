@@ -29,11 +29,27 @@
          <lastmod>2026-04-22</lastmod>
     </url>
     <url>
+         <loc>https://jerynmathew.github.io/python-civitas/evalloop/</loc>
+         <lastmod>2026-04-22</lastmod>
+    </url>
+    <url>
          <loc>https://jerynmathew.github.io/python-civitas/faq/</loc>
          <lastmod>2026-04-22</lastmod>
     </url>
     <url>
+         <loc>https://jerynmathew.github.io/python-civitas/gateway/</loc>
+         <lastmod>2026-04-22</lastmod>
+    </url>
+    <url>
+         <loc>https://jerynmathew.github.io/python-civitas/genserver/</loc>
+         <lastmod>2026-04-22</lastmod>
+    </url>
+    <url>
          <loc>https://jerynmathew.github.io/python-civitas/getting-started/</loc>
+         <lastmod>2026-04-22</lastmod>
+    </url>
+    <url>
+         <loc>https://jerynmathew.github.io/python-civitas/mcp/</loc>
          <lastmod>2026-04-22</lastmod>
     </url>
     <url>
@@ -66,6 +82,18 @@
     </url>
     <url>
          <loc>https://jerynmathew.github.io/python-civitas/api/bus/</loc>
+         <lastmod>2026-04-22</lastmod>
+    </url>
+    <url>
+         <loc>https://jerynmathew.github.io/python-civitas/api/evalloop/</loc>
+         <lastmod>2026-04-22</lastmod>
+    </url>
+    <url>
+         <loc>https://jerynmathew.github.io/python-civitas/api/gateway/</loc>
+         <lastmod>2026-04-22</lastmod>
+    </url>
+    <url>
+         <loc>https://jerynmathew.github.io/python-civitas/api/genserver/</loc>
          <lastmod>2026-04-22</lastmod>
     </url>
     <url>

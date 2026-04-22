@@ -1260,7 +1260,7 @@
   
   
     <li class="md-nav__item">
-      <a href="api/genserver.md" class="md-nav__link">
+      <a href="api/genserver/" class="md-nav__link">
         
   
   
@@ -2115,11 +2115,15 @@ routes messages between them, and traces every action — automatically.</p>
 <li><a href="messaging/">Messaging</a> — send, ask, broadcast, request-reply internals, backpressure</li>
 <li><a href="transports/">Transports</a> — InProcess → ZMQ → NATS: the scaling ladder</li>
 <li><a href="observability/">Observability</a> — automatic OTEL tracing, console exporter, Jaeger</li>
+<li><a href="genserver/">GenServer</a> — stateful service processes: rate limiters, caches, coordinators</li>
+<li><a href="evalloop/">EvalLoop</a> — corrective observability: monitor agents and send correction signals</li>
+<li><a href="mcp/">MCP Integration</a> — call external MCP tool servers and expose agents as MCP servers</li>
+<li><a href="gateway/">HTTP Gateway</a> — expose agents as a REST API with routing, validation, and OpenAPI docs</li>
 </ul>
 <h3 id="reference">Reference<a class="headerlink" href="#reference" title="Permanent link">&para;</a></h3>
 <ul>
 <li><a href="plugins/">Plugins</a> — ModelProvider, ToolProvider, StateStore, writing custom plugins</li>
-<li><a href="topology/">Topology YAML</a> — full schema reference, CLI commands</li>
+<li><a href="topology/">Topology YAML</a> — full schema reference, CLI commands, all node types</li>
 <li><a href="deployment/">Deployment</a> — single process through containerized, step by step</li>
 <li><a href="adapters/">Framework Adapters</a> — wrapping LangGraph and OpenAI SDK agents</li>
 <li><a href="architecture/">Architecture</a> — runtime internals, startup sequence, component wiring</li>
@@ -2136,6 +2140,8 @@ routes messages between them, and traces every action — automatically.</p>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>python<span class="w"> </span>examples/supervised_agent.py<span class="w">      </span><span class="c1"># crash + auto-restart</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>python<span class="w"> </span>examples/research_pipeline.py<span class="w">     </span><span class="c1"># three-agent pipeline</span>
 </span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>python<span class="w"> </span>examples/research_assistant.py<span class="w">    </span><span class="c1"># four-agent hero demo (no API key needed)</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>python<span class="w"> </span>examples/http_gateway.py<span class="w">          </span><span class="c1"># REST API with Swagger UI (civitas[http])</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>python<span class="w"> </span>examples/mcp_agent.py<span class="w">             </span><span class="c1"># connect to an MCP tool server (civitas[mcp])</span>
 </span></code></pre></div>
 <hr />
 <h2 id="license">License<a class="headerlink" href="#license" title="Permanent link">&para;</a></h2>

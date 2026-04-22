@@ -10,9 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://jerynmathew.github.io/python-civitas/security/threat-model/">
+        <link rel="canonical" href="https://jerynmathew.github.io/python-civitas/api/genserver/">
       
       
+        <link rel="prev" href="../process/">
+      
+      
+        <link rel="next" href="../supervisor/">
       
       
         
@@ -23,7 +27,7 @@
     
     
       
-        <title>Threat Model - civitas</title>
+        <title>GenServer - civitas</title>
       
     
     
@@ -86,7 +90,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#threat-model" class="md-skip">
+        <a href="#genserver" class="md-skip">
           Skip to content
         </a>
       
@@ -122,7 +126,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Threat Model
+              GenServer
             
           </span>
         </div>
@@ -287,10 +291,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../../architecture/" class="md-tabs__link">
           
   
@@ -859,8 +865,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -874,21 +882,22 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
-        
-          
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
             
   
   
@@ -906,7 +915,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -977,8 +986,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1005,20 +1016,21 @@
     
       
       
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
         
           
+          
         
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_3" >
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="">
             
   
   
@@ -1036,7 +1048,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1054,7 +1066,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/process/" class="md-nav__link">
+      <a href="../process/" class="md-nav__link">
         
   
   
@@ -1079,10 +1091,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../api/genserver/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GenServer
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1098,6 +1137,98 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#civitas.genserver.GenServer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;GenServer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" GenServer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#civitas.genserver.GenServer.init" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;init
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#civitas.genserver.GenServer.handle_call" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;handle_call
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#civitas.genserver.GenServer.handle_cast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;handle_cast
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#civitas.genserver.GenServer.handle_info" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;handle_info
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#civitas.genserver.GenServer.send_after" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;send_after
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1110,7 +1241,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/supervisor/" class="md-nav__link">
+      <a href="../supervisor/" class="md-nav__link">
         
   
   
@@ -1138,7 +1269,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/runtime/" class="md-nav__link">
+      <a href="../runtime/" class="md-nav__link">
         
   
   
@@ -1166,7 +1297,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/messages/" class="md-nav__link">
+      <a href="../messages/" class="md-nav__link">
         
   
   
@@ -1194,7 +1325,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/bus/" class="md-nav__link">
+      <a href="../bus/" class="md-nav__link">
         
   
   
@@ -1222,7 +1353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/transport/" class="md-nav__link">
+      <a href="../transport/" class="md-nav__link">
         
   
   
@@ -1250,7 +1381,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/observability/" class="md-nav__link">
+      <a href="../observability/" class="md-nav__link">
         
   
   
@@ -1278,7 +1409,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/plugins/" class="md-nav__link">
+      <a href="../plugins/" class="md-nav__link">
         
   
   
@@ -1671,33 +1802,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#components-in-scope" class="md-nav__link">
+  <a href="#civitas.genserver.GenServer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Components in scope
+        <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;GenServer
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#stride-analysis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        STRIDE analysis
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="STRIDE analysis">
+    <nav class="md-nav" aria-label=" GenServer">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#agentprocess" class="md-nav__link">
+  <a href="#civitas.genserver.GenServer.init" class="md-nav__link">
     <span class="md-ellipsis">
       
-        AgentProcess
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;init
       
     </span>
   </a>
@@ -1705,10 +1825,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#supervisor" class="md-nav__link">
+  <a href="#civitas.genserver.GenServer.handle_call" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Supervisor
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;handle_call
       
     </span>
   </a>
@@ -1716,10 +1836,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#messagebus" class="md-nav__link">
+  <a href="#civitas.genserver.GenServer.handle_cast" class="md-nav__link">
     <span class="md-ellipsis">
       
-        MessageBus
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;handle_cast
       
     </span>
   </a>
@@ -1727,10 +1847,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#transport-layer" class="md-nav__link">
+  <a href="#civitas.genserver.GenServer.handle_info" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Transport layer
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;handle_info
       
     </span>
   </a>
@@ -1738,43 +1858,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#httpgateway-v04" class="md-nav__link">
+  <a href="#civitas.genserver.GenServer.send_after" class="md-nav__link">
     <span class="md-ellipsis">
       
-        HTTPGateway (v0.4+)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#statestore" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        StateStore
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#plugin-system" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Plugin system
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#evalagent" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        EvalAgent
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;send_after
       
     </span>
   </a>
@@ -1783,28 +1870,6 @@
         
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#risk-summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Risk summary
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#out-of-scope" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Out of scope
-      
-    </span>
-  </a>
   
 </li>
       
@@ -1828,448 +1893,254 @@
   
 
 
-<h1 id="threat-model">Threat Model<a class="headerlink" href="#threat-model" title="Permanent link">&para;</a></h1>
-<p><strong>Framework:</strong> STRIDE
-<strong>Last updated:</strong> April 2026
-<strong>Scope:</strong> Civitas runtime v0.3+</p>
+<h1 id="genserver">GenServer<a class="headerlink" href="#genserver" title="Permanent link">&para;</a></h1>
+<p>OTP-style stateful service process for non-AI workloads: rate limiters, caches, coordinators.</p>
+<p>See <a href="../../genserver/">GenServer</a> for a full guide with examples.</p>
 <hr />
-<h2 id="components-in-scope">Components in scope<a class="headerlink" href="#components-in-scope" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Component</th>
-<th>Role</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>AgentProcess</code></td>
-<td>Core agent unit — runs <code>handle()</code>, manages mailbox and state</td>
-</tr>
-<tr>
-<td><code>Supervisor</code></td>
-<td>Fault tolerance — restart policy, escalation chain</td>
-</tr>
-<tr>
-<td><code>MessageBus</code></td>
-<td>Name-based routing — delivers messages between agents</td>
-</tr>
-<tr>
-<td><code>InProcessTransport</code></td>
-<td>In-process asyncio queue transport</td>
-</tr>
-<tr>
-<td><code>ZMQTransport</code></td>
-<td>Multi-process transport (XSUB/XPUB proxy)</td>
-</tr>
-<tr>
-<td><code>NATSTransport</code></td>
-<td>Distributed transport (JetStream)</td>
-</tr>
-<tr>
-<td><code>HTTPGateway</code></td>
-<td>Edge process — translates HTTP to Civitas messages (v0.4+)</td>
-</tr>
-<tr>
-<td><code>StateStore</code></td>
-<td>Agent state persistence (SQLite, in-memory)</td>
-</tr>
-<tr>
-<td><code>Plugin system</code></td>
-<td>LLM providers, tools, MCP clients</td>
-</tr>
-<tr>
-<td><code>EvalAgent</code></td>
-<td>Corrective observability — monitors and corrects agent behaviour</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="stride-analysis">STRIDE analysis<a class="headerlink" href="#stride-analysis" title="Permanent link">&para;</a></h2>
-<h3 id="agentprocess">AgentProcess<a class="headerlink" href="#agentprocess" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Threat</th>
-<th>Category</th>
-<th>Risk</th>
-<th>Mitigation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Agent code executes arbitrary system calls — supply chain attack via a malicious dependency or compromised agent class</td>
-<td><strong>E</strong> Elevation of Privilege</td>
-<td>High</td>
-<td>Sandbox agent processes (M4.2); audit third-party agent code before deployment</td>
-</tr>
-<tr>
-<td>Infinite message loop between agents saturates mailboxes and exhausts CPU</td>
-<td><strong>D</strong> Denial of Service</td>
-<td>Medium</td>
-<td>Bounded mailboxes (<code>asyncio.Queue(maxsize=N)</code>) drop messages at capacity; <code>EvalAgent</code> can halt runaway agents</td>
-</tr>
-<tr>
-<td><code>emit_eval()</code> target name is controlled by calling agent — could redirect eval events to wrong evaluator</td>
-<td><strong>S</strong> Spoofing</td>
-<td>Low</td>
-<td>Default target is <code>"eval_agent"</code>; only override in trusted orchestrator code</td>
-</tr>
-<tr>
-<td>Agent state in <code>StateStore</code> restored on restart — poisoned state persists across crashes</td>
-<td><strong>T</strong> Tampering</td>
-<td>Medium</td>
-<td>Encrypt SQLite state at rest (M4.2); validate state schema on <code>on_start()</code></td>
-</tr>
-<tr>
-<td>No built-in audit of which agent sent which message — repudiation possible</td>
-<td><strong>R</strong> Repudiation</td>
-<td>Medium</td>
-<td>OTEL spans include <code>sender</code>, <code>recipient</code>, <code>trace_id</code> on every message — use OTLP exporter for durable audit trail</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h3 id="supervisor">Supervisor<a class="headerlink" href="#supervisor" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Threat</th>
-<th>Category</th>
-<th>Risk</th>
-<th>Mitigation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Crash-loop attack — compromised child crashes repeatedly to exhaust restart budget and force parent shutdown</td>
-<td><strong>D</strong> Denial of Service</td>
-<td>Medium</td>
-<td>Sliding-window restart limits (<code>max_restarts</code> + <code>restart_window</code>); escalation chain terminates the supervisor tree rather than looping forever</td>
-</tr>
-<tr>
-<td>Restart of a compromised agent re-instantiates malicious code</td>
-<td><strong>E</strong> Elevation of Privilege</td>
-<td>High</td>
-<td>Immutable agent class references loaded at startup; no dynamic code loading at restart</td>
-</tr>
-<tr>
-<td>Escalation chain propagates fault upward — a single bad agent can take down the entire tree</td>
-<td><strong>D</strong> Denial of Service</td>
-<td>Low</td>
-<td>Deliberate design choice (OTP model); scope supervisors narrowly to limit blast radius</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h3 id="messagebus">MessageBus<a class="headerlink" href="#messagebus" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Threat</th>
-<th>Category</th>
-<th>Risk</th>
-<th>Mitigation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Malicious agent sends messages with a spoofed <code>sender</code> field</td>
-<td><strong>S</strong> Spoofing</td>
-<td>High</td>
-<td><code>sender</code> is set by the bus at route time for internal messages; message signing (M4.2) will cryptographically bind <code>sender</code> to the sending process</td>
-</tr>
-<tr>
-<td><code>_agency.*</code> system message namespace accessible to any agent that constructs the right <code>type</code></td>
-<td><strong>S</strong> Spoofing / <strong>E</strong> Elevation of Privilege</td>
-<td>High</td>
-<td><code>_agency.*</code> validation enforced on all routes in <code>MessageBus.route()</code> — only the bus itself may send system messages</td>
-</tr>
-<tr>
-<td>Glob-pattern <code>broadcast()</code> reaches unintended agents</td>
-<td><strong>I</strong> Information Disclosure</td>
-<td>Low</td>
-<td>Broadcast patterns are caller-controlled; only use from trusted orchestrator agents</td>
-</tr>
-<tr>
-<td>Message payload contains sensitive data logged at DEBUG level</td>
-<td><strong>I</strong> Information Disclosure</td>
-<td>Medium</td>
-<td>Disable <code>logging.DEBUG</code> in production; configure OTLP exporter to strip <code>payload</code> attributes</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h3 id="transport-layer">Transport layer<a class="headerlink" href="#transport-layer" title="Permanent link">&para;</a></h3>
-<h4 id="inprocesstransport">InProcessTransport<a class="headerlink" href="#inprocesstransport" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Threat</th>
-<th>Category</th>
-<th>Risk</th>
-<th>Mitigation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Shared asyncio event loop — one agent blocking the loop delays all others</td>
-<td><strong>D</strong> Denial of Service</td>
-<td>Medium</td>
-<td>Avoid blocking calls in <code>handle()</code>; use <code>asyncio.to_thread()</code> for CPU-bound work</td>
-</tr>
-</tbody>
-</table>
-<h4 id="zmqtransport">ZMQTransport<a class="headerlink" href="#zmqtransport" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Threat</th>
-<th>Category</th>
-<th>Risk</th>
-<th>Mitigation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Any local process can connect to the XPUB/XSUB proxy and inject messages</td>
-<td><strong>S</strong> Spoofing / <strong>T</strong> Tampering</td>
-<td>High</td>
-<td>Bind proxy to <code>127.0.0.1</code> (not <code>0.0.0.0</code>); enable ZMQ CURVE authentication (M4.2)</td>
-</tr>
-<tr>
-<td>Messages transmitted over IPC/TCP in cleartext (msgpack, not encrypted)</td>
-<td><strong>I</strong> Information Disclosure</td>
-<td>High</td>
-<td>Enable ZMQ CURVE encryption (M4.2); or terminate TLS at a sidecar (Envoy)</td>
-</tr>
-<tr>
-<td>No message authentication — MITM can modify in-flight messages</td>
-<td><strong>T</strong> Tampering</td>
-<td>High</td>
-<td>Message signing (M4.2)</td>
-</tr>
-</tbody>
-</table>
-<h4 id="natstransport">NATSTransport<a class="headerlink" href="#natstransport" title="Permanent link">&para;</a></h4>
-<table>
-<thead>
-<tr>
-<th>Threat</th>
-<th>Category</th>
-<th>Risk</th>
-<th>Mitigation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>NATS without TLS transmits all messages in cleartext</td>
-<td><strong>I</strong> Information Disclosure</td>
-<td>High</td>
-<td>Always configure NATS with TLS in production (<code>tls: {cert, key, ca}</code> in NATS server config)</td>
-</tr>
-<tr>
-<td>NATS JetStream subjects are predictable — any authenticated NATS client can subscribe</td>
-<td><strong>I</strong> Information Disclosure</td>
-<td>Medium</td>
-<td>Use NATS authorization (accounts + users) to isolate Civitas subjects from other workloads</td>
-</tr>
-<tr>
-<td>No built-in agent identity validation on NATS subject routing</td>
-<td><strong>S</strong> Spoofing</td>
-<td>Medium</td>
-<td>NATS credential file per Worker process (M4.2); <code>sender</code> field validated at application layer</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h3 id="httpgateway-v04">HTTPGateway (v0.4+)<a class="headerlink" href="#httpgateway-v04" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Threat</th>
-<th>Category</th>
-<th>Risk</th>
-<th>Mitigation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>No request authentication by default — any client can send messages to any agent</td>
-<td><strong>S</strong> Spoofing / <strong>E</strong> Elevation of Privilege</td>
-<td>High</td>
-<td>Deploy API key or JWT middleware on all production routes</td>
-</tr>
-<tr>
-<td>HTTP request body forwarded as <code>message.payload</code> without sanitisation</td>
-<td><strong>T</strong> Tampering</td>
-<td>Medium</td>
-<td>Validate with <code>@contract</code> (Pydantic); agents must not trust <code>message.payload</code> without validation</td>
-</tr>
-<tr>
-<td>Unbounded request rate exhausts agent mailboxes</td>
-<td><strong>D</strong> Denial of Service</td>
-<td>High</td>
-<td>Add <code>RateLimiter(GenServer)</code> middleware; configure <code>request_timeout</code></td>
-</tr>
-<tr>
-<td>Plaintext HTTP/1.1 exposes request bodies</td>
-<td><strong>I</strong> Information Disclosure</td>
-<td>High</td>
-<td>Always configure TLS cert/key; HTTP/2 requires TLS (ALPN)</td>
-</tr>
-<tr>
-<td>Path traversal via unsanitised path parameters</td>
-<td><strong>T</strong> Tampering</td>
-<td>Low</td>
-<td><code>@route</code> path parameters are string-typed; agents must validate before using as filesystem paths</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h3 id="statestore">StateStore<a class="headerlink" href="#statestore" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Threat</th>
-<th>Category</th>
-<th>Risk</th>
-<th>Mitigation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>SQLite state file stored in plaintext on disk</td>
-<td><strong>I</strong> Information Disclosure</td>
-<td>High</td>
-<td>Encrypt at-rest via filesystem encryption or SQLite encryption extension (M4.2); avoid storing secrets in state</td>
-</tr>
-<tr>
-<td>SQLite file writable by any process with filesystem access</td>
-<td><strong>T</strong> Tampering</td>
-<td>High</td>
-<td>Restrict file permissions (<code>chmod 600</code>); run agents as a dedicated OS user</td>
-</tr>
-<tr>
-<td>In-memory store is lost on process restart — agent assumes wrong initial state</td>
-<td><strong>T</strong> Tampering</td>
-<td>Low</td>
-<td><code>AgentProcess</code> restores state from <code>StateStore</code> before <code>on_start()</code> — in-memory store is intentionally ephemeral</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h3 id="plugin-system">Plugin system<a class="headerlink" href="#plugin-system" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Threat</th>
-<th>Category</th>
-<th>Risk</th>
-<th>Mitigation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>LLM provider API keys in topology YAML committed to source control</td>
-<td><strong>I</strong> Information Disclosure</td>
-<td>Critical</td>
-<td>Always use <code>!ENV VAR_NAME</code> in YAML; never hardcode keys; <code>gitleaks</code> pre-commit hook blocks accidental commits</td>
-</tr>
-<tr>
-<td>Malicious Python package in <code>additional_dependencies</code> exfiltrates keys at import time</td>
-<td><strong>S</strong> Spoofing / <strong>I</strong> Information Disclosure</td>
-<td>High</td>
-<td>Pin all dependency versions; enable Dependabot + pip-audit in CI</td>
-</tr>
-<tr>
-<td>MCP server connected via <code>connect_mcp()</code> executes arbitrary subprocess commands</td>
-<td><strong>E</strong> Elevation of Privilege</td>
-<td>High</td>
-<td>Only connect MCP servers from trusted sources; validate <code>command</code> and <code>args</code> at config parse time</td>
-</tr>
-<tr>
-<td>Tool <code>execute()</code> calls are unrestricted — a tool can make arbitrary network calls</td>
-<td><strong>I</strong> Information Disclosure / <strong>E</strong> Elevation of Privilege</td>
-<td>Medium</td>
-<td>Sandbox tool execution (M4.2); review tool schemas before registration</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h3 id="evalagent">EvalAgent<a class="headerlink" href="#evalagent" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Threat</th>
-<th>Category</th>
-<th>Risk</th>
-<th>Mitigation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>EvalAgent itself is compromised — sends false <code>halt</code> signals to healthy agents</td>
-<td><strong>D</strong> Denial of Service</td>
-<td>Medium</td>
-<td>Run <code>EvalAgent</code> under its own supervisor subtree; log all correction signals via OTEL</td>
-</tr>
-<tr>
-<td>Rate limit bypass — attacker sends eval events faster than the window resets</td>
-<td><strong>D</strong> Denial of Service</td>
-<td>Low</td>
-<td>Rate limiter tracks timestamps server-side; no client-controlled state</td>
-</tr>
-<tr>
-<td><code>civitas.eval.halt</code> message forged by a non-eval agent</td>
-<td><strong>D</strong> Denial of Service</td>
-<td>Medium</td>
-<td>Message signing (M4.2) will bind message type to sender identity</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="risk-summary">Risk summary<a class="headerlink" href="#risk-summary" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Risk level</th>
-<th>Count</th>
-<th>Primary mitigation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Critical</td>
-<td>1</td>
-<td>LLM API keys in YAML — use <code>!ENV</code> + gitleaks</td>
-</tr>
-<tr>
-<td>High</td>
-<td>10</td>
-<td>Message signing, transport TLS/CURVE, gateway auth (M4.2)</td>
-</tr>
-<tr>
-<td>Medium</td>
-<td>8</td>
-<td>Mailbox bounds, OTEL audit, NATS isolation, state encryption</td>
-</tr>
-<tr>
-<td>Low</td>
-<td>5</td>
-<td>Broadcast scope, path params, in-memory state</td>
-</tr>
-</tbody>
-</table>
-<p>The majority of High findings are addressed by <strong>M4.2 Security Hardening</strong> (mTLS, message signing, credential isolation, sandboxing).</p>
-<hr />
-<h2 id="out-of-scope">Out of scope<a class="headerlink" href="#out-of-scope" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Threats to the NATS server itself (covered by NATS documentation)</li>
-<li>Threats to the LLM provider APIs (covered by provider security policies)</li>
-<li>Social engineering or insider threats</li>
-<li>Physical access to the host machine</li>
-</ul>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="civitas.genserver.GenServer" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>              <code class="highlight language-python"><span class="n">civitas</span><span class="o">.</span><span class="n">genserver</span><span class="o">.</span><span class="n">GenServer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+<a href="#civitas.genserver.GenServer" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="              civitas.process.AgentProcess(name, mailbox_size=1000, max_retries=3, shutdown_timeout=30.0) (civitas.process.AgentProcess)" href="../process/#civitas.process.AgentProcess">AgentProcess</a></code></p>
+
+
+
+        <p>OTP-style generic server for stateful service processes.</p>
+<p>Override handle_call, handle_cast, handle_info — not handle().
+Do not override on_start(); use init() instead.</p>
+
+
+
+
+
+
+
+
+                  <details class="mkdocstrings-source">
+                    <summary>Source code in <code>civitas/genserver.py</code></summary>
+                    <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-28">28</a></span>
+<span class="normal"><a href="#__codelineno-0-29">29</a></span>
+<span class="normal"><a href="#__codelineno-0-30">30</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_send_after_tasks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">asyncio</span><span class="o">.</span><span class="n">Task</span><span class="p">[</span><span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+</span></code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="civitas.genserver.GenServer.init" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">init</span><span class="p">()</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-async"><code>async</code></small>
+  </span>
+
+<a href="#civitas.genserver.GenServer.init" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Called once when the process starts. Initialize self.state here.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>civitas/genserver.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-48">48</a></span>
+<span class="normal"><a href="#__codelineno-0-49">49</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Called once when the process starts. Initialize self.state here.&quot;&quot;&quot;</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="civitas.genserver.GenServer.handle_call" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">handle_call</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">from_</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-async"><code>async</code></small>
+  </span>
+
+<a href="#civitas.genserver.GenServer.handle_call" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Synchronous request. Must return a dict reply.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>civitas/genserver.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-55">55</a></span>
+<span class="normal"><a href="#__codelineno-0-56">56</a></span>
+<span class="normal"><a href="#__codelineno-0-57">57</a></span>
+<span class="normal"><a href="#__codelineno-0-58">58</a></span>
+<span class="normal"><a href="#__codelineno-0-59">59</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-55"><a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">from_</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+</span><span id="__span-0-56"><a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Synchronous request. Must return a dict reply.&quot;&quot;&quot;</span>
+</span><span id="__span-0-57"><a id="__codelineno-0-57" name="__codelineno-0-57"></a>    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+</span><span id="__span-0-58"><a id="__codelineno-0-58" name="__codelineno-0-58"></a>        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> received a call but handle_call() is not implemented&quot;</span>
+</span><span id="__span-0-59"><a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="p">)</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="civitas.genserver.GenServer.handle_cast" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">handle_cast</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-async"><code>async</code></small>
+  </span>
+
+<a href="#civitas.genserver.GenServer.handle_cast" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Async fire-and-forget. No reply.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>civitas/genserver.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-61">61</a></span>
+<span class="normal"><a href="#__codelineno-0-62">62</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-61"><a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_cast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-62"><a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Async fire-and-forget. No reply.&quot;&quot;&quot;</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="civitas.genserver.GenServer.handle_info" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">handle_info</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-async"><code>async</code></small>
+  </span>
+
+<a href="#civitas.genserver.GenServer.handle_info" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Internal messages — timers, ticks, out-of-band signals.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>civitas/genserver.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-64">64</a></span>
+<span class="normal"><a href="#__codelineno-0-65">65</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-64"><a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-65"><a id="__codelineno-0-65" name="__codelineno-0-65"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Internal messages — timers, ticks, out-of-band signals.&quot;&quot;&quot;</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="civitas.genserver.GenServer.send_after" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <code class="highlight language-python"><span class="n">send_after</span><span class="p">(</span><span class="n">delay_ms</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span></code>
+
+<a href="#civitas.genserver.GenServer.send_after" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Schedule a handle_info message to self after delay_ms milliseconds.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>civitas/genserver.py</code></summary>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-71">71</a></span>
+<span class="normal"><a href="#__codelineno-0-72">72</a></span>
+<span class="normal"><a href="#__codelineno-0-73">73</a></span>
+<span class="normal"><a href="#__codelineno-0-74">74</a></span>
+<span class="normal"><a href="#__codelineno-0-75">75</a></span>
+<span class="normal"><a href="#__codelineno-0-76">76</a></span>
+<span class="normal"><a href="#__codelineno-0-77">77</a></span>
+<span class="normal"><a href="#__codelineno-0-78">78</a></span>
+<span class="normal"><a href="#__codelineno-0-79">79</a></span>
+<span class="normal"><a href="#__codelineno-0-80">80</a></span>
+<span class="normal"><a href="#__codelineno-0-81">81</a></span>
+<span class="normal"><a href="#__codelineno-0-82">82</a></span>
+<span class="normal"><a href="#__codelineno-0-83">83</a></span>
+<span class="normal"><a href="#__codelineno-0-84">84</a></span>
+<span class="normal"><a href="#__codelineno-0-85">85</a></span>
+<span class="normal"><a href="#__codelineno-0-86">86</a></span>
+<span class="normal"><a href="#__codelineno-0-87">87</a></span>
+<span class="normal"><a href="#__codelineno-0-88">88</a></span>
+<span class="normal"><a href="#__codelineno-0-89">89</a></span>
+<span class="normal"><a href="#__codelineno-0-90">90</a></span>
+<span class="normal"><a href="#__codelineno-0-91">91</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-71"><a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="k">def</span><span class="w"> </span><span class="nf">send_after</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delay_ms</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-72"><a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Schedule a handle_info message to self after delay_ms milliseconds.&quot;&quot;&quot;</span>
+</span><span id="__span-0-73"><a id="__codelineno-0-73" name="__codelineno-0-73"></a>
+</span><span id="__span-0-74"><a id="__codelineno-0-74" name="__codelineno-0-74"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_fire</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-75"><a id="__codelineno-0-75" name="__codelineno-0-75"></a>        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">delay_ms</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
+</span><span id="__span-0-76"><a id="__codelineno-0-76" name="__codelineno-0-76"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-0-77"><a id="__codelineno-0-77" name="__codelineno-0-77"></a>            <span class="n">msg</span> <span class="o">=</span> <span class="n">Message</span><span class="p">(</span>
+</span><span id="__span-0-78"><a id="__codelineno-0-78" name="__codelineno-0-78"></a>                <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;genserver.info&quot;</span><span class="p">,</span>
+</span><span id="__span-0-79"><a id="__codelineno-0-79" name="__codelineno-0-79"></a>                <span class="n">sender</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="__span-0-80"><a id="__codelineno-0-80" name="__codelineno-0-80"></a>                <span class="n">recipient</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="__span-0-81"><a id="__codelineno-0-81" name="__codelineno-0-81"></a>                <span class="n">payload</span><span class="o">=</span><span class="n">payload</span><span class="p">,</span>
+</span><span id="__span-0-82"><a id="__codelineno-0-82" name="__codelineno-0-82"></a>                <span class="n">span_id</span><span class="o">=</span><span class="n">_new_span_id</span><span class="p">(),</span>
+</span><span id="__span-0-83"><a id="__codelineno-0-83" name="__codelineno-0-83"></a>            <span class="p">)</span>
+</span><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84"></a>            <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85"></a>                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bus</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</span><span id="__span-0-86"><a id="__codelineno-0-86" name="__codelineno-0-86"></a>            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+</span><span id="__span-0-87"><a id="__codelineno-0-87" name="__codelineno-0-87"></a>                <span class="k">pass</span>  <span class="c1"># process may have stopped; routing errors are expected</span>
+</span><span id="__span-0-88"><a id="__codelineno-0-88" name="__codelineno-0-88"></a>
+</span><span id="__span-0-89"><a id="__codelineno-0-89" name="__codelineno-0-89"></a>    <span class="c1"># Prune completed tasks before appending to prevent unbounded growth</span>
+</span><span id="__span-0-90"><a id="__codelineno-0-90" name="__codelineno-0-90"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_send_after_tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_after_tasks</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">done</span><span class="p">()]</span>
+</span><span id="__span-0-91"><a id="__codelineno-0-91" name="__codelineno-0-91"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_send_after_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">_fire</span><span class="p">()))</span>
+</span></code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 
