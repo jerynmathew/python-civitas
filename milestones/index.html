@@ -2826,6 +2826,70 @@
 </tr>
 </tbody>
 </table>
+<h4 id="implementation-checklist">Implementation checklist<a class="headerlink" href="#implementation-checklist" title="Permanent link">&para;</a></h4>
+<p>Ordered tasks — each step is independently mergeable.</p>
+<ol>
+<li><strong>Core module — <code>civitas/genserver.py</code></strong><ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>GenServer(AgentProcess)</code> class — no LLM or tool plugin injection</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>handle()</code> dispatcher: route by <code>reply_to</code> → <code>handle_call</code>; <code>__cast__</code> marker → <code>handle_cast</code>; else → <code>handle_info</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>handle_call</code> / <code>handle_cast</code> / <code>handle_info</code> stubs with correct signatures</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>async def init()</code> hook invoked once at process start</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>send_after(delay_ms, payload)</code> — schedules <code>handle_info</code> to self</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Track <code>send_after</code> tasks; cancel all on <code>stop()</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Enforce <code>handle_call</code> returns a dict (reject <code>None</code> to prevent caller hangs)</li>
+</ul>
+</li>
+<li><strong><code>call()</code> / <code>cast()</code> aliases</strong><ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>AgentProcess.call(name, payload, timeout)</code> — alias over existing <code>ask()</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>AgentProcess.cast(name, payload)</code> — <code>send()</code> with <code>__cast__</code> marker</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>Runtime.call()</code> / <code>Runtime.cast()</code> — external entry points</li>
+</ul>
+</li>
+<li><strong>Topology YAML support</strong><ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Loader accepts <code>type: gen_server</code> (module/class resolution identical to <code>type: agent</code>)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>civitas topology validate</code> passes for gen_server nodes</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>civitas topology show</code> renders gen_server with distinct icon/label</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>civitas topology diff</code> treats gen_server nodes correctly</li>
+</ul>
+</li>
+<li><strong>Observability</strong><ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Emit <code>civitas.genserver.call</code> span for <code>handle_call</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Emit <code>civitas.genserver.cast</code> span for <code>handle_cast</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Emit <code>civitas.genserver.info</code> span for <code>handle_info</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Trace propagation preserved across <code>call()</code> boundaries</li>
+</ul>
+</li>
+<li><strong>Tests (≥ 15 cases in <code>tests/test_genserver.py</code>)</strong><ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>handle_call</code> returns reply via <code>reply_to</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>handle_cast</code> runs, no reply emitted</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>handle_info</code> invoked for non-call non-cast messages</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>call()</code> timeout raises within configured bound</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>send_after</code> fires <code>handle_info</code> after delay</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>send_after</code> tasks cancelled cleanly on <code>stop()</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>init()</code> runs before first message handled</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> GenServer as child of <code>ONE_FOR_ONE</code>, <code>ONE_FOR_ALL</code>, <code>REST_FOR_ONE</code> supervisors</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Restart triggers <code>init()</code> again (state resets unless <code>StateStore</code> configured)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>StateStore</code>-backed state survives restart</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>self.llm</code> not present on GenServer instance</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>self.tools</code> not present on GenServer instance</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>handle_call</code> returning non-dict raises</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> GenServer ↔ AgentProcess sibling communication round-trip</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Topology YAML round-trip: load → run → <code>topology show</code> matches</li>
+</ul>
+</li>
+<li><strong>Example + documentation</strong><ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>examples/rate_limiter/</code> — end-to-end <code>RateLimiter(GenServer)</code> with consumer agent</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> User guide page referencing <code>docs/design/genserver.md</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> API reference entry for <code>civitas.genserver</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>mkdocs.yml</code> nav updated</li>
+</ul>
+</li>
+<li><strong>Release</strong><ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>CHANGELOG.md</code> entry under <code>## [0.3.0]</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Cross-reference M3.4 (MCP) and M2.5 (EvalLoop) for coordinated v0.3 cut</li>
+</ul>
+</li>
+</ol>
 <hr />
 <h2 id="infrastructure-release">Infrastructure &amp; Release<a class="headerlink" href="#infrastructure-release" title="Permanent link">&para;</a></h2>
 <p><strong>Status: ✅ Completed — April 2026</strong></p>
