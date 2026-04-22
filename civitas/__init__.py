@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from civitas.components import ComponentSet
 from civitas.errors import CivitasError, ErrorAction
+from civitas.evalloop import CorrectionSignal, EvalAgent, EvalEvent, EvalExporter
 from civitas.genserver import GenServer
 from civitas.messages import Message
 from civitas.process import AgentProcess
@@ -26,6 +27,10 @@ from civitas.worker import Worker
 __all__ = [
     "AgentProcess",
     "GenServer",
+    "EvalAgent",
+    "EvalEvent",
+    "CorrectionSignal",
+    "EvalExporter",
     "Supervisor",
     "Runtime",
     "Worker",

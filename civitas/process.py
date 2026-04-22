@@ -160,6 +160,15 @@ class AgentProcess:
     async def on_stop(self) -> None:
         """Called on graceful shutdown. Always called — even on crash."""
 
+    async def on_correction(self, message: Message) -> None:
+        """Called when this agent receives a civitas.eval.correction signal.
+
+        Override to react to nudge/redirect corrections from an EvalAgent.
+        The signal severity and reason are in message.payload["severity"] and
+        message.payload["reason"]. halt corrections never reach this hook —
+        they stop the message loop directly.
+        """
+
     # ------------------------------------------------------------------
     # State persistence — checkpoint and restore
     # ------------------------------------------------------------------
@@ -253,6 +262,26 @@ class AgentProcess:
     async def cast(self, name: str, payload: dict[str, Any]) -> None:
         """Fire-and-forget cast to a GenServer. Returns immediately."""
         await self.send(name, {**payload, "__cast__": True})
+
+    async def emit_eval(
+        self,
+        event_type: str,
+        payload: dict[str, Any],
+        eval_agent: str = "eval_agent",
+    ) -> None:
+        """Emit an observable event to the named EvalAgent.
+
+        No-op if the message bus is not wired (safe to call in tests).
+        The eval_agent parameter is the registered name of the EvalAgent
+        process in the supervision tree (default: "eval_agent").
+        """
+        if self._bus is None:
+            return
+        await self.send(
+            eval_agent,
+            {"agent_name": self.name, "event_type": event_type, **payload},
+            message_type="civitas.eval.event",
+        )
 
     async def connect_mcp(self, config: Any) -> None:
         """Connect to an MCP server and register its tools into self.tools.
@@ -409,7 +438,7 @@ class AgentProcess:
         try:
             while self._status == ProcessStatus.RUNNING:
                 message = await self._mailbox.get()
-                if message.type == "_agency.shutdown":
+                if message.type in ("_agency.shutdown", "civitas.eval.halt"):
                     break
                 if message.type == "_agency.heartbeat":
                     # Auto-respond to heartbeat pings from supervisor
@@ -478,6 +507,11 @@ class AgentProcess:
         self._current_handle_span = handle_span
 
         try:
+            if message.type == "civitas.eval.correction":
+                await self.on_correction(message)
+                if handle_span is not None:
+                    handle_span.set_attribute("civitas.handle.result", "success")
+                return
             result = await self.handle(message)
             if handle_span is not None:
                 handle_span.set_attribute("civitas.handle.result", "success")

@@ -11,6 +11,7 @@ import yaml
 
 from civitas.components import ComponentSet, build_component_set
 from civitas.errors import ConfigurationError
+from civitas.evalloop import EvalAgent
 from civitas.genserver import GenServer
 from civitas.mcp.types import MCPServerConfig
 from civitas.messages import Message, _new_span_id, _uuid7
@@ -135,6 +136,12 @@ class Runtime:
                     backoff_base=sup_cfg.get("backoff_base", 1.0),
                     backoff_max=sup_cfg.get("backoff_max", 60.0),
                 )
+            elif node.get("type") == "eval_agent" and "name" in node:
+                return EvalAgent(
+                    name=node["name"],
+                    max_corrections_per_window=node.get("max_corrections_per_window", 10),
+                    window_seconds=node.get("window_seconds", 60.0),
+                )
             elif "agent" in node:
                 agent_cfg = node["agent"]
                 agent_cls = _resolve_class(agent_cfg["type"])
@@ -239,7 +246,12 @@ class Runtime:
                 label = f"[sup] {node.name} ({node.strategy.value})"
             else:
                 status = node.status.value if hasattr(node, "status") else "?"
-                prefix_tag = "[srv]" if isinstance(node, GenServer) else "[agent]"
+                if isinstance(node, EvalAgent):
+                    prefix_tag = "[eval]"
+                elif isinstance(node, GenServer):
+                    prefix_tag = "[srv]"
+                else:
+                    prefix_tag = "[agent]"
                 label = f"{prefix_tag} {node.name} ({status})"
             lines.append(f"{prefix}{connector}{label}")
 

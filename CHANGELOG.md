@@ -13,6 +13,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This pr
 
 ### Added
 
+#### M2.5 — EvalLoop
+
+- `EvalAgent` — supervised process that monitors agent behaviour and sends correction signals; sits alongside regular agents in the supervision tree
+- `EvalEvent` — observable event emitted by agents; schema aligned with OTEL GenAI Semantic Conventions for remote exporter compatibility
+- `CorrectionSignal` — three severity levels: `nudge` (soft guidance), `redirect` (change course), `halt` (stop agent cleanly)
+- `EvalExporter` protocol — interface for remote eval engine adapters (Arize, Fiddler, Langfuse, etc.); implementations in M2.6
+- `AgentProcess.emit_eval(event_type, payload, eval_agent)` — emit an observable event; no-op when bus not wired (safe in tests)
+- `AgentProcess.on_correction(message)` — override hook called on `civitas.eval.correction` signals (nudge / redirect)
+- `civitas.eval.halt` message type — breaks target agent's message loop cleanly; `on_stop()` still runs
+- Rate limiting on `EvalAgent`: sliding window per target agent (`max_corrections_per_window`, `window_seconds`); excess corrections dropped and logged
+- `type: eval_agent` YAML shorthand in `Runtime.from_config()` with `max_corrections_per_window` and `window_seconds` config
+- `[eval]` label in `print_tree()` / `civitas topology show` for EvalAgent nodes
+- `EvalAgent`, `EvalEvent`, `CorrectionSignal`, `EvalExporter` exported from `civitas` top-level package
+
 #### M3.5 — GenServer
 
 - `GenServer` — OTP-style generic server process with `handle_call` (synchronous, reply required), `handle_cast` (fire-and-forget), and `handle_info` (timers, internal signals) dispatch
