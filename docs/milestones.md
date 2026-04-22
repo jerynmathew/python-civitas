@@ -182,6 +182,57 @@ OTP-style generic server primitive for separating stateful API/RPC service proce
 | Unit tests (≥ 15 cases) | ⏳ |
 | Documentation + examples | ⏳ |
 
+#### Implementation checklist
+
+Ordered tasks — each step is independently mergeable.
+
+1. **Core module — `civitas/genserver.py`**
+    - [ ] `GenServer(AgentProcess)` class — no LLM or tool plugin injection
+    - [ ] `handle()` dispatcher: route by `reply_to` → `handle_call`; `__cast__` marker → `handle_cast`; else → `handle_info`
+    - [ ] `handle_call` / `handle_cast` / `handle_info` stubs with correct signatures
+    - [ ] `async def init()` hook invoked once at process start
+    - [ ] `send_after(delay_ms, payload)` — schedules `handle_info` to self
+    - [ ] Track `send_after` tasks; cancel all on `stop()`
+    - [ ] Enforce `handle_call` returns a dict (reject `None` to prevent caller hangs)
+2. **`call()` / `cast()` aliases**
+    - [ ] `AgentProcess.call(name, payload, timeout)` — alias over existing `ask()`
+    - [ ] `AgentProcess.cast(name, payload)` — `send()` with `__cast__` marker
+    - [ ] `Runtime.call()` / `Runtime.cast()` — external entry points
+3. **Topology YAML support**
+    - [ ] Loader accepts `type: gen_server` (module/class resolution identical to `type: agent`)
+    - [ ] `civitas topology validate` passes for gen_server nodes
+    - [ ] `civitas topology show` renders gen_server with distinct icon/label
+    - [ ] `civitas topology diff` treats gen_server nodes correctly
+4. **Observability**
+    - [ ] Emit `civitas.genserver.call` span for `handle_call`
+    - [ ] Emit `civitas.genserver.cast` span for `handle_cast`
+    - [ ] Emit `civitas.genserver.info` span for `handle_info`
+    - [ ] Trace propagation preserved across `call()` boundaries
+5. **Tests (≥ 15 cases in `tests/test_genserver.py`)**
+    - [ ] `handle_call` returns reply via `reply_to`
+    - [ ] `handle_cast` runs, no reply emitted
+    - [ ] `handle_info` invoked for non-call non-cast messages
+    - [ ] `call()` timeout raises within configured bound
+    - [ ] `send_after` fires `handle_info` after delay
+    - [ ] `send_after` tasks cancelled cleanly on `stop()`
+    - [ ] `init()` runs before first message handled
+    - [ ] GenServer as child of `ONE_FOR_ONE`, `ONE_FOR_ALL`, `REST_FOR_ONE` supervisors
+    - [ ] Restart triggers `init()` again (state resets unless `StateStore` configured)
+    - [ ] `StateStore`-backed state survives restart
+    - [ ] `self.llm` not present on GenServer instance
+    - [ ] `self.tools` not present on GenServer instance
+    - [ ] `handle_call` returning non-dict raises
+    - [ ] GenServer ↔ AgentProcess sibling communication round-trip
+    - [ ] Topology YAML round-trip: load → run → `topology show` matches
+6. **Example + documentation**
+    - [ ] `examples/rate_limiter/` — end-to-end `RateLimiter(GenServer)` with consumer agent
+    - [ ] User guide page referencing `docs/design/genserver.md`
+    - [ ] API reference entry for `civitas.genserver`
+    - [ ] `mkdocs.yml` nav updated
+7. **Release**
+    - [ ] `CHANGELOG.md` entry under `## [0.3.0]`
+    - [ ] Cross-reference M3.4 (MCP) and M2.5 (EvalLoop) for coordinated v0.3 cut
+
 ---
 
 ## Infrastructure & Release
