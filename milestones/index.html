@@ -3558,7 +3558,7 @@
 </thead>
 <tbody>
 <tr>
-<td><code>@route</code> decorator — maps HTTP method + path to agent handler</td>
+<td><code>@route</code> decorator — documents HTTP method + path on agent handler (YAML is authoritative for wiring)</td>
 <td>⏳</td>
 </tr>
 <tr>
@@ -3594,11 +3594,16 @@
 <td>⏳</td>
 </tr>
 <tr>
+<td><code>civitas topology validate</code> cross-checks YAML routes against <code>@route</code> decorators</td>
+<td>⏳</td>
+</tr>
+<tr>
 <td>≥ 15 unit tests + ≥ 3 integration tests</td>
 <td>⏳</td>
 </tr>
 </tbody>
 </table>
+<p><strong>Routing authority:</strong> YAML is the single source of truth for gateway wiring. <code>@route</code> stores metadata on the method object only — it is never read by the gateway at runtime. Its value is (1) colocated documentation of intent and (2) a machine-checkable annotation that <code>civitas topology validate</code> cross-references against YAML to warn on drift.</p>
 <h4 id="implementation-checklist_4">Implementation checklist<a class="headerlink" href="#implementation-checklist_4" title="Permanent link">&para;</a></h4>
 <ol class="task-list">
 <li><strong>Types — <code>civitas/gateway/types.py</code></strong></li>
@@ -3610,19 +3615,18 @@
 <li>
 <p><strong>Route decorator — <code>civitas/gateway/routing.py</code></strong></p>
 </li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Module-level <code>_route_registry: dict[type, list[RouteEntry]]</code> — populated at class definition time</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>@route(method, path, mode="call")</code> decorator — registers on the class's method; stores metadata on the function object</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.from_class(cls)</code> — scans class for <code>@route</code>-decorated methods, builds <code>RouteTable</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.from_yaml(routes_config)</code> — builds from topology YAML <code>routes:</code> list</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>@route(method, path, mode="call")</code> — stores <code>_civitas_route</code> metadata dict on the decorated function; no side effects, no global registry</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.from_yaml(routes_config)</code> — sole runtime source; builds <code>RouteEntry</code> list from topology YAML <code>routes:</code> block</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.from_class(cls)</code> — validation-only helper; scans class methods for <code>_civitas_route</code> metadata; used exclusively by <code>civitas topology validate</code></li>
 <li class="task-list-item">
-<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.merge(*tables)</code> — combine decorator + YAML routes; YAML takes precedence on conflict</p>
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>civitas topology validate</code>: when a gateway node references an agent, import the class and warn if a YAML route has no matching <code>@route</code> on the handler, or if a <code>@route</code> exists with no corresponding YAML entry</p>
 </li>
 <li>
 <p><strong>Contract decorator — <code>civitas/gateway/contracts.py</code></strong></p>
 </li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>@contract(request=Model, response=Model)</code> — attaches Pydantic models to a route method</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Request validation: <code>Model.model_validate(body)</code> before dispatch; 422 on <code>ValidationError</code> with FastAPI-compatible error shape</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Response validation: <code>Model.model_validate(reply_payload)</code> after dispatch; 500 on mismatch</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>@contract(request=Model, response=Model)</code> — stores <code>_civitas_contract</code> metadata on the function; <code>request</code> and <code>response</code> are optional Pydantic <code>BaseModel</code> subclasses</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Request validation in ASGI dispatch: if route has a contract, <code>Model.model_validate(body)</code> before calling the bus; 422 on <code>ValidationError</code> with FastAPI-compatible error shape <code>{"detail": [...]}</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Response validation: <code>Model.model_validate(reply_payload)</code> after reply received; 500 on mismatch</li>
 <li class="task-list-item">
 <p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> No-op when <code>@contract</code> not applied — pass-through</p>
 </li>
@@ -3639,18 +3643,19 @@
 <li>
 <p><strong>Wire into ASGI — <code>civitas/gateway/asgi.py</code> updates</strong></p>
 </li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Replace direct bus dispatch with: build <code>GatewayRequest</code> → run middleware chain → validate → dispatch</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Replace direct bus dispatch with: build <code>GatewayRequest</code> → run middleware chain → contract validate → dispatch</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>GatewayRequest.gateway</code> set to the <code>HTTPGateway</code> instance (for stateful GenServer middleware)</li>
 <li class="task-list-item">
-<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>GatewayRequest.gateway</code> set to the <code>HTTPGateway</code> instance (for stateful GenServer middleware)</p>
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Contract metadata read from the agent class method via <code>@route</code> + <code>@contract</code> on the matched handler</p>
 </li>
 <li>
 <p><strong>OpenAPI — <code>civitas/gateway/openapi.py</code></strong></p>
 </li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>OpenAPIBuilder</code> — introspects <code>RouteTable</code> + <code>@contract</code> models at startup</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>OpenAPIBuilder</code> — reads <code>RouteTable</code> (from YAML) + loads agent class to read <code>@contract</code> metadata</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Generates OpenAPI 3.1 <code>paths</code> from route entries</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Request body schema from <code>@contract(request=Model)</code> via <code>Model.model_json_schema()</code></li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Response schema from <code>@contract(response=Model)</code></li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Operation summary from first line of handler docstring</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Operation summary from first line of matched handler's docstring</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Operation description from full docstring</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Tags from agent name</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Auto-includes 422 response schema when request model is declared</li>
@@ -3663,9 +3668,11 @@
 <li>
 <p><strong>Tests (≥ 15 unit, ≥ 3 integration)</strong></p>
 </li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>@route</code> registers correctly on a class method</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.from_class()</code> extracts all decorated routes</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.from_yaml()</code> builds routes from config dict</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>@route</code> stores metadata on the function, no global registry side-effect</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.from_yaml()</code> builds routes correctly from config dict</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.from_class()</code> reads <code>@route</code> metadata from class methods</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>topology validate</code> warns when YAML route has no matching <code>@route</code> on agent</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>topology validate</code> warns when <code>@route</code> exists with no YAML entry</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Path parameters extracted correctly from URL</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>@contract</code> request validation: valid body → dispatched; invalid → 422 with FastAPI error shape</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>@contract</code> response validation: valid reply → 200; invalid → 500</li>
