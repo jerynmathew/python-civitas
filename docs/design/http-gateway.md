@@ -1,6 +1,6 @@
 # Design: HTTPGateway
 
-**Status:** Planned — v0.4
+**Status:** In progress — v0.4
 **Author:** Jeryn Mathew Varghese
 **Last updated:** 2026-04
 
@@ -313,13 +313,13 @@ supervision:
 
 ## Implementation plan
 
-### Phase 1 — HTTP/1.1 + HTTP/2 (ship with GenServer, v0.4)
+### Phase 1 — HTTP/1.1 + HTTP/2 (v0.4)
 
 1. `civitas/gateway/__init__.py` — `HTTPGateway(AgentProcess)`
 2. `civitas/gateway/asgi.py` — ASGI app, request translation, response mapping
 3. `civitas/gateway/router.py` — route table (path → agent name, mode)
 4. uvicorn runner inside `on_start()` / `on_stop()` with uvloop install (Linux/macOS only)
-5. TLS config from `settings` or topology YAML
+5. TLS config from topology YAML / env vars
 6. `civitas[http]` extra: `uvicorn[standard]>=0.30` (pulls in uvloop + httptools)
 
 ### Phase 2 — HTTP/3 / QUIC (v0.4)
