@@ -11,6 +11,8 @@ import yaml
 
 from civitas.components import ComponentSet, build_component_set
 from civitas.errors import ConfigurationError
+from civitas.genserver import GenServer
+from civitas.mcp.types import MCPServerConfig
 from civitas.messages import Message, _new_span_id, _uuid7
 from civitas.plugins.loader import load_plugins_from_config
 from civitas.process import AgentProcess
@@ -204,8 +206,6 @@ class Runtime:
         # MCP server config — parsed here, connected during start()
         mcp_section = config.get("mcp", {})
         if mcp_section.get("servers"):
-            from civitas.mcp.types import MCPServerConfig
-
             for srv in mcp_section["servers"]:
                 runtime._mcp_configs.append(
                     MCPServerConfig(
@@ -234,8 +234,6 @@ class Runtime:
         lines: list[str] = []
 
         def _walk(node: Supervisor | AgentProcess, prefix: str, is_last: bool) -> None:
-            from civitas.genserver import GenServer
-
             connector = "└── " if is_last else "├── "
             if isinstance(node, Supervisor):
                 label = f"[sup] {node.name} ({node.strategy.value})"

@@ -9,6 +9,8 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from civitas.errors import ErrorAction
+from civitas.mcp.client import MCPClient
+from civitas.mcp.tool import MCPTool
 from civitas.messages import Message, _new_span_id, _uuid7
 from civitas.observability.tracer import Span
 
@@ -258,9 +260,6 @@ class AgentProcess:
         Idempotent: disconnects any existing client for config.name before reconnecting.
         Tools are addressable as mcp://server_name/tool_name after this call.
         """
-        from civitas.mcp.client import MCPClient
-        from civitas.mcp.tool import MCPTool
-
         existing = self._mcp_clients.get(config.name)
         if existing is not None:
             if self.tools is not None:
