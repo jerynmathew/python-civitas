@@ -150,6 +150,79 @@ Strategies and backoff values are case-insensitive in YAML (`one_for_one` and `O
 | `type` | string | Yes | Dotted Python class path: `myapp.agents.MyAgent` |
 | `process` | string | No | Worker process name — assigns agent to a `Worker` |
 
+### `http_gateway`
+
+Exposes the Civitas bus as a REST API. Requires `pip install civitas[http]`.
+
+```yaml
+- name: api
+  type: http_gateway
+  config:
+    host: "0.0.0.0"
+    port: 8080
+    request_timeout: 30.0
+    routes:
+      - path: /v1/chat
+        agent: assistant
+        method: POST
+        mode: call           # call (sync reply) or cast (fire-and-forget)
+      - path: /v1/users/{id}
+        agent: user_agent
+        method: GET
+        mode: call
+    middleware:
+      - myapp.middleware.require_api_key
+    docs:
+      enabled: true          # default: true
+      path: /docs            # default: /docs
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `host` | string | `0.0.0.0` | Bind address |
+| `port` | int | `8080` | HTTP/1.1 + HTTP/2 port |
+| `port_quic` | int | — | QUIC/HTTP/3 UDP port (required when `enable_http3: true`) |
+| `tls_cert` | string | — | Path to TLS certificate file |
+| `tls_key` | string | — | Path to TLS key file |
+| `request_timeout` | float | `30.0` | Seconds before upstream timeout (504) |
+| `enable_http3` | bool | `false` | Start QUIC server alongside uvicorn (requires `civitas[http3]`) |
+| `routes` | list | `[]` | Custom route list (see below); falls back to default routes if empty |
+| `middleware` | list | `[]` | Dotted import paths to global middleware callables |
+| `docs.enabled` | bool | `true` | Serve Swagger UI at `docs.path` and `/openapi.json` |
+| `docs.path` | string | `/docs` | Path for Swagger UI |
+
+**Route fields:**
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `path` | string | required | URL path, `{param}` segments extracted into payload |
+| `agent` | string | required | Target agent name |
+| `method` | string | required | HTTP method (`GET`, `POST`, etc.) |
+| `mode` | string | `call` | `call` (sync, 200 reply) or `cast` (async, 202 accepted) |
+
+**Default routes** (when no `routes:` block is defined):
+
+| HTTP | Agent | Mode |
+|---|---|---|
+| `POST /agents/{name}` | `{name}` | call |
+| `POST /agents/{name}/cast` | `{name}` | cast |
+| `GET /agents/{name}/state` | `{name}` | call `{"__op__": "state"}` |
+
+See [HTTP Gateway](gateway.md) for the full guide.
+
+### `eval_agent`
+
+Corrective observability loop that monitors agent behavior.
+
+```yaml
+- name: monitor
+  type: eval_agent
+  max_corrections_per_window: 10    # default: 10
+  window_seconds: 60.0              # default: 60.0
+```
+
+See [EvalLoop](evalloop.md) for the full guide.
+
 ### `supervisor` (nested)
 
 Same fields as the root `supervision` block, plus `children`.
