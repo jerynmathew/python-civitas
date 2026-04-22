@@ -11,6 +11,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This pr
 
 ## [Unreleased]
 
+### Added
+
+#### M4.3 — Codebase Security & Enterprise Posture
+
+- `.github/workflows/security.yml` — three-job security CI workflow running on every PR and weekly:
+  - SAST: Bandit (`-lll -iii`, HIGH+ severity) + Semgrep (`p/python`, `p/secrets`, `p/owasp-top-ten`); SARIF uploaded to GitHub Security tab
+  - Dependency audit: `pip-audit --strict` against PyPI Advisory Database; fails on any fixable vulnerability
+  - Secret scan: `gitleaks` on full git history (`fetch-depth: 0`)
+- `.github/dependabot.yml` — weekly Dependabot scans for pip and GitHub Actions dependencies; dev-tools grouped to reduce PR noise
+- `publish.yml` — CycloneDX SBOM generated (JSON + XML) on every release tag; attached as GitHub release assets
+- `.pre-commit-config.yaml` — `gitleaks` pre-commit hook added; blocks secret commits before they reach the remote
+- `SECURITY.md` — responsible disclosure policy: email contact, response SLAs (2 days ack, 14 days for CRITICAL/HIGH), 90-day coordinated disclosure window, CVE process, supported versions
+- `docs/security/threat-model.md` — STRIDE analysis for all runtime components: `AgentProcess`, `Supervisor`, `MessageBus`, `ZMQTransport`, `NATSTransport`, `HTTPGateway`, `StateStore`, plugin system, `EvalAgent`; risk summary with 21 itemised threats
+- `docs/security/architecture.md` — four-zone trust boundary model (runtime process → Worker processes → remote machines → external clients), transport security posture per level, credential handling patterns, planned M4.2 hardening roadmap
+- `docs/security/enterprise-checklist.md` — tiered adoption checklist (Level 1–4 by deployment complexity) + compliance guidance for SOC 2, GDPR, and HIPAA
+
 ---
 
 ## [0.3.0] — 2026-04-22

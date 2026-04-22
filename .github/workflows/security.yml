@@ -1,0 +1,129 @@
+name: Security
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+  schedule:
+    # Full scan weekly on Monday at 08:00 UTC (catches new CVEs against unchanged code)
+    - cron: "0 8 * * 1"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # SAST — Bandit (Python-native) + Semgrep (pattern-based)
+  # Fails the build on any HIGH or CRITICAL finding.
+  # ---------------------------------------------------------------------------
+  sast:
+    name: SAST (Bandit + Semgrep)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # upload SARIF to GitHub Security tab
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install Bandit
+        run: uv tool install bandit
+
+      - name: Bandit — fail on HIGH+ severity
+        # -lll = minimum severity HIGH
+        # -iii = minimum confidence HIGH
+        # Excludes test files (assert usage, subprocess calls in tests are expected)
+        run: |
+          uv tool run bandit \
+            -r civitas/ \
+            -lll -iii \
+            --format json \
+            --output bandit-report.json \
+            || true
+          uv tool run bandit \
+            -r civitas/ \
+            -lll -iii
+
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+      - name: Semgrep — Python security + secrets ruleset
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/python
+            p/secrets
+            p/owasp-top-ten
+          generateSarif: "1"
+        env:
+          # SEMGREP_APP_TOKEN is optional — set in repo secrets for dashboard
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+      - name: Upload Semgrep SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+        continue-on-error: true   # SARIF upload is best-effort; don't fail CI
+
+  # ---------------------------------------------------------------------------
+  # Dependency audit — pip-audit against PyPI Advisory Database
+  # Fails on any vulnerability with a fix available.
+  # ---------------------------------------------------------------------------
+  dependency-audit:
+    name: Dependency audit (pip-audit)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --extra dev --extra otel --extra anthropic --extra mcp
+
+      - name: pip-audit
+        # --strict: fail on any vulnerability with a fix available
+        # --desc: include vulnerability description in output
+        run: |
+          uv tool install pip-audit
+          uv tool run pip-audit \
+            --strict \
+            --desc \
+            --format columns \
+            -r <(uv export --format requirements-txt --no-dev 2>/dev/null)
+
+  # ---------------------------------------------------------------------------
+  # Secret scanning — gitleaks on full commit history
+  # Catches secrets committed at any point, not just the current tree.
+  # ---------------------------------------------------------------------------
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0   # full history required for historical secret scan
+
+      - name: gitleaks — scan full history
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITLEAKS_LICENSE is optional — set in repo secrets for org license
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
