@@ -3409,7 +3409,7 @@
 <hr />
 <h3 id="http-gateway">HTTP Gateway<a class="headerlink" href="#http-gateway" title="Permanent link">&para;</a></h3>
 <p><strong>Status: ⏳ Planned — v0.4 | Priority: 🔴 High</strong></p>
-<p>Supervised edge process bridging external HTTP/gRPC traffic into the Civitas message bus. See <a href="../design/http-gateway/">design spec</a>.</p>
+<p>Supervised edge process bridging external HTTP traffic into the Civitas message bus. HTTP/1.1 + HTTP/2 (uvicorn) and HTTP/3 / QUIC (aioquic) in v0.4. gRPC deferred to v0.5. See <a href="../design/http-gateway/">design spec</a>.</p>
 <table>
 <thead>
 <tr>
@@ -3431,15 +3431,7 @@
 <td>⏳</td>
 </tr>
 <tr>
-<td>gRPC via grpclib (<code>civitas[grpc]</code>) + grpcio C core (<code>civitas[grpc-fast]</code>)</td>
-<td>⏳</td>
-</tr>
-<tr>
-<td>Custom <code>.proto</code> loading from <code>proto_dir</code></td>
-<td>⏳</td>
-</tr>
-<tr>
-<td>TLS config from <code>settings</code> / topology YAML / env vars</td>
+<td>TLS config from topology YAML / env vars</td>
 <td>⏳</td>
 </tr>
 <tr>
@@ -3455,15 +3447,108 @@
 <td>⏳</td>
 </tr>
 <tr>
-<td>Documentation + examples for all four protocols</td>
+<td><code>examples/http_gateway.py</code></td>
 <td>⏳</td>
+</tr>
+<tr>
+<td>gRPC via grpclib / grpcio</td>
+<td>⏸️ v0.5</td>
+</tr>
+<tr>
+<td>Custom <code>.proto</code> loading from <code>proto_dir</code></td>
+<td>⏸️ v0.5</td>
 </tr>
 </tbody>
 </table>
+<h4 id="implementation-checklist_3">Implementation checklist<a class="headerlink" href="#implementation-checklist_3" title="Permanent link">&para;</a></h4>
+<ol class="task-list">
+<li><strong>Package setup</strong></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>civitas/gateway/__init__.py</code> — package stub, re-export <code>HTTPGateway</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>civitas[http]</code> extra in <code>pyproject.toml</code> — <code>uvicorn[standard]&gt;=0.30</code></li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>civitas[http3]</code> extra — <code>aioquic&gt;=1.0</code></p>
+</li>
+<li>
+<p><strong>Core — <code>civitas/gateway/core.py</code></strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>GatewayConfig</code> dataclass — <code>host</code>, <code>port</code>, <code>port_quic</code>, <code>tls_cert</code>, <code>tls_key</code>, <code>request_timeout</code>, <code>enable_http3</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>HTTPGateway(AgentProcess)</code> — holds config, route table, uvicorn server reference</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>on_start()</code> — install uvloop (Linux/macOS), start uvicorn server as background task</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>on_stop()</code> — signal uvicorn to drain in-flight requests, cancel server task</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>handle()</code> — handles internal messages (e.g., topology-triggered reconfiguration); no-op for now</p>
+</li>
+<li>
+<p><strong>ASGI app — <code>civitas/gateway/asgi.py</code></strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>GatewayASGI.__call__(scope, receive, send)</code> — ASGI callable</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> HTTP scope: parse method, path, headers, body</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Route lookup: path + method → agent name, mode (<code>call</code> vs <code>cast</code>)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Default routes: <code>POST /agents/{name}</code> → <code>call</code>, <code>POST /agents/{name}/cast</code> → <code>cast</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> HTTP → <code>Message</code> translation: body → <code>payload</code>, <code>X-Civitas-Type</code> → <code>type</code>, <code>traceparent</code> → trace context</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>call()</code> mode: await reply, serialise <code>payload</code> as JSON response body</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>cast()</code> mode: fire-and-forget, return HTTP 202</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Timeout: <code>asyncio.wait_for</code> with <code>request_timeout</code>; return HTTP 504 on expiry</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Error mapping: <code>payload.error</code> → 400, no route → 404, unhandled exception → 500</p>
+</li>
+<li>
+<p><strong>Router — <code>civitas/gateway/router.py</code></strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteEntry</code> dataclass — <code>method</code>, <code>path_pattern</code>, <code>agent</code>, <code>mode</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable</code> — ordered list of <code>RouteEntry</code>; <code>match(method, path)</code> returns <code>(RouteEntry, path_params)</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Path parameter extraction: <code>{name}</code> segments captured into dict</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Default route fallback when no custom routes are configured</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> YAML route loading: <code>config.routes</code> list → <code>RouteEntry</code> instances</p>
+</li>
+<li>
+<p><strong>HTTP/3 — <code>civitas/gateway/h3.py</code></strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>H3Server</code> — wraps aioquic QUIC server; runs on <code>port_quic</code> (UDP)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> HTTP/3 request → same <code>GatewayASGI</code> handler (reuse ASGI layer)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>Alt-Svc: h3=":port_quic"</code> header injected into all HTTP/1.1 and HTTP/2 responses</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>H3Server</code> started / stopped alongside uvicorn in <code>on_start()</code> / <code>on_stop()</code></p>
+</li>
+<li>
+<p><strong>Topology YAML support</strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>type: http_gateway</code> in <code>Runtime.from_config()</code> <code>_build_node()</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>GatewayConfig</code> populated from YAML <code>config:</code> block; <code>!ENV</code> resolver for TLS cert/key paths</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>civitas topology validate</code> accepts <code>type: http_gateway</code> nodes without errors</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>civitas topology show</code> displays gateway node with <code>[http]</code> / <code>[http3]</code> label</p>
+</li>
+<li>
+<p><strong>Tests (≥ 20 unit, ≥ 5 integration)</strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.match()</code> — exact path, path parameters, method mismatch, no route</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Default route fallback: <code>POST /agents/foo</code> → <code>call("foo", body)</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>call</code> mode: reply payload returned as JSON 200</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>cast</code> mode: 202 returned immediately</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Timeout: <code>request_timeout=0.001</code> → 504</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Error mapping: <code>payload.error</code> → 400; unhandled exception → 500</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> No route: 404</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>traceparent</code> header propagated into <code>message.trace_id</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>GatewayConfig</code> validation: missing TLS cert when <code>enable_http3=True</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>on_start()</code> installs uvloop on Linux</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>on_stop()</code> cancels server task cleanly</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Integration: real HTTP client (<code>httpx.AsyncClient</code>) → gateway → <code>AgentProcess</code> → reply</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Integration: concurrent requests all return correct replies</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Integration: gateway node in topology YAML starts correctly via <code>Runtime.from_config()</code></p>
+</li>
+<li>
+<p><strong>Example + release</strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>examples/http_gateway.py</code> — minimal REST API with two agent endpoints</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>CHANGELOG.md</code> entry under <code>## [Unreleased]</code></li>
+</ol>
 <hr />
 <h3 id="gateway-api-surface">Gateway API Surface<a class="headerlink" href="#gateway-api-surface" title="Permanent link">&para;</a></h3>
 <p><strong>Status: ⏳ Planned — v0.4 | Priority: 🔴 High</strong></p>
-<p>Minimal integration surface on top of HTTPGateway: declarative routes, Pydantic request/response validation, middleware chain, and auto-generated OpenAPI docs. See <a href="../design/gateway-api-surface/">design spec</a>.</p>
+<p>Declarative routes, Pydantic request/response validation, middleware chain, and auto-generated OpenAPI 3.1 docs on top of <code>HTTPGateway</code>. See <a href="../design/gateway-api-surface/">design spec</a>.</p>
 <table>
 <thead>
 <tr>
@@ -3473,7 +3558,7 @@
 </thead>
 <tbody>
 <tr>
-<td><code>@route</code> decorator — maps GenServer method to HTTP method + path</td>
+<td><code>@route</code> decorator — maps HTTP method + path to agent handler</td>
 <td>⏳</td>
 </tr>
 <tr>
@@ -3485,7 +3570,7 @@
 <td>⏳</td>
 </tr>
 <tr>
-<td><code>GatewayRequest</code> / <code>GatewayResponse</code> middleware types</td>
+<td><code>GatewayRequest</code> / <code>GatewayResponse</code> / <code>NextMiddleware</code> types</td>
 <td>⏳</td>
 </tr>
 <tr>
@@ -3493,7 +3578,7 @@
 <td>⏳</td>
 </tr>
 <tr>
-<td>Stateful GenServer middleware support</td>
+<td>Stateful GenServer middleware via <code>request.gateway.call()</code></td>
 <td>⏳</td>
 </tr>
 <tr>
@@ -3514,6 +3599,93 @@
 </tr>
 </tbody>
 </table>
+<h4 id="implementation-checklist_4">Implementation checklist<a class="headerlink" href="#implementation-checklist_4" title="Permanent link">&para;</a></h4>
+<ol class="task-list">
+<li><strong>Types — <code>civitas/gateway/types.py</code></strong></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>GatewayRequest</code> dataclass — <code>method</code>, <code>path</code>, <code>path_params</code>, <code>query_params</code>, <code>headers</code>, <code>body</code>, <code>client_ip</code>, <code>gateway</code> (AgentProcess ref)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>GatewayResponse</code> dataclass — <code>status</code>, <code>body</code>, <code>headers</code></li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>NextMiddleware</code> type alias — <code>Callable[[GatewayRequest], Awaitable[GatewayResponse]]</code></p>
+</li>
+<li>
+<p><strong>Route decorator — <code>civitas/gateway/routing.py</code></strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Module-level <code>_route_registry: dict[type, list[RouteEntry]]</code> — populated at class definition time</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>@route(method, path, mode="call")</code> decorator — registers on the class's method; stores metadata on the function object</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.from_class(cls)</code> — scans class for <code>@route</code>-decorated methods, builds <code>RouteTable</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.from_yaml(routes_config)</code> — builds from topology YAML <code>routes:</code> list</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.merge(*tables)</code> — combine decorator + YAML routes; YAML takes precedence on conflict</p>
+</li>
+<li>
+<p><strong>Contract decorator — <code>civitas/gateway/contracts.py</code></strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>@contract(request=Model, response=Model)</code> — attaches Pydantic models to a route method</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Request validation: <code>Model.model_validate(body)</code> before dispatch; 422 on <code>ValidationError</code> with FastAPI-compatible error shape</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Response validation: <code>Model.model_validate(reply_payload)</code> after dispatch; 500 on mismatch</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> No-op when <code>@contract</code> not applied — pass-through</p>
+</li>
+<li>
+<p><strong>Middleware — <code>civitas/gateway/middleware.py</code></strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>MiddlewareChain</code> — ordered list of async callables; builds <code>call_next</code> chain via closure</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Global middleware loaded from <code>config.middleware</code> (dotted import path → callable)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Route-scoped middleware loaded from <code>route.middleware</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Execution order: global → route-scoped → contract validation → bus dispatch</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Short-circuit: middleware returning <code>GatewayResponse</code> without calling <code>call_next</code> skips remainder</p>
+</li>
+<li>
+<p><strong>Wire into ASGI — <code>civitas/gateway/asgi.py</code> updates</strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Replace direct bus dispatch with: build <code>GatewayRequest</code> → run middleware chain → validate → dispatch</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>GatewayRequest.gateway</code> set to the <code>HTTPGateway</code> instance (for stateful GenServer middleware)</p>
+</li>
+<li>
+<p><strong>OpenAPI — <code>civitas/gateway/openapi.py</code></strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>OpenAPIBuilder</code> — introspects <code>RouteTable</code> + <code>@contract</code> models at startup</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Generates OpenAPI 3.1 <code>paths</code> from route entries</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Request body schema from <code>@contract(request=Model)</code> via <code>Model.model_json_schema()</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Response schema from <code>@contract(response=Model)</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Operation summary from first line of handler docstring</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Operation description from full docstring</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Tags from agent name</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Auto-includes 422 response schema when request model is declared</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>GET /openapi.json</code> — returns generated spec</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>GET /docs</code> — Swagger UI (CDN-hosted, no static assets)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>GET /redoc</code> — ReDoc UI (CDN-hosted)</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>docs.enabled: false</code> config disables all three endpoints</p>
+</li>
+<li>
+<p><strong>Tests (≥ 15 unit, ≥ 3 integration)</strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>@route</code> registers correctly on a class method</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.from_class()</code> extracts all decorated routes</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>RouteTable.from_yaml()</code> builds routes from config dict</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Path parameters extracted correctly from URL</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>@contract</code> request validation: valid body → dispatched; invalid → 422 with FastAPI error shape</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>@contract</code> response validation: valid reply → 200; invalid → 500</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Middleware chain: all middleware called in order</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Middleware short-circuit: returning response without <code>call_next</code> skips rest of chain</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Global middleware runs before route-scoped middleware</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>request.gateway.call()</code> reaches a sibling GenServer</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>/openapi.json</code> returns valid OpenAPI 3.1 spec</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>/docs</code> returns 200 with Swagger UI HTML</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>docs.enabled: false</code> → <code>/docs</code> returns 404</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Tags populated from agent name</li>
+<li class="task-list-item">
+<p><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> Integration: <code>@route</code> + <code>@contract</code> end-to-end with real HTTP client</p>
+</li>
+<li>
+<p><strong>Example + release</strong></p>
+</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>examples/gateway_api.py</code> — full example: <code>@route</code>, <code>@contract</code>, middleware, <code>/docs</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled/><span class="task-list-indicator"></span></label> <code>CHANGELOG.md</code> entry</li>
+</ol>
 <hr />
 <h3 id="postgres-statestore-migration">Postgres StateStore + Migration<a class="headerlink" href="#postgres-statestore-migration" title="Permanent link">&para;</a></h3>
 <p><strong>Status: 💡 Idea — to be specced | Priority: 🔴 High</strong></p>

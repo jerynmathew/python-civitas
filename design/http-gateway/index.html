@@ -1754,10 +1754,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#phase-1-http11-http2-ship-with-genserver-v04" class="md-nav__link">
+  <a href="#phase-1-http11-http2-v04" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 1 — HTTP/1.1 + HTTP/2 (ship with GenServer, v0.4)
+        Phase 1 — HTTP/1.1 + HTTP/2 (v0.4)
       
     </span>
   </a>
@@ -2254,10 +2254,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#phase-1-http11-http2-ship-with-genserver-v04" class="md-nav__link">
+  <a href="#phase-1-http11-http2-v04" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 1 — HTTP/1.1 + HTTP/2 (ship with GenServer, v0.4)
+        Phase 1 — HTTP/1.1 + HTTP/2 (v0.4)
       
     </span>
   </a>
@@ -2367,7 +2367,7 @@
 
 
 <h1 id="design-httpgateway">Design: HTTPGateway<a class="headerlink" href="#design-httpgateway" title="Permanent link">&para;</a></h1>
-<p><strong>Status:</strong> Planned — v0.4
+<p><strong>Status:</strong> In progress — v0.4
 <strong>Author:</strong> Jeryn Mathew Varghese
 <strong>Last updated:</strong> 2026-04</p>
 <hr />
@@ -2717,13 +2717,13 @@
 </span></code></pre></div>
 <hr />
 <h2 id="implementation-plan">Implementation plan<a class="headerlink" href="#implementation-plan" title="Permanent link">&para;</a></h2>
-<h3 id="phase-1-http11-http2-ship-with-genserver-v04">Phase 1 — HTTP/1.1 + HTTP/2 (ship with GenServer, v0.4)<a class="headerlink" href="#phase-1-http11-http2-ship-with-genserver-v04" title="Permanent link">&para;</a></h3>
+<h3 id="phase-1-http11-http2-v04">Phase 1 — HTTP/1.1 + HTTP/2 (v0.4)<a class="headerlink" href="#phase-1-http11-http2-v04" title="Permanent link">&para;</a></h3>
 <ol>
 <li><code>civitas/gateway/__init__.py</code> — <code>HTTPGateway(AgentProcess)</code></li>
 <li><code>civitas/gateway/asgi.py</code> — ASGI app, request translation, response mapping</li>
 <li><code>civitas/gateway/router.py</code> — route table (path → agent name, mode)</li>
 <li>uvicorn runner inside <code>on_start()</code> / <code>on_stop()</code> with uvloop install (Linux/macOS only)</li>
-<li>TLS config from <code>settings</code> or topology YAML</li>
+<li>TLS config from topology YAML / env vars</li>
 <li><code>civitas[http]</code> extra: <code>uvicorn[standard]&gt;=0.30</code> (pulls in uvloop + httptools)</li>
 </ol>
 <h3 id="phase-2-http3-quic-v04">Phase 2 — HTTP/3 / QUIC (v0.4)<a class="headerlink" href="#phase-2-http3-quic-v04" title="Permanent link">&para;</a></h3>
