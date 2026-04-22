@@ -2522,8 +2522,8 @@
 <tr>
 <td>4</td>
 <td><a href="#m43-codebase-security--enterprise-posture">Codebase Security &amp; Enterprise Posture</a></td>
-<td>⏳ Planned</td>
-<td>v0.4</td>
+<td>✅ Completed</td>
+<td>Apr 2026</td>
 </tr>
 <tr>
 <td>4</td>
@@ -3315,7 +3315,7 @@
 </table>
 <hr />
 <h3 id="m43-codebase-security-enterprise-posture">M4.3 — Codebase Security &amp; Enterprise Posture<a class="headerlink" href="#m43-codebase-security-enterprise-posture" title="Permanent link">&para;</a></h3>
-<p><strong>Status: ⏳ Planned — v0.4 | Priority: 🔴 High</strong></p>
+<p><strong>Status: ✅ Completed — April 2026 | Priority: 🔴 High</strong></p>
 <p>Complements M4.2. Where M4.2 hardens the <strong>runtime</strong> (mTLS, message signing, credential isolation, sandboxing), M4.3 hardens the <strong>codebase and supply chain</strong> so enterprises have a clear security story before adoption: known vulnerabilities tracked, dependencies scanned, secrets never committed, a published threat model, and a documented disclosure process.</p>
 <p>The deliverables are split across tooling (CI-enforced scanners), documentation (threat model, security architecture, adoption checklist), and process (disclosure policy, release notes, third-party audit).</p>
 <table>
@@ -3328,43 +3328,43 @@
 <tbody>
 <tr>
 <td>SAST in CI — Bandit + Semgrep on every PR, fail build on <code>HIGH</code>+</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td>Dependency scanning — <code>pip-audit</code> in CI + Dependabot weekly</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td>SBOM generation — CycloneDX SBOM published with every release</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td>Secret scanning — <code>gitleaks</code> pre-commit hook + CI job on full history</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>docs/security/threat-model.md</code> — STRIDE analysis per runtime component</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>docs/security/architecture.md</code> — security model (trust boundaries, supervision, transport isolation)</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>SECURITY.md</code> — responsible disclosure policy, contact, supported versions, response SLAs</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>docs/security/enterprise-checklist.md</code> — adoption checklist (deployment hardening, config review, audit log integration)</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td>External security audit before v1.0 — fix all <code>HIGH</code>+ findings, publish summary</td>
-<td>⏳</td>
+<td>⏳ Deferred to pre-v1.0</td>
 </tr>
 <tr>
 <td>Continuous posture — CVE watch on runtime deps, security release notes, CVSS-scored advisories</td>
-<td>⏳</td>
+<td>⏳ Ongoing process</td>
 </tr>
 </tbody>
 </table>

@@ -120,4 +120,16 @@
          <loc>https://jerynmathew.github.io/python-civitas/rfc/0001-tool-retrieval/</loc>
          <lastmod>2026-04-22</lastmod>
     </url>
+    <url>
+         <loc>https://jerynmathew.github.io/python-civitas/security/architecture/</loc>
+         <lastmod>2026-04-22</lastmod>
+    </url>
+    <url>
+         <loc>https://jerynmathew.github.io/python-civitas/security/enterprise-checklist/</loc>
+         <lastmod>2026-04-22</lastmod>
+    </url>
+    <url>
+         <loc>https://jerynmathew.github.io/python-civitas/security/threat-model/</loc>
+         <lastmod>2026-04-22</lastmod>
+    </url>
 </urlset>
