@@ -37,7 +37,7 @@ jobs:
             --outfile sbom.xml
 
       - name: Upload SBOM artifacts
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: sbom
           path: |
@@ -53,7 +53,7 @@ jobs:
             sbom.xml
 
       - name: Upload dist artifacts
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: dist
           path: dist/
