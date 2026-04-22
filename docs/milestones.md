@@ -23,10 +23,11 @@ Development progress across all phases of Civitas.
 | 1 | [Core Runtime](#phase-1-core-runtime) | ✅ Completed | Mar 2026 |
 | 2 | [Ecosystem — Transports](#m21-zmq-multi-process-transport) | ✅ Completed | Mar 2026 |
 | 2 | [Ecosystem — Observability](#m23-otel-observability) | ✅ Completed | Apr 2026 |
-| 2 | [Ecosystem — EvalLoop](#m25-evalloop) | ⏳ Planned | v0.3 |
+| 2 | [Ecosystem — EvalLoop (local)](#m25-evalloop) | ⏳ Planned | v0.3 |
+| 2 | [Ecosystem — Remote Eval Exporters](#m26-remote-eval-exporters) | ⏳ Planned | v0.4 |
 | 3 | [Developer Experience — CLI & Dashboard](#phase-3-developer-experience) | ✅ Completed | Mar 2026 |
-| 3 | [Developer Experience — MCP Integration](#m34-mcp-integration) | ⏳ Planned | v0.3 |
-| 3 | [Developer Experience — GenServer](#m35-genserver) | ⏳ Planned | v0.3 |
+| 3 | [Developer Experience — MCP Integration](#m34-mcp-integration) | ✅ Completed | Apr 2026 |
+| 3 | [Developer Experience — GenServer](#m35-genserver) | ✅ Completed | Apr 2026 |
 | — | [Infrastructure & Release](#infrastructure--release) | ✅ Completed | Apr 2026 |
 | 4 | [Dynamic Agent Spawning](#m41b-dynamic-agent-spawning) | ⏳ Planned | v0.4 |
 | 4 | [Security Hardening](#m42-security-hardening) | ⏳ Planned | v0.4 |
@@ -104,19 +105,82 @@ Development progress across all phases of Civitas.
 
 ---
 
-### M2.5 — EvalLoop
+### M2.5 — EvalLoop (Local)
 
 **Status: ⏳ Planned — v0.3 | Priority: 🔴 High**
 
-Corrective observability loop: an `EvalAgent` subclass monitors agent behaviour and injects correction signals back into running agents.
+Corrective observability loop: a supervised `EvalAgent` process monitors agent behaviour and injects correction signals back into running agents. Local in-process evaluation only — remote eval engine integrations are M2.6. See [design spec](design/evalloop.md).
 
 | Deliverable | Status |
 |-------------|--------|
-| `civitas/evalloop.py` — `EvalAgent` base class | ⏳ |
-| `CorrectionSignal` message type with severity levels (nudge / redirect / halt) | ⏳ |
-| Rate limiting (`max_corrections_per_window`) | ⏳ |
-| YAML-configurable eval strategies | ⏳ |
-| Integration tests | ⏳ |
+| `civitas/evalloop.py` — `EvalEvent`, `CorrectionSignal`, `EvalAgent` base class | ⏳ |
+| `AgentProcess.emit_eval(event_type, payload, eval_agent)` — emit observable events | ⏳ |
+| `AgentProcess.on_correction(message)` — override hook for nudge/redirect signals | ⏳ |
+| `civitas.eval.halt` message type — cleanly stops target agent (on_stop still runs) | ⏳ |
+| Rate limiting — sliding window per target agent (`max_corrections_per_window`, `window_seconds`) | ⏳ |
+| `EvalExporter` protocol — interface defined, not implemented (M2.6) | ⏳ |
+| Topology YAML — `type: eval_agent` shorthand in `Runtime.from_config()` | ⏳ |
+| ≥ 12 unit tests + ≥ 1 integration test | ⏳ |
+| `EvalAgent` exported from `civitas` top-level package | ⏳ |
+
+#### Implementation checklist
+
+1. **Core module — `civitas/evalloop.py`**
+   - [ ] `EvalEvent` dataclass: `agent_name`, `event_type`, `payload`, `trace_id`, `message_id`, `timestamp`
+   - [ ] `CorrectionSignal` dataclass: `severity` (nudge / redirect / halt), `reason`, `payload`
+   - [ ] `EvalExporter` protocol: `async export(event: EvalEvent) -> None`
+   - [ ] `EvalAgent(AgentProcess)` — `handle()` routes `civitas.eval.event` messages
+   - [ ] `on_eval_event(event: EvalEvent) -> CorrectionSignal | None` — override point
+   - [ ] Rate limiter — sliding window, keyed by target agent name, drops + logs when exceeded
+   - [ ] For nudge/redirect: send `civitas.eval.correction` to target agent
+   - [ ] For halt: send `civitas.eval.halt` to target agent
+
+2. **AgentProcess integration**
+   - [ ] `emit_eval(event_type, payload, eval_agent="eval_agent")` — sends `civitas.eval.event`; no-op if bus not wired
+   - [ ] `on_correction(message: Message)` — override hook called on `civitas.eval.correction`
+   - [ ] `civitas.eval.halt` handled in `_message_loop()` — breaks loop, on_stop() still runs
+
+3. **Runtime + package**
+   - [ ] `type: eval_agent` shorthand in `Runtime.from_config()` `_build_node()`
+   - [ ] `EvalAgent` exported from `civitas.__init__`
+
+4. **Tests (≥ 12 unit + ≥ 1 integration)**
+   - [ ] `EvalEvent` and `CorrectionSignal` field validation
+   - [ ] `on_eval_event()` returning None sends no correction
+   - [ ] nudge signal delivered to `on_correction()` hook
+   - [ ] redirect signal delivered to `on_correction()` hook
+   - [ ] halt signal stops target agent (status → STOPPED, on_stop runs)
+   - [ ] Rate limiter allows corrections up to the window limit
+   - [ ] Rate limiter drops corrections beyond the window limit
+   - [ ] Rate limiter resets after window_seconds
+   - [ ] `emit_eval()` is no-op when bus not wired
+   - [ ] `emit_eval()` reaches EvalAgent in a live runtime
+   - [ ] EvalAgent receives events from multiple agents simultaneously
+   - [ ] Integration: full supervision tree — EvalAgent halts a misbehaving sibling
+
+5. **Example + release**
+   - [ ] `examples/eval_agent.py` — research agent with LLM output eval + halt on policy violation
+   - [ ] `CHANGELOG.md` entry
+
+---
+
+### M2.6 — Remote Eval Exporters
+
+**Status: ⏳ Planned — v0.4 | Priority: 🔴 High**
+
+Plugin adapters connecting Civitas's `EvalEvent` stream to external eval engines. All platforms consume the same `EvalEvent` schema; each exporter translates to the platform's expected format. OTEL GenAI Semantic Conventions are the alignment layer — `EvalEvent` fields map directly to standard OTEL attributes. See [design spec](design/evalloop.md).
+
+| Deliverable | Status |
+|-------------|--------|
+| `EvalExporter` protocol implementation + registration on `EvalAgent` | ⏳ |
+| `civitas[arize]` — Arize Phoenix exporter (OTEL GenAI spans via OTLP) | ⏳ |
+| `civitas[fiddler]` — Fiddler exporter (two-way: export + receive guardrail signals as `CorrectionSignal`) | ⏳ |
+| `civitas[langfuse]` — Langfuse exporter (open-source, self-hostable) | ⏳ |
+| `civitas[braintrust]` — Braintrust exporter | ⏳ |
+| `civitas[langsmith]` — LangSmith exporter | ⏳ |
+| `emit_eval()` forwards to all registered exporters in addition to local EvalAgent | ⏳ |
+| Topology YAML — declare exporters per eval_agent node | ⏳ |
+| ≥ 5 unit tests per exporter (mocked SDK calls) | ⏳ |
 
 ---
 
@@ -139,7 +203,7 @@ Corrective observability loop: an `EvalAgent` subclass monitors agent behaviour 
 
 ### M3.4 — MCP Integration
 
-**Status: ⏳ Planned — v0.3 | Priority: 🔴 High**
+**Status: ✅ Completed — April 2026**
 
 MCP protocol plumbing — the wire layer between Civitas agents and MCP tool servers. Agents call tools by direct address (`mcp://server/tool`); the runtime handles handshake, transport, schema negotiation, and tracing. Agents also expose themselves as MCP servers so external LLM clients can discover and call them.
 
@@ -149,15 +213,15 @@ MCP protocol plumbing — the wire layer between Civitas agents and MCP tool ser
 
 | Deliverable | Status |
 |-------------|--------|
-| `civitas[mcp]` optional extra — `mcp>=1.0` dependency | ⏳ |
-| `MCPClient` — connect (stdio + SSE), `list_tools`, `call_tool`, one-shot per call | ⏳ |
-| `MCPTool(ToolProvider)` — `mcp://server_name/tool_name` name scheme | ⏳ |
-| `AgentProcess.connect_mcp()` — connect + auto-register tools into `self.tools` | ⏳ |
-| `self.tools.get("mcp://server/tool")` resolves to the registered `MCPTool` | ⏳ |
-| `MCPTool.execute()` emits `civitas.mcp.call` OTEL span | ⏳ |
-| `CivitasMCPServer(GenServer)` — exposes `ToolRegistry` as MCP server (stdio) | ⏳ |
-| Topology YAML `mcp.servers` block — auto-connect at agent startup | ⏳ |
-| ≥ 10 unit tests + ≥ 2 integration tests | ⏳ |
+| `civitas[mcp]` optional extra — `mcp>=1.0` dependency | ✅ |
+| `MCPClient` — connect (stdio + SSE), `list_tools`, `call_tool`, persistent session via `AsyncExitStack` | ✅ |
+| `MCPTool(ToolProvider)` — `mcp://server_name/tool_name` name scheme | ✅ |
+| `AgentProcess.connect_mcp()` — connect + auto-register tools into `self.tools`; idempotent | ✅ |
+| `self.tools.get("mcp://server/tool")` resolves to the registered `MCPTool` | ✅ |
+| `MCPTool.execute()` emits `civitas.mcp.call` OTEL span | ✅ |
+| `CivitasMCPServer(GenServer)` — deferred to Fabrica (scope boundary decision) | ⏸️ |
+| Topology YAML `mcp.servers` block — auto-connect at agent startup | ✅ |
+| 23 unit tests | ✅ |
 
 **Explicitly out of scope for M3.4:**
 - Connection pooling / persistent sessions — Fabrica (`MCPToolSource`)
@@ -229,21 +293,21 @@ Ordered tasks — each step is independently mergeable.
 
 ### M3.5 — GenServer
 
-**Status: ⏳ Planned — v0.3 | Priority: 🔴 High**
+**Status: ✅ Completed — April 2026**
 
 OTP-style generic server primitive for separating stateful API/RPC service processes from AI agent processes on the message bus. See [design spec](design/genserver.md).
 
 | Deliverable | Status |
 |-------------|--------|
-| `GenServer` base class with `handle_call` / `handle_cast` / `handle_info` dispatch | ⏳ |
-| `call()` — synchronous request-reply with timeout | ⏳ |
-| `cast()` — async fire-and-forget | ⏳ |
-| `send_after()` — delayed self-message (tick / timer support) | ⏳ |
-| `init()` — startup initialisation hook | ⏳ |
-| Supervision-compatible (works as a child of any `Supervisor`) | ⏳ |
-| Topology YAML support (`type: gen_server`) | ⏳ |
-| Unit tests (≥ 15 cases) | ⏳ |
-| Documentation + examples | ⏳ |
+| `GenServer` base class with `handle_call` / `handle_cast` / `handle_info` dispatch | ✅ |
+| `call()` — synchronous request-reply with timeout | ✅ |
+| `cast()` — async fire-and-forget | ✅ |
+| `send_after()` — delayed self-message (tick / timer support) | ✅ |
+| `init()` — startup initialisation hook | ✅ |
+| Supervision-compatible (works as a child of any `Supervisor`) | ✅ |
+| Topology YAML support (`type: gen_server`) | ✅ |
+| 19 unit tests | ✅ |
+| `examples/rate_limiter.py` — token-bucket rate limiter demo | ✅ |
 
 #### Implementation checklist
 
