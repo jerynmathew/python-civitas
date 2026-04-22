@@ -11,6 +11,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This pr
 
 ## [Unreleased]
 
+---
+
+## [0.3.0] — 2026-04-22
+
 ### Added
 
 #### M2.5 — EvalLoop
@@ -164,5 +168,6 @@ Initial public release.
 - `LangGraphAgent`: non-dict graph outputs are wrapped in `{"output": value}` rather than raising `TypeError`
 - Pre-commit hooks: ruff + mypy run on every commit; CI enforces 85% coverage threshold
 
-[Unreleased]: https://github.com/jerynmathew/python-civitas/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/jerynmathew/python-civitas/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jerynmathew/python-civitas/compare/v0.1.0...v0.3.0
 [0.1.0]: https://github.com/jerynmathew/python-civitas/releases/tag/v0.1.0

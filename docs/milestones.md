@@ -23,7 +23,7 @@ Development progress across all phases of Civitas.
 | 1 | [Core Runtime](#phase-1-core-runtime) | ✅ Completed | Mar 2026 |
 | 2 | [Ecosystem — Transports](#m21-zmq-multi-process-transport) | ✅ Completed | Mar 2026 |
 | 2 | [Ecosystem — Observability](#m23-otel-observability) | ✅ Completed | Apr 2026 |
-| 2 | [Ecosystem — EvalLoop (local)](#m25-evalloop) | ⏳ Planned | v0.3 |
+| 2 | [Ecosystem — EvalLoop (local)](#m25-evalloop) | ✅ Completed | Apr 2026 |
 | 2 | [Ecosystem — Remote Eval Exporters](#m26-remote-eval-exporters) | ⏳ Planned | v0.4 |
 | 3 | [Developer Experience — CLI & Dashboard](#phase-3-developer-experience) | ✅ Completed | Mar 2026 |
 | 3 | [Developer Experience — MCP Integration](#m34-mcp-integration) | ✅ Completed | Apr 2026 |
@@ -107,60 +107,59 @@ Development progress across all phases of Civitas.
 
 ### M2.5 — EvalLoop (Local)
 
-**Status: ⏳ Planned — v0.3 | Priority: 🔴 High**
+**Status: ✅ Completed — April 2026**
 
 Corrective observability loop: a supervised `EvalAgent` process monitors agent behaviour and injects correction signals back into running agents. Local in-process evaluation only — remote eval engine integrations are M2.6. See [design spec](design/evalloop.md).
 
 | Deliverable | Status |
 |-------------|--------|
-| `civitas/evalloop.py` — `EvalEvent`, `CorrectionSignal`, `EvalAgent` base class | ⏳ |
-| `AgentProcess.emit_eval(event_type, payload, eval_agent)` — emit observable events | ⏳ |
-| `AgentProcess.on_correction(message)` — override hook for nudge/redirect signals | ⏳ |
-| `civitas.eval.halt` message type — cleanly stops target agent (on_stop still runs) | ⏳ |
-| Rate limiting — sliding window per target agent (`max_corrections_per_window`, `window_seconds`) | ⏳ |
-| `EvalExporter` protocol — interface defined, not implemented (M2.6) | ⏳ |
-| Topology YAML — `type: eval_agent` shorthand in `Runtime.from_config()` | ⏳ |
-| ≥ 12 unit tests + ≥ 1 integration test | ⏳ |
-| `EvalAgent` exported from `civitas` top-level package | ⏳ |
+| `civitas/evalloop.py` — `EvalEvent`, `CorrectionSignal`, `EvalAgent` base class | ✅ |
+| `AgentProcess.emit_eval(event_type, payload, eval_agent)` — emit observable events | ✅ |
+| `AgentProcess.on_correction(message)` — override hook for nudge/redirect signals | ✅ |
+| `civitas.eval.halt` message type — cleanly stops target agent (on_stop still runs) | ✅ |
+| Rate limiting — sliding window per target agent (`max_corrections_per_window`, `window_seconds`) | ✅ |
+| `EvalExporter` protocol — interface defined, not implemented (M2.6) | ✅ |
+| Topology YAML — `type: eval_agent` shorthand in `Runtime.from_config()` | ✅ |
+| 20 unit + integration tests | ✅ |
+| `EvalAgent` exported from `civitas` top-level package | ✅ |
 
 #### Implementation checklist
 
 1. **Core module — `civitas/evalloop.py`**
-   - [ ] `EvalEvent` dataclass: `agent_name`, `event_type`, `payload`, `trace_id`, `message_id`, `timestamp`
-   - [ ] `CorrectionSignal` dataclass: `severity` (nudge / redirect / halt), `reason`, `payload`
-   - [ ] `EvalExporter` protocol: `async export(event: EvalEvent) -> None`
-   - [ ] `EvalAgent(AgentProcess)` — `handle()` routes `civitas.eval.event` messages
-   - [ ] `on_eval_event(event: EvalEvent) -> CorrectionSignal | None` — override point
-   - [ ] Rate limiter — sliding window, keyed by target agent name, drops + logs when exceeded
-   - [ ] For nudge/redirect: send `civitas.eval.correction` to target agent
-   - [ ] For halt: send `civitas.eval.halt` to target agent
+   - [x] `EvalEvent` dataclass: `agent_name`, `event_type`, `payload`, `trace_id`, `message_id`, `timestamp`
+   - [x] `CorrectionSignal` dataclass: `severity` (nudge / redirect / halt), `reason`, `payload`
+   - [x] `EvalExporter` protocol: `async export(event: EvalEvent) -> None`
+   - [x] `EvalAgent(AgentProcess)` — `handle()` routes `civitas.eval.event` messages
+   - [x] `on_eval_event(event: EvalEvent) -> CorrectionSignal | None` — override point
+   - [x] Rate limiter — sliding window, keyed by target agent name, drops + logs when exceeded
+   - [x] For nudge/redirect: send `civitas.eval.correction` to target agent
+   - [x] For halt: send `civitas.eval.halt` to target agent
 
 2. **AgentProcess integration**
-   - [ ] `emit_eval(event_type, payload, eval_agent="eval_agent")` — sends `civitas.eval.event`; no-op if bus not wired
-   - [ ] `on_correction(message: Message)` — override hook called on `civitas.eval.correction`
-   - [ ] `civitas.eval.halt` handled in `_message_loop()` — breaks loop, on_stop() still runs
+   - [x] `emit_eval(event_type, payload, eval_agent="eval_agent")` — sends `civitas.eval.event`; no-op if bus not wired
+   - [x] `on_correction(message: Message)` — override hook called on `civitas.eval.correction`
+   - [x] `civitas.eval.halt` handled in `_message_loop()` — breaks loop, on_stop() still runs
 
 3. **Runtime + package**
-   - [ ] `type: eval_agent` shorthand in `Runtime.from_config()` `_build_node()`
-   - [ ] `EvalAgent` exported from `civitas.__init__`
+   - [x] `type: eval_agent` shorthand in `Runtime.from_config()` `_build_node()`
+   - [x] `EvalAgent` exported from `civitas.__init__`
 
 4. **Tests (≥ 12 unit + ≥ 1 integration)**
-   - [ ] `EvalEvent` and `CorrectionSignal` field validation
-   - [ ] `on_eval_event()` returning None sends no correction
-   - [ ] nudge signal delivered to `on_correction()` hook
-   - [ ] redirect signal delivered to `on_correction()` hook
-   - [ ] halt signal stops target agent (status → STOPPED, on_stop runs)
-   - [ ] Rate limiter allows corrections up to the window limit
-   - [ ] Rate limiter drops corrections beyond the window limit
-   - [ ] Rate limiter resets after window_seconds
-   - [ ] `emit_eval()` is no-op when bus not wired
-   - [ ] `emit_eval()` reaches EvalAgent in a live runtime
-   - [ ] EvalAgent receives events from multiple agents simultaneously
-   - [ ] Integration: full supervision tree — EvalAgent halts a misbehaving sibling
+   - [x] `EvalEvent` and `CorrectionSignal` field validation
+   - [x] `on_eval_event()` returning None sends no correction
+   - [x] nudge signal delivered to `on_correction()` hook
+   - [x] redirect signal delivered to `on_correction()` hook
+   - [x] halt signal stops target agent (status → STOPPED, on_stop runs)
+   - [x] Rate limiter allows corrections up to the window limit
+   - [x] Rate limiter drops corrections beyond the window limit
+   - [x] Rate limiter resets after window_seconds
+   - [x] `emit_eval()` is no-op when bus not wired
+   - [x] `emit_eval()` reaches EvalAgent in a live runtime
+   - [x] Integration: full supervision tree — EvalAgent halts a misbehaving sibling
 
 5. **Example + release**
-   - [ ] `examples/eval_agent.py` — research agent with LLM output eval + halt on policy violation
-   - [ ] `CHANGELOG.md` entry
+   - [x] `examples/eval_agent.py` — policy enforcement with halt, redirect, nudge
+   - [x] `CHANGELOG.md` entry
 
 ---
 
