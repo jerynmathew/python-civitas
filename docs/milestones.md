@@ -30,6 +30,7 @@ Development progress across all phases of Civitas.
 | — | [Infrastructure & Release](#infrastructure--release) | ✅ Completed | Apr 2026 |
 | 4 | [Dynamic Agent Spawning](#m41b-dynamic-agent-spawning) | ⏳ Planned | v0.4 |
 | 4 | [Security Hardening](#m42-security-hardening) | ⏳ Planned | v0.4 |
+| 4 | [Codebase Security & Enterprise Posture](#m43-codebase-security--enterprise-posture) | ⏳ Planned | v0.4 |
 | 4 | [Capability-Aware Registry](#m44-capability-aware-registry) | ⏳ Planned | v0.5 |
 | 4 | [HTTP Gateway](#http-gateway) | ⏳ Planned | v0.4 |
 | 4 | [Gateway API Surface](#gateway-api-surface) | ⏳ Planned | v0.4 |
@@ -231,6 +232,29 @@ Agents spawn and decommission other agents at runtime. Enables LLM-driven orches
 | Secret injection via environment / mounted secrets (not YAML) | ⏳ |
 | Sandboxed tool execution with filesystem isolation | ⏳ |
 | Audit log: all events logged with agent identity | ⏳ |
+
+---
+
+### M4.3 — Codebase Security & Enterprise Posture
+
+**Status: ⏳ Planned — v0.4 | Priority: 🔴 High**
+
+Complements M4.2. Where M4.2 hardens the **runtime** (mTLS, message signing, credential isolation, sandboxing), M4.3 hardens the **codebase and supply chain** so enterprises have a clear security story before adoption: known vulnerabilities tracked, dependencies scanned, secrets never committed, a published threat model, and a documented disclosure process.
+
+The deliverables are split across tooling (CI-enforced scanners), documentation (threat model, security architecture, adoption checklist), and process (disclosure policy, release notes, third-party audit).
+
+| Deliverable | Status |
+|-------------|--------|
+| SAST in CI — Bandit + Semgrep on every PR, fail build on `HIGH`+ | ⏳ |
+| Dependency scanning — `pip-audit` in CI + Dependabot weekly | ⏳ |
+| SBOM generation — CycloneDX SBOM published with every release | ⏳ |
+| Secret scanning — `gitleaks` pre-commit hook + CI job on full history | ⏳ |
+| `docs/security/threat-model.md` — STRIDE analysis per runtime component | ⏳ |
+| `docs/security/architecture.md` — security model (trust boundaries, supervision, transport isolation) | ⏳ |
+| `SECURITY.md` — responsible disclosure policy, contact, supported versions, response SLAs | ⏳ |
+| `docs/security/enterprise-checklist.md` — adoption checklist (deployment hardening, config review, audit log integration) | ⏳ |
+| External security audit before v1.0 — fix all `HIGH`+ findings, publish summary | ⏳ |
+| Continuous posture — CVE watch on runtime deps, security release notes, CVSS-scored advisories | ⏳ |
 
 ---
 
