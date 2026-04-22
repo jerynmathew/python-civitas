@@ -545,7 +545,7 @@ Declarative routes, Pydantic request/response validation, middleware chain, and 
 
 | Deliverable | Status |
 |-------------|--------|
-| `@route` decorator — maps HTTP method + path to agent handler | ⏳ |
+| `@route` decorator — documents HTTP method + path on agent handler (YAML is authoritative for wiring) | ⏳ |
 | Path parameter extraction into `message.payload` | ⏳ |
 | `@contract` decorator — Pydantic request/response validation, 422 error shape | ⏳ |
 | `GatewayRequest` / `GatewayResponse` / `NextMiddleware` types | ⏳ |
@@ -554,7 +554,10 @@ Declarative routes, Pydantic request/response validation, middleware chain, and 
 | Auto-generated OpenAPI 3.1 spec at `GET /openapi.json` | ⏳ |
 | Swagger UI at `GET /docs`, ReDoc at `GET /redoc` | ⏳ |
 | YAML-declared routes and schemas (no decorators required) | ⏳ |
+| `civitas topology validate` cross-checks YAML routes against `@route` decorators | ⏳ |
 | ≥ 15 unit tests + ≥ 3 integration tests | ⏳ |
+
+**Routing authority:** YAML is the single source of truth for gateway wiring. `@route` stores metadata on the method object only — it is never read by the gateway at runtime. Its value is (1) colocated documentation of intent and (2) a machine-checkable annotation that `civitas topology validate` cross-references against YAML to warn on drift.
 
 #### Implementation checklist
 
@@ -564,16 +567,15 @@ Declarative routes, Pydantic request/response validation, middleware chain, and 
    - [ ] `NextMiddleware` type alias — `Callable[[GatewayRequest], Awaitable[GatewayResponse]]`
 
 2. **Route decorator — `civitas/gateway/routing.py`**
-   - [ ] Module-level `_route_registry: dict[type, list[RouteEntry]]` — populated at class definition time
-   - [ ] `@route(method, path, mode="call")` decorator — registers on the class's method; stores metadata on the function object
-   - [ ] `RouteTable.from_class(cls)` — scans class for `@route`-decorated methods, builds `RouteTable`
-   - [ ] `RouteTable.from_yaml(routes_config)` — builds from topology YAML `routes:` list
-   - [ ] `RouteTable.merge(*tables)` — combine decorator + YAML routes; YAML takes precedence on conflict
+   - [ ] `@route(method, path, mode="call")` — stores `_civitas_route` metadata dict on the decorated function; no side effects, no global registry
+   - [ ] `RouteTable.from_yaml(routes_config)` — sole runtime source; builds `RouteEntry` list from topology YAML `routes:` block
+   - [ ] `RouteTable.from_class(cls)` — validation-only helper; scans class methods for `_civitas_route` metadata; used exclusively by `civitas topology validate`
+   - [ ] `civitas topology validate`: when a gateway node references an agent, import the class and warn if a YAML route has no matching `@route` on the handler, or if a `@route` exists with no corresponding YAML entry
 
 3. **Contract decorator — `civitas/gateway/contracts.py`**
-   - [ ] `@contract(request=Model, response=Model)` — attaches Pydantic models to a route method
-   - [ ] Request validation: `Model.model_validate(body)` before dispatch; 422 on `ValidationError` with FastAPI-compatible error shape
-   - [ ] Response validation: `Model.model_validate(reply_payload)` after dispatch; 500 on mismatch
+   - [ ] `@contract(request=Model, response=Model)` — stores `_civitas_contract` metadata on the function; `request` and `response` are optional Pydantic `BaseModel` subclasses
+   - [ ] Request validation in ASGI dispatch: if route has a contract, `Model.model_validate(body)` before calling the bus; 422 on `ValidationError` with FastAPI-compatible error shape `{"detail": [...]}`
+   - [ ] Response validation: `Model.model_validate(reply_payload)` after reply received; 500 on mismatch
    - [ ] No-op when `@contract` not applied — pass-through
 
 4. **Middleware — `civitas/gateway/middleware.py`**
@@ -584,15 +586,16 @@ Declarative routes, Pydantic request/response validation, middleware chain, and 
    - [ ] Short-circuit: middleware returning `GatewayResponse` without calling `call_next` skips remainder
 
 5. **Wire into ASGI — `civitas/gateway/asgi.py` updates**
-   - [ ] Replace direct bus dispatch with: build `GatewayRequest` → run middleware chain → validate → dispatch
+   - [ ] Replace direct bus dispatch with: build `GatewayRequest` → run middleware chain → contract validate → dispatch
    - [ ] `GatewayRequest.gateway` set to the `HTTPGateway` instance (for stateful GenServer middleware)
+   - [ ] Contract metadata read from the agent class method via `@route` + `@contract` on the matched handler
 
 6. **OpenAPI — `civitas/gateway/openapi.py`**
-   - [ ] `OpenAPIBuilder` — introspects `RouteTable` + `@contract` models at startup
+   - [ ] `OpenAPIBuilder` — reads `RouteTable` (from YAML) + loads agent class to read `@contract` metadata
    - [ ] Generates OpenAPI 3.1 `paths` from route entries
    - [ ] Request body schema from `@contract(request=Model)` via `Model.model_json_schema()`
    - [ ] Response schema from `@contract(response=Model)`
-   - [ ] Operation summary from first line of handler docstring
+   - [ ] Operation summary from first line of matched handler's docstring
    - [ ] Operation description from full docstring
    - [ ] Tags from agent name
    - [ ] Auto-includes 422 response schema when request model is declared
@@ -602,9 +605,11 @@ Declarative routes, Pydantic request/response validation, middleware chain, and 
    - [ ] `docs.enabled: false` config disables all three endpoints
 
 7. **Tests (≥ 15 unit, ≥ 3 integration)**
-   - [ ] `@route` registers correctly on a class method
-   - [ ] `RouteTable.from_class()` extracts all decorated routes
-   - [ ] `RouteTable.from_yaml()` builds routes from config dict
+   - [ ] `@route` stores metadata on the function, no global registry side-effect
+   - [ ] `RouteTable.from_yaml()` builds routes correctly from config dict
+   - [ ] `RouteTable.from_class()` reads `@route` metadata from class methods
+   - [ ] `topology validate` warns when YAML route has no matching `@route` on agent
+   - [ ] `topology validate` warns when `@route` exists with no YAML entry
    - [ ] Path parameters extracted correctly from URL
    - [ ] `@contract` request validation: valid body → dispatched; invalid → 422 with FastAPI error shape
    - [ ] `@contract` response validation: valid reply → 200; invalid → 500
