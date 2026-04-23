@@ -2480,8 +2480,8 @@
 <tr>
 <td>2</td>
 <td><a href="#m26-remote-eval-exporters">Ecosystem — Remote Eval Exporters</a></td>
-<td>⏳ Planned</td>
-<td>v0.4</td>
+<td>✅ Completed</td>
+<td>Apr 2026</td>
 </tr>
 <tr>
 <td>3</td>
@@ -2846,7 +2846,7 @@
 </ol>
 <hr />
 <h3 id="m26-remote-eval-exporters">M2.6 — Remote Eval Exporters<a class="headerlink" href="#m26-remote-eval-exporters" title="Permanent link">&para;</a></h3>
-<p><strong>Status: ⏳ Planned — v0.4 | Priority: 🔴 High</strong></p>
+<p><strong>Status: ✅ Completed — v0.4 | Priority: 🔴 High</strong></p>
 <p>Plugin adapters connecting Civitas's <code>EvalEvent</code> stream to external eval engines. All platforms consume the same <code>EvalEvent</code> schema; each exporter translates to the platform's expected format. OTEL GenAI Semantic Conventions are the alignment layer — <code>EvalEvent</code> fields map directly to standard OTEL attributes. See <a href="../design/evalloop/">design spec</a>.</p>
 <table>
 <thead>
@@ -2858,39 +2858,39 @@
 <tbody>
 <tr>
 <td><code>EvalExporter</code> protocol implementation + registration on <code>EvalAgent</code></td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>civitas[arize]</code> — Arize Phoenix exporter (OTEL GenAI spans via OTLP)</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
-<td><code>civitas[fiddler]</code> — Fiddler exporter (two-way: export + receive guardrail signals as <code>CorrectionSignal</code>)</td>
-<td>⏳</td>
+<td><code>civitas[fiddler]</code> — Fiddler exporter (export to Fiddler AI; two-way guardrail receive deferred to M4.2)</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>civitas[langfuse]</code> — Langfuse exporter (open-source, self-hostable)</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>civitas[braintrust]</code> — Braintrust exporter</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>civitas[langsmith]</code> — LangSmith exporter</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td><code>emit_eval()</code> forwards to all registered exporters in addition to local EvalAgent</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td>Topology YAML — declare exporters per eval_agent node</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 <tr>
 <td>≥ 5 unit tests per exporter (mocked SDK calls)</td>
-<td>⏳</td>
+<td>✅</td>
 </tr>
 </tbody>
 </table>
