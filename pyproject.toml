@@ -103,8 +103,6 @@ omit = [
     "*/civitas/plugins/litellm.py",
     # Fiddler plugin stub (implementation is in civitas/eval/exporters.py)
     "*/civitas/plugins/fiddler.py",
-    # Eval exporters require live platform credentials — unit-tested via mocks
-    "*/civitas/eval/exporters.py",
     # SQLite store and tools — deferred to a dedicated plugin testing sprint
     "*/civitas/plugins/sqlite_store.py",
     "*/civitas/plugins/tools.py",
