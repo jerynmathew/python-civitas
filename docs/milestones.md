@@ -24,7 +24,7 @@ Development progress across all phases of Civitas.
 | 2 | [Ecosystem — Transports](#m21-zmq-multi-process-transport) | ✅ Completed | Mar 2026 |
 | 2 | [Ecosystem — Observability](#m23-otel-observability) | ✅ Completed | Apr 2026 |
 | 2 | [Ecosystem — EvalLoop (local)](#m25-evalloop) | ✅ Completed | Apr 2026 |
-| 2 | [Ecosystem — Remote Eval Exporters](#m26-remote-eval-exporters) | ⏳ Planned | v0.4 |
+| 2 | [Ecosystem — Remote Eval Exporters](#m26-remote-eval-exporters) | ✅ Completed | Apr 2026 |
 | 3 | [Developer Experience — CLI & Dashboard](#phase-3-developer-experience) | ✅ Completed | Mar 2026 |
 | 3 | [Developer Experience — MCP Integration](#m34-mcp-integration) | ✅ Completed | Apr 2026 |
 | 3 | [Developer Experience — GenServer](#m35-genserver) | ✅ Completed | Apr 2026 |
@@ -165,21 +165,21 @@ Corrective observability loop: a supervised `EvalAgent` process monitors agent b
 
 ### M2.6 — Remote Eval Exporters
 
-**Status: ⏳ Planned — v0.4 | Priority: 🔴 High**
+**Status: ✅ Completed — v0.4 | Priority: 🔴 High**
 
 Plugin adapters connecting Civitas's `EvalEvent` stream to external eval engines. All platforms consume the same `EvalEvent` schema; each exporter translates to the platform's expected format. OTEL GenAI Semantic Conventions are the alignment layer — `EvalEvent` fields map directly to standard OTEL attributes. See [design spec](design/evalloop.md).
 
 | Deliverable | Status |
 |-------------|--------|
-| `EvalExporter` protocol implementation + registration on `EvalAgent` | ⏳ |
-| `civitas[arize]` — Arize Phoenix exporter (OTEL GenAI spans via OTLP) | ⏳ |
-| `civitas[fiddler]` — Fiddler exporter (two-way: export + receive guardrail signals as `CorrectionSignal`) | ⏳ |
-| `civitas[langfuse]` — Langfuse exporter (open-source, self-hostable) | ⏳ |
-| `civitas[braintrust]` — Braintrust exporter | ⏳ |
-| `civitas[langsmith]` — LangSmith exporter | ⏳ |
-| `emit_eval()` forwards to all registered exporters in addition to local EvalAgent | ⏳ |
-| Topology YAML — declare exporters per eval_agent node | ⏳ |
-| ≥ 5 unit tests per exporter (mocked SDK calls) | ⏳ |
+| `EvalExporter` protocol implementation + registration on `EvalAgent` | ✅ |
+| `civitas[arize]` — Arize Phoenix exporter (OTEL GenAI spans via OTLP) | ✅ |
+| `civitas[fiddler]` — Fiddler exporter (export to Fiddler AI; two-way guardrail receive deferred to M4.2) | ✅ |
+| `civitas[langfuse]` — Langfuse exporter (open-source, self-hostable) | ✅ |
+| `civitas[braintrust]` — Braintrust exporter | ✅ |
+| `civitas[langsmith]` — LangSmith exporter | ✅ |
+| `emit_eval()` forwards to all registered exporters in addition to local EvalAgent | ✅ |
+| Topology YAML — declare exporters per eval_agent node | ✅ |
+| ≥ 5 unit tests per exporter (mocked SDK calls) | ✅ |
 
 ---
 

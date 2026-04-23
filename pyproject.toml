@@ -51,6 +51,10 @@ mistral   = ["mistralai>=1.0"]
 litellm   = ["litellm>=1.40"]
 zmq       = ["pyzmq>=25"]
 nats      = ["nats-py>=2.6"]
+arize     = ["opentelemetry-sdk>=1.20", "opentelemetry-exporter-otlp-proto-grpc>=1.20"]
+langfuse  = ["langfuse>=2.0"]
+braintrust = ["braintrust>=0.0.100"]
+langsmith = ["langsmith>=0.1"]
 fiddler   = ["fiddler-client>=3.0"]
 http      = ["uvicorn[standard]>=0.30", "pydantic>=2.0"]
 http3     = ["uvicorn[standard]>=0.30", "pydantic>=2.0", "aioquic>=1.0"]
@@ -97,8 +101,10 @@ omit = [
     "*/civitas/plugins/gemini.py",
     "*/civitas/plugins/mistral.py",
     "*/civitas/plugins/litellm.py",
-    # Fiddler integration is a planned stub with no callable implementation yet
+    # Fiddler plugin stub (implementation is in civitas/eval/exporters.py)
     "*/civitas/plugins/fiddler.py",
+    # Eval exporters require live platform credentials — unit-tested via mocks
+    "*/civitas/eval/exporters.py",
     # SQLite store and tools — deferred to a dedicated plugin testing sprint
     "*/civitas/plugins/sqlite_store.py",
     "*/civitas/plugins/tools.py",
@@ -163,6 +169,11 @@ warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 module = ["msgpack.*", "zmq.*", "nats.*", "litellm.*", "openai.*", "google", "google.*", "mistralai.*", "mcp.*", "aioquic", "aioquic.*", "uvicorn", "uvicorn.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Eval exporter SDKs: optional installs, no stubs bundled with the packages
+module = ["langfuse", "langfuse.*", "braintrust", "braintrust.*", "langsmith", "langsmith.*", "fiddler", "fiddler.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
