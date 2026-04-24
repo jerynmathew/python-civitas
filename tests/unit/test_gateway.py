@@ -8,9 +8,11 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 
 from civitas import AgentProcess, Runtime, Supervisor
+from civitas.errors import MessageRoutingError
 from civitas.gateway import (
     GatewayConfig,
     GatewayRequest,
@@ -22,7 +24,8 @@ from civitas.gateway import (
 from civitas.gateway.asgi import GatewayASGI, _parse_traceparent
 from civitas.gateway.contracts import validate_request, validate_response
 from civitas.gateway.middleware import build_chain, load_middleware
-from civitas.gateway.router import RouteTable
+from civitas.gateway.openapi import build_spec
+from civitas.gateway.router import RouteEntry, RouteTable
 from civitas.messages import Message
 
 # ---------------------------------------------------------------------------
@@ -339,8 +342,6 @@ class TestGatewayASGI:
 
     @pytest.mark.asyncio
     async def test_routing_error_returns_404(self) -> None:
-        from civitas.errors import MessageRoutingError
-
         asgi, gateway = _make_asgi()
         gateway.ask = AsyncMock(side_effect=MessageRoutingError("no agent"))
 
@@ -440,8 +441,6 @@ class EchoAgent(AgentProcess):
 class TestHTTPGatewayIntegration:
     @pytest.mark.asyncio
     async def test_call_returns_agent_reply(self) -> None:
-        import httpx
-
         gateway = HTTPGateway("api", GatewayConfig(port=19080, request_timeout=5.0))
         echo = EchoAgent("echo")
         supervisor = Supervisor("root", children=[gateway, echo])
@@ -464,8 +463,6 @@ class TestHTTPGatewayIntegration:
 
     @pytest.mark.asyncio
     async def test_cast_returns_202(self) -> None:
-        import httpx
-
         gateway = HTTPGateway("api", GatewayConfig(port=19081, request_timeout=5.0))
         echo = EchoAgent("echo")
         supervisor = Supervisor("root", children=[gateway, echo])
@@ -487,8 +484,6 @@ class TestHTTPGatewayIntegration:
 
     @pytest.mark.asyncio
     async def test_unknown_agent_returns_404(self) -> None:
-        import httpx
-
         gateway = HTTPGateway("api", GatewayConfig(port=19082, request_timeout=5.0))
         supervisor = Supervisor("root", children=[gateway])
         runtime = Runtime(supervisor=supervisor)
@@ -509,8 +504,6 @@ class TestHTTPGatewayIntegration:
 
     @pytest.mark.asyncio
     async def test_concurrent_requests(self) -> None:
-        import httpx
-
         gateway = HTTPGateway("api", GatewayConfig(port=19083, request_timeout=5.0))
         echo = EchoAgent("echo")
         supervisor = Supervisor("root", children=[gateway, echo])
@@ -537,8 +530,6 @@ class TestHTTPGatewayIntegration:
 
     @pytest.mark.asyncio
     async def test_topology_yaml_starts_gateway(self, tmp_path: Any) -> None:
-        import httpx
-
         topology = tmp_path / "topology.yaml"
         topology.write_text("""
 supervision:
@@ -851,8 +842,6 @@ class TestMiddlewareChain:
 
 class TestOpenAPI:
     def test_build_spec_empty_routes(self) -> None:
-        from civitas.gateway.openapi import build_spec
-
         rt = RouteTable.from_config([])
         config = GatewayConfig()
         spec = build_spec(rt, config)
@@ -860,8 +849,6 @@ class TestOpenAPI:
         assert spec["paths"] == {}
 
     def test_build_spec_includes_route(self) -> None:
-        from civitas.gateway.openapi import build_spec
-
         rt = RouteTable.from_config(
             [
                 {"method": "POST", "path": "/v1/chat", "agent": "assistant", "mode": "call"},
@@ -875,8 +862,6 @@ class TestOpenAPI:
         assert op["tags"] == ["assistant"]
 
     def test_build_spec_cast_has_202(self) -> None:
-        from civitas.gateway.openapi import build_spec
-
         rt = RouteTable.from_config(
             [
                 {"method": "POST", "path": "/v1/notify", "agent": "notifier", "mode": "cast"},
@@ -888,8 +873,6 @@ class TestOpenAPI:
         assert "202" in op["responses"]
 
     def test_build_spec_path_params_in_parameters(self) -> None:
-        from civitas.gateway.openapi import build_spec
-
         rt = RouteTable.from_config(
             [
                 {"method": "GET", "path": "/sessions/{id}/history", "agent": "sessions"},
@@ -900,6 +883,58 @@ class TestOpenAPI:
         op = spec["paths"]["/sessions/{id}/history"]["get"]
         param_names = [p["name"] for p in op["parameters"]]
         assert "id" in param_names
+
+    def test_build_spec_with_request_schema(self) -> None:
+        try:
+            from pydantic import BaseModel
+        except ImportError:
+            pytest.skip("pydantic not installed")
+
+        class Req(BaseModel):
+            text: str
+
+        entry = RouteEntry(method="POST", path_pattern="/v1/chat", agent="bot", mode="call")
+        entry.request_schema = Req
+        rt = RouteTable([entry])
+        config = GatewayConfig()
+
+        spec = build_spec(rt, config)
+        op = spec["paths"]["/v1/chat"]["post"]
+        assert "requestBody" in op
+        body_schema = op["requestBody"]["content"]["application/json"]["schema"]
+        assert "properties" in body_schema or body_schema.get("title") == "Req"
+        assert "422" in op["responses"]
+
+    def test_build_spec_with_response_schema(self) -> None:
+        try:
+            from pydantic import BaseModel
+        except ImportError:
+            pytest.skip("pydantic not installed")
+
+        class Resp(BaseModel):
+            answer: int
+
+        entry = RouteEntry(method="GET", path_pattern="/v1/result", agent="bot", mode="call")
+        entry.response_schema = Resp
+        rt = RouteTable([entry])
+        config = GatewayConfig()
+
+        spec = build_spec(rt, config)
+        op = spec["paths"]["/v1/result"]["get"]
+        resp_schema = op["responses"]["200"]["content"]["application/json"]["schema"]
+        assert "properties" in resp_schema or resp_schema.get("title") == "Resp"
+        assert "500" in op["responses"]
+
+    def test_build_spec_two_methods_same_path(self) -> None:
+        entry1 = RouteEntry(method="GET", path_pattern="/v1/items", agent="reader", mode="call")
+        entry2 = RouteEntry(method="POST", path_pattern="/v1/items", agent="writer", mode="call")
+        rt = RouteTable([entry1, entry2])
+        config = GatewayConfig()
+
+        spec = build_spec(rt, config)
+        path_ops = spec["paths"]["/v1/items"]
+        assert "get" in path_ops
+        assert "post" in path_ops
 
     @pytest.mark.asyncio
     async def test_docs_endpoint_returns_html(self) -> None:

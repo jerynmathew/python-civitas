@@ -11,7 +11,14 @@ import yaml
 
 from civitas.components import ComponentSet, build_component_set
 from civitas.errors import ConfigurationError
-from civitas.evalloop import EvalAgent
+from civitas.eval.exporters import (
+    ArizeExporter,
+    BraintrustExporter,
+    FiddlerExporter,
+    LangfuseExporter,
+    LangSmithExporter,
+)
+from civitas.evalloop import EvalAgent, EvalExporter
 from civitas.gateway.core import GatewayConfig, HTTPGateway
 from civitas.genserver import GenServer
 from civitas.mcp.types import MCPServerConfig
@@ -123,25 +130,19 @@ class Runtime:
                     f"Check that the module is installed and the class name is correct."
                 ) from exc
 
-        def _build_exporters(cfgs: list[dict[str, Any]]) -> list[Any]:
-            from civitas.evalloop import EvalExporter  # noqa: F401 (type check)
-
-            exporters: list[Any] = []
+        def _build_exporters(cfgs: list[dict[str, Any]]) -> list[EvalExporter]:
+            result: list[EvalExporter] = []
             for cfg in cfgs:
                 kind = cfg.get("type", "")
                 if kind == "arize":
-                    from civitas.eval.exporters import ArizeExporter
-
-                    exporters.append(
+                    result.append(
                         ArizeExporter(
                             endpoint=cfg.get("endpoint", "http://localhost:6006/v1/traces"),
                             service_name=cfg.get("service_name", "civitas"),
                         )
                     )
                 elif kind == "langfuse":
-                    from civitas.eval.exporters import LangfuseExporter
-
-                    exporters.append(
+                    result.append(
                         LangfuseExporter(
                             public_key=cfg["public_key"],
                             secret_key=cfg["secret_key"],
@@ -149,27 +150,21 @@ class Runtime:
                         )
                     )
                 elif kind == "braintrust":
-                    from civitas.eval.exporters import BraintrustExporter
-
-                    exporters.append(
+                    result.append(
                         BraintrustExporter(
                             api_key=cfg["api_key"],
                             project=cfg.get("project", "civitas"),
                         )
                     )
                 elif kind == "langsmith":
-                    from civitas.eval.exporters import LangSmithExporter
-
-                    exporters.append(
+                    result.append(
                         LangSmithExporter(
                             api_key=cfg["api_key"],
                             project=cfg.get("project", "civitas"),
                         )
                     )
                 elif kind == "fiddler":
-                    from civitas.eval.exporters import FiddlerExporter
-
-                    exporters.append(
+                    result.append(
                         FiddlerExporter(
                             url=cfg["url"],
                             token=cfg["token"],
@@ -180,7 +175,7 @@ class Runtime:
                     )
                 else:
                     logger.warning("Unknown eval exporter type '%s' — skipping", kind)
-            return exporters
+            return result
 
         def _build_node(node: dict[str, Any]) -> AgentProcess | Supervisor:
             if "supervisor" in node:

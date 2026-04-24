@@ -13,6 +13,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from civitas import Runtime
+from civitas.eval.exporters import (
+    ArizeExporter,
+    BraintrustExporter,
+    FiddlerExporter,
+    LangfuseExporter,
+    LangSmithExporter,
+)
 from civitas.evalloop import CorrectionSignal, EvalAgent, EvalEvent, EvalExporter
 from civitas.messages import Message
 
@@ -180,8 +188,6 @@ class TestEvalAgentExporters:
 
 class TestArizeExporter:
     def _make_arize(self) -> Any:
-        from civitas.eval.exporters import ArizeExporter
-
         mock_tracer = MagicMock()
         mock_span = MagicMock()
         mock_span.__enter__ = MagicMock(return_value=mock_span)
@@ -229,12 +235,14 @@ class TestArizeExporter:
         attr_keys = {c.args[0] for c in span.set_attribute.call_args_list}
         assert "civitas.eval.payload.nested" not in attr_keys
 
+    def test_init_creates_tracer(self):
+        exp = ArizeExporter(endpoint="http://localhost:6006/v1/traces", service_name="test-svc")
+        assert exp._tracer is not None
+
     def test_raises_import_error_when_otel_missing(self):
         with patch.dict("sys.modules", {"opentelemetry": None}):
-            from civitas.eval import exporters as mod
-
             with pytest.raises(ImportError, match="civitas\\[arize\\]"):
-                mod.ArizeExporter()
+                ArizeExporter()
 
 
 # ---------------------------------------------------------------------------
@@ -244,8 +252,6 @@ class TestArizeExporter:
 
 class TestLangfuseExporter:
     def _make_langfuse(self) -> Any:
-        from civitas.eval.exporters import LangfuseExporter
-
         mock_client = MagicMock()
         mock_trace = MagicMock()
         mock_client.trace.return_value = mock_trace
@@ -289,12 +295,23 @@ class TestLangfuseExporter:
         kwargs = trace.generation.call_args.kwargs
         assert kwargs["input"]["content"] == "hello world"
 
+    def test_init_creates_client(self):
+        mock_mod = MagicMock()
+        mock_client = MagicMock()
+        mock_mod.Langfuse.return_value = mock_client
+        with patch.dict("sys.modules", {"langfuse": mock_mod}):
+            exp = LangfuseExporter(
+                public_key="pk", secret_key="sk", host="https://eu.cloud.langfuse.com"
+            )
+        assert exp._client is mock_client
+        mock_mod.Langfuse.assert_called_once_with(
+            public_key="pk", secret_key="sk", host="https://eu.cloud.langfuse.com"
+        )
+
     def test_raises_import_error_when_langfuse_missing(self):
         with patch.dict("sys.modules", {"langfuse": None}):
-            from civitas.eval import exporters as mod
-
             with pytest.raises(ImportError, match="civitas\\[langfuse\\]"):
-                mod.LangfuseExporter(public_key="pk", secret_key="sk")
+                LangfuseExporter(public_key="pk", secret_key="sk")
 
 
 # ---------------------------------------------------------------------------
@@ -304,8 +321,6 @@ class TestLangfuseExporter:
 
 class TestBraintrustExporter:
     def _make_braintrust(self) -> Any:
-        from civitas.eval.exporters import BraintrustExporter
-
         mock_logger = MagicMock()
         exporter = BraintrustExporter.__new__(BraintrustExporter)
         exporter._logger = mock_logger
@@ -347,12 +362,19 @@ class TestBraintrustExporter:
         kwargs = logger.log.call_args.kwargs
         assert kwargs["metadata"]["trace_id"] == "t-42"
 
+    def test_init_creates_logger(self):
+        mock_mod = MagicMock()
+        mock_logger = MagicMock()
+        mock_mod.init_logger.return_value = mock_logger
+        with patch.dict("sys.modules", {"braintrust": mock_mod}):
+            exp = BraintrustExporter(api_key="bt-key", project="myproj")
+        assert exp._logger is mock_logger
+        mock_mod.init_logger.assert_called_once_with(project="myproj", api_key="bt-key")
+
     def test_raises_import_error_when_braintrust_missing(self):
         with patch.dict("sys.modules", {"braintrust": None}):
-            from civitas.eval import exporters as mod
-
             with pytest.raises(ImportError, match="civitas\\[braintrust\\]"):
-                mod.BraintrustExporter(api_key="key")
+                BraintrustExporter(api_key="key")
 
 
 # ---------------------------------------------------------------------------
@@ -362,8 +384,6 @@ class TestBraintrustExporter:
 
 class TestLangSmithExporter:
     def _make_langsmith(self, project: str = "civitas") -> Any:
-        from civitas.eval.exporters import LangSmithExporter
-
         mock_client = MagicMock()
         exporter = LangSmithExporter.__new__(LangSmithExporter)
         exporter._client = mock_client
@@ -404,12 +424,20 @@ class TestLangSmithExporter:
         kwargs = client.create_run.call_args.kwargs
         assert kwargs["extra"]["agent_name"] == "policy-bot"
 
+    def test_init_creates_client(self):
+        mock_mod = MagicMock()
+        mock_client = MagicMock()
+        mock_mod.Client.return_value = mock_client
+        with patch.dict("sys.modules", {"langsmith": mock_mod}):
+            exp = LangSmithExporter(api_key="ls-key", project="ls-proj")
+        assert exp._client is mock_client
+        assert exp._project == "ls-proj"
+        mock_mod.Client.assert_called_once_with(api_key="ls-key")
+
     def test_raises_import_error_when_langsmith_missing(self):
         with patch.dict("sys.modules", {"langsmith": None}):
-            from civitas.eval import exporters as mod
-
             with pytest.raises(ImportError, match="civitas\\[langsmith\\]"):
-                mod.LangSmithExporter(api_key="key")
+                LangSmithExporter(api_key="key")
 
 
 # ---------------------------------------------------------------------------
@@ -419,8 +447,6 @@ class TestLangSmithExporter:
 
 class TestFiddlerExporter:
     def _make_fiddler(self) -> Any:
-        from civitas.eval.exporters import FiddlerExporter
-
         mock_client = MagicMock()
         exporter = FiddlerExporter.__new__(FiddlerExporter)
         exporter._client = mock_client
@@ -463,14 +489,29 @@ class TestFiddlerExporter:
         kwargs = client.publish_event.call_args.kwargs
         assert kwargs["event"]["risk"] == 0.7
 
+    def test_init_creates_client(self):
+        mock_mod = MagicMock()
+        mock_client = MagicMock()
+        mock_mod.Fiddler.return_value = mock_client
+        with patch.dict("sys.modules", {"fiddler": mock_mod}):
+            exp = FiddlerExporter(
+                url="https://myorg.fiddler.ai",
+                token="tok",
+                org_id="org",
+                project_id="proj-x",
+                model_id="model-y",
+            )
+        assert exp._client is mock_client
+        assert exp._project_id == "proj-x"
+        assert exp._model_id == "model-y"
+        mock_mod.Fiddler.assert_called_once_with(
+            url="https://myorg.fiddler.ai", token="tok", org_id="org"
+        )
+
     def test_raises_import_error_when_fiddler_missing(self):
         with patch.dict("sys.modules", {"fiddler": None}):
-            from civitas.eval import exporters as mod
-
             with pytest.raises(ImportError, match="civitas\\[fiddler\\]"):
-                mod.FiddlerExporter(
-                    url="http://x", token="t", org_id="o", project_id="p", model_id="m"
-                )
+                FiddlerExporter(url="http://x", token="t", org_id="o", project_id="p", model_id="m")
 
 
 # ---------------------------------------------------------------------------
@@ -498,8 +539,6 @@ class TestRuntimeExporterYaml:
         with (
             patch("civitas.eval.exporters.ArizeExporter.__init__", return_value=None) as mock_init,
         ):
-            from civitas import Runtime
-
             Runtime.from_config(cfg)
             mock_init.assert_called_once_with(
                 endpoint="http://localhost:6006/v1/traces",
@@ -528,8 +567,6 @@ class TestRuntimeExporterYaml:
                 "civitas.eval.exporters.LangfuseExporter.__init__", return_value=None
             ) as mock_init,
         ):
-            from civitas import Runtime
-
             Runtime.from_config(cfg)
             mock_init.assert_called_once_with(
                 public_key="pk-abc",
@@ -551,8 +588,6 @@ class TestRuntimeExporterYaml:
         cfg = tmp_path / "t.yaml"
         cfg.write_text(topology)
 
-        from civitas import Runtime
-
         runtime = Runtime.from_config(cfg)
         eval_agent = runtime.all_agents()[0]
         assert isinstance(eval_agent, EvalAgent)
@@ -569,8 +604,6 @@ class TestRuntimeExporterYaml:
         """)
         cfg = tmp_path / "t.yaml"
         cfg.write_text(topology)
-
-        from civitas import Runtime
 
         runtime = Runtime.from_config(cfg)
         eval_agent = runtime.all_agents()[0]
@@ -598,8 +631,6 @@ class TestRuntimeExporterYaml:
             patch("civitas.eval.exporters.BraintrustExporter.__init__", return_value=None),
             patch("civitas.eval.exporters.LangSmithExporter.__init__", return_value=None),
         ):
-            from civitas import Runtime
-
             runtime = Runtime.from_config(cfg)
             eval_agent = runtime.all_agents()[0]
             assert len(eval_agent._exporters) == 2

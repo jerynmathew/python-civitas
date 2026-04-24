@@ -393,3 +393,28 @@ def test_tracer_new_span_id_returns_hex_string() -> None:
     sid = tracer.new_span_id()
     assert isinstance(sid, str)
     assert len(sid) > 0
+
+
+# ---------------------------------------------------------------------------
+# Tracer — console fallback log output
+# ---------------------------------------------------------------------------
+
+
+def test_end_llm_span_console_fallback_logs(caplog: pytest.LogCaptureFixture) -> None:
+    """end_llm_span() emits a debug log line when _console_fallback is True."""
+    tracer = Tracer()
+    tracer._console_fallback = True
+    span = tracer.start_llm_span("gpt-4", trace_id="trace-llm")
+    with caplog.at_level(logging.DEBUG, logger="civitas.observability.tracer"):
+        tracer.end_llm_span(span, tokens_in=10, tokens_out=20, cost_usd=0.001)
+    assert any("[llm]" in r.message for r in caplog.records)
+
+
+def test_end_tool_span_console_fallback_logs(caplog: pytest.LogCaptureFixture) -> None:
+    """end_tool_span() emits a debug log line when _console_fallback is True."""
+    tracer = Tracer()
+    tracer._console_fallback = True
+    span = tracer.start_tool_span("calculator", trace_id="trace-tool")
+    with caplog.at_level(logging.DEBUG, logger="civitas.observability.tracer"):
+        tracer.end_tool_span(span, status="ok")
+    assert any("[tool]" in r.message for r in caplog.records)
