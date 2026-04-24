@@ -382,18 +382,36 @@ Ordered tasks — each step is independently mergeable.
 
 ### M4.1b — Dynamic Agent Spawning
 
-**Status: ⏳ Planned — v0.4 | Priority: 🔴 High**
+**Status: 🔄 In Design — v0.4 | Priority: 🔴 High**
 
-Agents spawn and decommission other agents at runtime. Enables LLM-driven orchestrators that create specialist agents on demand.
+Agents spawn and decommission other agents at runtime. Enables LLM-driven orchestrators that create specialist agents on demand. See [design spec](design/dynamic-spawning.md).
+
+**Design decisions locked:**
+- `DynamicSupervisor` is a separate class from `Supervisor` (Erlang-faithful separation — ONE_FOR_ONE only, starts empty)
+- `DynamicSupervisor` is declared as a static child in topology YAML; its *children* are dynamic
+- `self.spawn()` targets the **nearest ancestor `DynamicSupervisor`** — no explicit target at the call site
+- `on_spawn_requested` is a governance veto hook on `DynamicSupervisor` (return `False` to deny)
+- `max_children` enforces blast radius per `DynamicSupervisor`
+
+**Open design questions (being resolved):**
+- Q2 — Restart semantics for crashed dynamic children
+- Q3 — `on_spawn_requested` placement (supervisor vs agent vs both)
+- Q4 — Limit semantics: concurrent vs total-ever
+- Q5 — `despawn()` drain vs hard stop; behaviour of in-flight `ask()` calls
+- Q6 — Cross-process spawning (ZMQ/NATS) — likely deferred to v0.5
+- Q7 — `topology show` live state representation
 
 | Deliverable | Status |
 |-------------|--------|
-| `self.spawn(agent_class, name, ...)` on `AgentProcess` | ⏳ |
-| Spawned agents registered with parent lineage in supervision tree | ⏳ |
-| `self.despawn(name)` — clean decommission with state cleanup | ⏳ |
-| `on_spawn_requested` governance hook | ⏳ |
-| `max_concurrent_children` blast radius limit | ⏳ |
-| Topology YAML round-trip (spawned agents reflected in `topology show`) | ⏳ |
+| `DynamicSupervisor` class — starts empty, ONE_FOR_ONE, `max_children` limit | ⏳ |
+| `type: dynamic_supervisor` in topology YAML | ⏳ |
+| `self.spawn(AgentClass, name, config)` — nearest ancestor routing | ⏳ |
+| `self.despawn(name)` — clean decommission | ⏳ |
+| `on_spawn_requested` governance hook on `DynamicSupervisor` | ⏳ |
+| `Runtime.spawn()` / `Runtime.despawn()` — external entry points | ⏳ |
+| `topology show` reflects live dynamic children | ⏳ |
+| ≥ 15 unit tests + ≥ 2 integration tests | ⏳ |
+| `examples/dynamic_spawning.py` | ⏳ |
 
 ---
 
