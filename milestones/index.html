@@ -3240,8 +3240,21 @@
 <hr />
 <h2 id="phase-4-platform-maturation">Phase 4 — Platform Maturation<a class="headerlink" href="#phase-4-platform-maturation" title="Permanent link">&para;</a></h2>
 <h3 id="m41b-dynamic-agent-spawning">M4.1b — Dynamic Agent Spawning<a class="headerlink" href="#m41b-dynamic-agent-spawning" title="Permanent link">&para;</a></h3>
-<p><strong>Status: ⏳ Planned — v0.4 | Priority: 🔴 High</strong></p>
-<p>Agents spawn and decommission other agents at runtime. Enables LLM-driven orchestrators that create specialist agents on demand.</p>
+<p><strong>Status: 🔄 In Design — v0.4 | Priority: 🔴 High</strong></p>
+<p>Agents spawn and decommission other agents at runtime. Enables LLM-driven orchestrators that create specialist agents on demand. See <a href="../design/dynamic-spawning/">design spec</a>.</p>
+<p><strong>Design decisions locked:</strong>
+- <code>DynamicSupervisor</code> is a separate class from <code>Supervisor</code> (Erlang-faithful separation — ONE_FOR_ONE only, starts empty)
+- <code>DynamicSupervisor</code> is declared as a static child in topology YAML; its <em>children</em> are dynamic
+- <code>self.spawn()</code> targets the <strong>nearest ancestor <code>DynamicSupervisor</code></strong> — no explicit target at the call site
+- <code>on_spawn_requested</code> is a governance veto hook on <code>DynamicSupervisor</code> (return <code>False</code> to deny)
+- <code>max_children</code> enforces blast radius per <code>DynamicSupervisor</code></p>
+<p><strong>Open design questions (being resolved):</strong>
+- Q2 — Restart semantics for crashed dynamic children
+- Q3 — <code>on_spawn_requested</code> placement (supervisor vs agent vs both)
+- Q4 — Limit semantics: concurrent vs total-ever
+- Q5 — <code>despawn()</code> drain vs hard stop; behaviour of in-flight <code>ask()</code> calls
+- Q6 — Cross-process spawning (ZMQ/NATS) — likely deferred to v0.5
+- Q7 — <code>topology show</code> live state representation</p>
 <table>
 <thead>
 <tr>
@@ -3251,27 +3264,39 @@
 </thead>
 <tbody>
 <tr>
-<td><code>self.spawn(agent_class, name, ...)</code> on <code>AgentProcess</code></td>
+<td><code>DynamicSupervisor</code> class — starts empty, ONE_FOR_ONE, <code>max_children</code> limit</td>
 <td>⏳</td>
 </tr>
 <tr>
-<td>Spawned agents registered with parent lineage in supervision tree</td>
+<td><code>type: dynamic_supervisor</code> in topology YAML</td>
 <td>⏳</td>
 </tr>
 <tr>
-<td><code>self.despawn(name)</code> — clean decommission with state cleanup</td>
+<td><code>self.spawn(AgentClass, name, config)</code> — nearest ancestor routing</td>
 <td>⏳</td>
 </tr>
 <tr>
-<td><code>on_spawn_requested</code> governance hook</td>
+<td><code>self.despawn(name)</code> — clean decommission</td>
 <td>⏳</td>
 </tr>
 <tr>
-<td><code>max_concurrent_children</code> blast radius limit</td>
+<td><code>on_spawn_requested</code> governance hook on <code>DynamicSupervisor</code></td>
 <td>⏳</td>
 </tr>
 <tr>
-<td>Topology YAML round-trip (spawned agents reflected in <code>topology show</code>)</td>
+<td><code>Runtime.spawn()</code> / <code>Runtime.despawn()</code> — external entry points</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td><code>topology show</code> reflects live dynamic children</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td>≥ 15 unit tests + ≥ 2 integration tests</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td><code>examples/dynamic_spawning.py</code></td>
 <td>⏳</td>
 </tr>
 </tbody>
