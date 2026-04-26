@@ -394,12 +394,12 @@ Agents spawn and decommission other agents at runtime. Enables LLM-driven orches
 - `max_children` enforces blast radius per `DynamicSupervisor`
 
 **Open design questions (being resolved):**
-- Q2 — Restart semantics for crashed dynamic children
+- ~~Q2 — Restart semantics~~ → transient default; no escalation on exhaustion; `on_child_terminated` hook
 - Q3 — `on_spawn_requested` placement (supervisor vs agent vs both)
-- Q4 — Limit semantics: concurrent vs total-ever
-- Q5 — `despawn()` drain vs hard stop; behaviour of in-flight `ask()` calls
-- Q6 — Cross-process spawning (ZMQ/NATS) — likely deferred to v0.5
-- Q7 — `topology show` live state representation
+- ~~Q4 — Limit semantics~~ → both: `max_children` (concurrent) + `max_total_spawns` (lifetime budget)
+- ~~Q5 — Despawn semantics~~ → `despawn()` hard stop + `stop(drain, timeout)` soft stop (awaitable, timeout fallback to hard stop)
+- ~~Q6 — Cross-process spawning~~ → bus message protocol from day one; in-process v0.4; cross-process v0.5 (homogeneous deployments)
+- ~~Q7 — `topology show` live state~~ → `TopologyServer(GenServer)` JSON HTTP endpoint; CLI pings `/topology`; falls back to static YAML if unreachable
 
 | Deliverable | Status |
 |-------------|--------|
@@ -409,7 +409,8 @@ Agents spawn and decommission other agents at runtime. Enables LLM-driven orches
 | `self.despawn(name)` — clean decommission | ⏳ |
 | `on_spawn_requested` governance hook on `DynamicSupervisor` | ⏳ |
 | `Runtime.spawn()` / `Runtime.despawn()` — external entry points | ⏳ |
-| `topology show` reflects live dynamic children | ⏳ |
+| `TopologyServer(GenServer)` — supervised JSON HTTP management endpoint | ⏳ |
+| `topology show` pings `TopologyServer`; falls back to static YAML | ⏳ |
 | ≥ 15 unit tests + ≥ 2 integration tests | ⏳ |
 | `examples/dynamic_spawning.py` | ⏳ |
 

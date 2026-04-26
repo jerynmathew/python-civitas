@@ -68,6 +68,7 @@ root (Supervisor, ONE_FOR_ONE)
 
 ### D3 — `self.spawn()` targets the nearest ancestor `DynamicSupervisor`
 
+
 An agent does not name the target supervisor. The runtime walks up the ancestry chain from the calling agent and finds the first `DynamicSupervisor`. If none exists in the chain, `self.spawn()` raises `SpawnError`.
 
 Rationale:
@@ -97,9 +98,104 @@ class GovernedWorkerPool(DynamicSupervisor):
         return True
 ```
 
-### D5 — `max_children` enforces blast radius
+### D5 — Two decommission operations: `despawn()` and `stop()`
 
-`DynamicSupervisor` accepts a `max_children` limit (default: unbounded). `self.spawn()` raises `SpawnError` if the limit is reached. This prevents a runaway orchestrator from exhausting system resources.
+Decommissioning a dynamic child has two explicit operations with distinct semantics:
+
+**`despawn(name)`** — hard stop. Cancels the agent's asyncio task immediately. `on_stop()` still fires. Pending `ask()` callers into the agent receive `SpawnError("agent despawned")`. The slot is freed immediately. Use when you need the capacity back now and don't care about in-flight work.
+
+**`stop(name, drain, timeout)`** — soft stop. Awaitable — returns when the agent is fully stopped. The agent stops accepting new messages immediately (senders receive `SpawnError("agent stopping")`), then:
+
+- `drain="current"` — finishes the message currently being handled, runs `on_stop()`, stops
+- `drain="all"` — drains the full mailbox, runs `on_stop()`, stops
+- `timeout` (default 30.0s) — if drain isn't complete within the timeout, falls back to a hard stop, then returns
+
+```python
+# Hard stop — immediate, slot freed now
+await self.despawn("worker-1")
+
+# Soft stop — finish current message, then stop
+await self.stop("worker-1", drain="current")
+
+# Soft stop — drain full mailbox, up to 60s, then hard stop if needed
+await self.stop("worker-1", drain="all", timeout=60.0)
+
+# Safe to spawn a replacement immediately after either
+await self.spawn(ResearchAgent, name="worker-1", config={...})
+```
+
+### D6 — Spawn requests are bus messages from day one
+
+`self.spawn()` always sends a `civitas.dynamic.spawn` message to the `DynamicSupervisor` by name — even in-process. The message carries the dotted class path and serialised config rather than a class reference (classes cannot be serialised across process boundaries).
+
+```python
+# Internal message shape — not part of public API
+{
+    "type": "civitas.dynamic.spawn",
+    "class_path": "myapp.agents.ResearchAgent",  # dotted import path
+    "name": "researcher-1",
+    "config": {...},                              # must be JSON-serialisable
+}
+```
+
+This means:
+
+- **v0.4 (in-process)**: supervisor receives the message, imports the class locally, instantiates it. Call site: `await self.spawn(ResearchAgent, name="researcher-1", config={...})` — the runtime resolves `ResearchAgent` to its dotted path automatically.
+- **v0.5 (cross-process)**: same message, same path, routed over ZMQ/NATS to the worker process running the supervisor. The receiving worker imports and instantiates the class. Requires homogeneous deployments where all workers have the same codebase.
+
+The public API (`self.spawn()`, `self.despawn()`, `self.stop()`) never changes between versions. The transport is the only difference.
+
+### D7 — Two independent capacity limits
+
+`DynamicSupervisor` supports two optional, independent limits:
+
+- **`max_children`** — concurrent live children. A slot is freed when a child exits or is despawned. Prevents resource exhaustion.
+- **`max_total_spawns`** — lifetime spawn budget. Monotonically increasing, never resets. Useful for audit, billing, or security constraints.
+
+`self.spawn()` raises `SpawnError` if either limit is reached, with a clear reason in the message. Both limits are in-memory — they reset if the `DynamicSupervisor` crashes and restarts. For durable budgets, track spawn counts in `self.state` on the orchestrator and enforce via `on_spawn_requested`.
+
+```yaml
+- name: workers
+  type: dynamic_supervisor
+  max_children: 20        # at most 20 alive at once (default: unbounded)
+  max_total_spawns: 1000  # at most 1000 spawns ever (default: unbounded)
+```
+
+---
+
+## Restart Semantics (Q2 — resolved)
+
+Dynamic children use **transient** restart mode by default. The `restart` field is configurable per `DynamicSupervisor`.
+
+| Exit type | `permanent` | `transient` (default) | `never` |
+|-----------|-------------|----------------------|---------|
+| Crash (abnormal exit) | Restart | Restart | Remove, notify |
+| Clean exit / `despawn()` | Restart | Remove | Remove |
+| Restarts exhausted | Escalate to parent | Remove, notify orchestrator | — |
+
+**Key rule — no escalation on exhaustion.** When a dynamic child exhausts its restarts, the `DynamicSupervisor` removes the child and fires `on_child_terminated(name, reason)` on the spawning agent. It does **not** escalate to its parent supervisor. Escalating would bring down the static tree over a transient worker failure, defeating the purpose of containment.
+
+**Notification hook on `AgentProcess`:**
+
+```python
+async def on_child_terminated(self, name: str, reason: str) -> None:
+    """Called when a dynamically spawned child is permanently removed.
+
+    reason is one of: "restarts_exhausted", "despawned", "clean_exit"
+    Default implementation logs a warning. Override to re-spawn, alert, etc.
+    """
+```
+
+**Dynamic child list is in-memory only.** If the `DynamicSupervisor` itself crashes and is restarted by its parent, it starts empty. Orchestrators that need durability must checkpoint spawned agent names via `self.state`.
+
+```yaml
+- name: workers
+  type: dynamic_supervisor
+  max_children: 20
+  restart: transient      # permanent | transient (default) | never
+  max_restarts: 3
+  restart_window: 60
+```
 
 ---
 
@@ -107,12 +203,59 @@ class GovernedWorkerPool(DynamicSupervisor):
 
 The following questions are deferred to design sessions before implementation:
 
-- **Q2 — Restart semantics**: When a dynamically spawned agent crashes, does the `DynamicSupervisor` restart it? Or does it stay dead and the orchestrator decides whether to re-spawn? Does the orchestrator get a notification?
 - **Q3 — `on_spawn_requested` placement**: Is the hook on `DynamicSupervisor`, on `AgentProcess`, or both? Who is the right place to enforce governance?
-- **Q4 — `max_concurrent_children` vs `max_children`**: Is the limit on concurrent live children, total ever spawned, or both?
-- **Q5 — Despawn semantics**: Does `self.despawn()` drain the agent's mailbox first, or is it a hard stop? What happens to pending `ask()` calls into the agent?
-- **Q6 — Cross-process spawning**: Does dynamic spawning work with ZMQ/NATS transports, or in-process only for v0.4?
-- **Q7 — `topology show` live state**: Spawned agents are dynamic — how does `topology show` reflect the live child list vs the static YAML?
+- **Q4 — `max_children` semantics**: Is the limit on concurrent live children, total ever spawned, or both?
+- ~~Q5 — Despawn semantics~~ → two explicit operations: `despawn()` (hard stop) and `stop()` (soft stop, awaitable, drain="current"|"all", timeout fallback)
+- ~~Q6 — Cross-process spawning~~ → bus message protocol from day one; in-process only in v0.4; v0.5 routes same message to remote worker (homogeneous deployments only)
+- ~~Q7 — `topology show` live state~~ → `TopologyServer(GenServer)` supervised HTTP endpoint; CLI pings `GET /topology` for live tree; falls back to static YAML if unreachable
+
+### D8 — `TopologyServer(GenServer)` exposes a JSON HTTP management endpoint
+
+`topology show` gets live state by pinging a supervised `TopologyServer` GenServer running inside the runtime. It is declared as a normal child in topology YAML — optional, supervised, lifecycle-bound to the runtime.
+
+```yaml
+supervision:
+  name: root
+  strategy: ONE_FOR_ONE
+  children:
+    - name: orchestrator
+      type: OrchestratorAgent
+    - name: workers
+      type: dynamic_supervisor
+      max_children: 20
+    - name: topology_server
+      type: topology_server       # built-in shorthand, like http_gateway
+      config:
+        host: 127.0.0.1           # default: localhost only
+        port: 6789                # default
+```
+
+**Endpoints (read-only, JSON):**
+
+```
+GET /topology           → full supervision tree (static + live dynamic children)
+GET /agents             → flat list of all running agents + status
+GET /agents/{name}      → single agent: status, restart count, metrics
+GET /health             → liveness check {"status": "ok"}
+```
+
+**`topology show` behaviour:**
+
+1. Reads topology YAML to find `topology_server` config (`host` + `port`)
+2. Attempts `GET /topology` — if reachable, renders full live tree with dynamic children populated and `DynamicSupervisor` nodes visually distinguished (dotted border / `[dynamic]` label)
+3. If not reachable (runtime not running), renders static YAML tree with `(runtime not running)` annotation on `DynamicSupervisor` nodes
+
+**Why a GenServer, not a standalone HTTP server:**
+
+- Supervised — crashes are restarted automatically by the parent supervisor
+- Lifecycle-bound — starts and stops with the runtime, no orphaned processes
+- Direct access to runtime internals — queries the supervisor tree and registry without IPC
+- Consistent — everything in Civitas is a supervised process; the management endpoint is no exception
+- Universal — JSON over HTTP works on all platforms, in containers, with `curl`, and with the Textual dashboard
+
+**Future — Textual dashboard:**
+
+`civitas dashboard` will be rebuilt on [Textual](https://textual.textualize.io/) (interactive Python TUI framework). It will consume `TopologyServer` endpoints for live tree rendering and per-agent metrics — the same JSON, the same endpoint, no additional protocol.
 
 ---
 
@@ -122,19 +265,30 @@ The following questions are deferred to design sessions before implementation:
 # DynamicSupervisor — topology YAML
 # type: dynamic_supervisor
 # max_children: 20
+# max_total_spawns: 1000
+# restart: transient
+# max_restarts: 3
+# restart_window: 60
 
-# AgentProcess — new methods
-await self.spawn(AgentClass, name="worker-1", config={...}) -> str  # returns agent name
-await self.despawn("worker-1")
+# AgentProcess — spawn / decommission
+await self.spawn(AgentClass, name="worker-1", config={...})  # -> str (agent name)
+await self.despawn("worker-1")                               # hard stop
+await self.stop("worker-1", drain="current")                 # soft stop, finish current message
+await self.stop("worker-1", drain="all", timeout=60.0)       # soft stop, drain mailbox
 
-# DynamicSupervisor — governance hook (override to customise)
+# AgentProcess — lifecycle notifications
+async def on_child_terminated(self, name: str, reason: str) -> None: ...
+# reason: "restarts_exhausted" | "despawned" | "clean_exit"
+
+# DynamicSupervisor — governance hook
 async def on_spawn_requested(
     self, agent_class: type, name: str, config: dict[str, Any]
 ) -> bool: ...
 
-# Runtime — external spawn (for non-agent callers)
+# Runtime — external entry points (for non-agent callers)
 await runtime.spawn("workers", ResearchAgent, name="researcher-1", config={...})
 await runtime.despawn("workers", "researcher-1")
+await runtime.stop("workers", "researcher-1", drain="all", timeout=30.0)
 ```
 
 ---
@@ -145,3 +299,4 @@ await runtime.despawn("workers", "researcher-1")
 - Spawning into a remote `DynamicSupervisor` by name from an unrelated subtree
 - Visual topology editor integration (M4.1 is deferred)
 - Per-agent spawn quotas (only global `max_children` per `DynamicSupervisor` in v0.4)
+- Textual dashboard — planned as follow-on; `TopologyServer` endpoints are the foundation
