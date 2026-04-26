@@ -3249,12 +3249,12 @@
 - <code>on_spawn_requested</code> is a governance veto hook on <code>DynamicSupervisor</code> (return <code>False</code> to deny)
 - <code>max_children</code> enforces blast radius per <code>DynamicSupervisor</code></p>
 <p><strong>Open design questions (being resolved):</strong>
-- Q2 — Restart semantics for crashed dynamic children
+- ~~Q2 — Restart semantics~~ → transient default; no escalation on exhaustion; <code>on_child_terminated</code> hook
 - Q3 — <code>on_spawn_requested</code> placement (supervisor vs agent vs both)
-- Q4 — Limit semantics: concurrent vs total-ever
-- Q5 — <code>despawn()</code> drain vs hard stop; behaviour of in-flight <code>ask()</code> calls
-- Q6 — Cross-process spawning (ZMQ/NATS) — likely deferred to v0.5
-- Q7 — <code>topology show</code> live state representation</p>
+- ~~Q4 — Limit semantics~~ → both: <code>max_children</code> (concurrent) + <code>max_total_spawns</code> (lifetime budget)
+- ~~Q5 — Despawn semantics~~ → <code>despawn()</code> hard stop + <code>stop(drain, timeout)</code> soft stop (awaitable, timeout fallback to hard stop)
+- ~~Q6 — Cross-process spawning~~ → bus message protocol from day one; in-process v0.4; cross-process v0.5 (homogeneous deployments)
+- ~~Q7 — <code>topology show</code> live state~~ → <code>TopologyServer(GenServer)</code> JSON HTTP endpoint; CLI pings <code>/topology</code>; falls back to static YAML if unreachable</p>
 <table>
 <thead>
 <tr>
@@ -3288,7 +3288,11 @@
 <td>⏳</td>
 </tr>
 <tr>
-<td><code>topology show</code> reflects live dynamic children</td>
+<td><code>TopologyServer(GenServer)</code> — supervised JSON HTTP management endpoint</td>
+<td>⏳</td>
+</tr>
+<tr>
+<td><code>topology show</code> pings <code>TopologyServer</code>; falls back to static YAML</td>
 <td>⏳</td>
 </tr>
 <tr>
