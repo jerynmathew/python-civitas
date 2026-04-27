@@ -23,6 +23,7 @@ from civitas.messages import Message
 from civitas.process import AgentProcess
 from civitas.runtime import Runtime
 from civitas.supervisor import DynamicSupervisor, Supervisor
+from civitas.topology_server import TopologyServer
 from civitas.worker import Worker
 
 __all__ = [
@@ -43,4 +44,5 @@ __all__ = [
     "CivitasError",
     "ErrorAction",
     "SpawnError",
+    "TopologyServer",
 ]

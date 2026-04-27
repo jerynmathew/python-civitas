@@ -27,6 +27,7 @@ from civitas.plugins.loader import load_plugins_from_config
 from civitas.process import AgentProcess
 from civitas.serializer import Serializer
 from civitas.supervisor import DynamicSupervisor, Supervisor
+from civitas.topology_server import TopologyServer
 
 logger = logging.getLogger(__name__)
 
@@ -191,6 +192,13 @@ class Runtime:
                     backoff_base=sup_cfg.get("backoff_base", 1.0),
                     backoff_max=sup_cfg.get("backoff_max", 60.0),
                 )
+            elif node.get("type") == "topology_server":
+                cfg = node.get("config", {})
+                return TopologyServer(
+                    name=node.get("name", "topology_server"),
+                    host=cfg.get("host", "127.0.0.1"),
+                    port=cfg.get("port", 6789),
+                )
             elif node.get("type") == "dynamic_supervisor" and "name" in node:
                 return DynamicSupervisor(
                     name=node["name"],
@@ -329,6 +337,8 @@ class Runtime:
                 status = node.status.value if hasattr(node, "status") else "?"
                 if isinstance(node, DynamicSupervisor):
                     prefix_tag = "[dyn]"
+                elif isinstance(node, TopologyServer):
+                    prefix_tag = "[topo]"
                 elif isinstance(node, EvalAgent):
                     prefix_tag = "[eval]"
                 elif isinstance(node, HTTPGateway):
@@ -426,6 +436,12 @@ class Runtime:
         for agent in all_agents:
             self._registry.register(agent.name)
         self._agents_by_name = {a.name: a for a in all_agents}
+
+        # Inject topology server references before supervision tree starts
+        for agent in all_agents:
+            if isinstance(agent, TopologyServer):
+                agent._root_supervisor = self._root_supervisor
+                agent._agents = self._agents_by_name
 
         # 10. Start Transport
         await self._transport.start()
