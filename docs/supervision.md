@@ -466,3 +466,156 @@ Supervisor("root", strategy="ONE_FOR_ONE", backoff="EXPONENTIAL", backoff_base=3
 ```
 
 After 2 failures in 30 seconds, `db_sup` escalates to `root`, which waits ~30s (exponential base) before restarting the subsystem.
+
+---
+
+## Dynamic supervision
+
+Static supervision — the `Supervisor` class — covers processes whose identity is known at deploy time. Dynamic supervision covers processes that are created and destroyed at runtime, such as per-request workers, user sessions, or spawned research agents.
+
+### DynamicSupervisor
+
+`DynamicSupervisor` is a separate class from `Supervisor`. It follows Erlang's design: the two are deliberately distinct because `ONE_FOR_ALL` and `REST_FOR_ONE` strategies depend on a fixed, ordered child list and lose coherence when children arrive and leave dynamically. `DynamicSupervisor` is always `ONE_FOR_ONE`.
+
+```python
+from civitas import DynamicSupervisor, Supervisor, Runtime
+
+dyn = DynamicSupervisor(
+    name="workers",
+    max_children=20,           # hard capacity limit; spawn raises SpawnError when reached
+    max_total_spawns=1000,     # optional lifetime cap across all spawns
+)
+
+runtime = Runtime(supervisor=Supervisor("root", children=[orchestrator, dyn]))
+```
+
+Or in YAML:
+
+```yaml
+supervision:
+  name: root
+  strategy: ONE_FOR_ONE
+  children:
+    - type: dynamic_supervisor
+      name: workers
+      config:
+        max_children: 20
+        max_total_spawns: 1000
+    - type: agent
+      name: orchestrator
+      module: myapp.agents
+      class: OrchestratorAgent
+```
+
+`DynamicSupervisor` starts empty. Children are added at runtime via `self.spawn()`.
+
+### Spawning agents
+
+Any agent that has a `DynamicSupervisor` as a sibling or ancestor can spawn children using `self.spawn()`. The runtime resolves the **nearest ancestor `DynamicSupervisor`** automatically — you don't name the target.
+
+```python
+class OrchestratorAgent(AgentProcess):
+    async def on_start(self) -> None:
+        # Finds the nearest DynamicSupervisor ("workers") automatically
+        name = await self.spawn(ResearchAgent, name="researcher-1")
+```
+
+`spawn()` sends a `civitas.dynamic.spawn` message to the `DynamicSupervisor` by name and awaits confirmation. It returns the agent name on success and raises `SpawnError` on failure (capacity reached, duplicate name, governance veto).
+
+#### Despawn and stop
+
+```python
+# Hard stop — cancels the task immediately; on_stop() still fires
+await self.despawn("researcher-1")
+
+# Soft stop — drain current message, then stop
+await self.stop("researcher-1", drain="current", timeout=10.0)
+
+# Soft stop — drain entire queue, then stop
+await self.stop("researcher-1", drain="all", timeout=30.0)
+```
+
+`stop()` is awaitable and returns when the agent is fully stopped. If the agent does not stop within `timeout` seconds, it is force-cancelled.
+
+### Restart modes
+
+Dynamic children have a `restart_mode` that controls what happens when they exit:
+
+| Mode | Behaviour |
+|---|---|
+| `TRANSIENT` (default) | Restarted only on abnormal exit (exception). Clean exit is not restarted. |
+| `PERMANENT` | Always restarted, regardless of how it exited. |
+| `NEVER` | Never restarted. When it exits for any reason, the slot is freed and the spawning agent is notified. |
+
+Pass `restart_mode` when spawning:
+
+```python
+from civitas.supervisor import RestartMode
+
+await self.spawn(WorkerAgent, name="worker-1", restart_mode=RestartMode.NEVER)
+```
+
+Unlike `Supervisor`, `DynamicSupervisor` does **not** escalate to its parent when a child exhausts its restart budget. Instead, it calls `on_child_terminated()` on the spawning agent.
+
+### Governance
+
+Override `on_spawn_requested()` on a `DynamicSupervisor` subclass to implement policy checks before a spawn is committed:
+
+```python
+class GovernedPool(DynamicSupervisor):
+    async def on_spawn_requested(self, agent_class, name: str, config: dict) -> bool:
+        if name in self._blocklist:
+            return False           # deny
+        return True                # approve
+```
+
+Returning `False` causes `self.spawn()` at the call site to raise `SpawnError("spawn denied by governance hook")`.
+
+### Termination notifications
+
+When a dynamic child exits (for any reason, including `despawn` or restart exhaustion), the spawning agent's `on_child_terminated()` hook is called:
+
+```python
+class OrchestratorAgent(AgentProcess):
+    async def on_child_terminated(self, name: str, reason: str) -> None:
+        # name  — the agent that exited
+        # reason — "clean_exit" | "exception" | "despawned" | "exhausted"
+        logger.warning("child %s terminated: %s", name, reason)
+```
+
+The default implementation just logs a warning.
+
+### External API
+
+`Runtime` exposes `spawn`, `despawn`, and `stop_agent` for external control — useful for tests or admin scripts:
+
+```python
+await runtime.spawn("workers", ResearchAgent, name="researcher-1")
+await runtime.despawn("workers", "researcher-1")
+await runtime.stop_agent("workers", "researcher-1", drain="current", timeout=5.0)
+```
+
+### TopologyServer
+
+`TopologyServer` is a supervised HTTP endpoint that exposes live topology state. Declare it in YAML as a sibling of other children:
+
+```yaml
+- type: topology_server
+  name: topo_server
+  config:
+    host: 127.0.0.1   # default
+    port: 6789        # default
+```
+
+Endpoints (all read-only, JSON):
+
+| Endpoint | Response |
+|---|---|
+| `GET /health` | `{"status": "ok"}` |
+| `GET /topology` | Full supervision tree with live dynamic children and their statuses |
+| `GET /agents` | Flat list of all agents including dynamically spawned ones |
+| `GET /agents/{name}` | Single agent status or `{"error": "..."}` with 404 |
+
+`civitas topology show` automatically pings `/topology` if a `topology_server` node is present in the YAML. If the server is unreachable (runtime not running), it falls back to rendering the static YAML tree with a `(runtime not running)` annotation.
+
+See [examples/dynamic_spawning.py](../examples/dynamic_spawning.py) for a complete working example.

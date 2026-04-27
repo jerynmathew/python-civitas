@@ -210,6 +210,44 @@ Exposes the Civitas bus as a REST API. Requires `pip install civitas[http]`.
 
 See [HTTP Gateway](gateway.md) for the full guide.
 
+### `dynamic_supervisor`
+
+A `DynamicSupervisor` node. Starts empty — children are spawned at runtime via `self.spawn()`. Always uses `ONE_FOR_ONE`.
+
+```yaml
+- type: dynamic_supervisor
+  name: workers
+  config:
+    max_children: 20        # hard limit; SpawnError when reached (default: unlimited)
+    max_total_spawns: 1000  # optional lifetime cap across all spawns (default: unlimited)
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `max_children` | int | unlimited | Maximum live children at any one time |
+| `max_total_spawns` | int | unlimited | Total spawns allowed over the lifetime of the supervisor |
+
+See [Dynamic supervision](supervision.md#dynamic-supervision) for the full guide.
+
+### `topology_server`
+
+A supervised JSON HTTP management endpoint. Use it alongside a `DynamicSupervisor` to expose live topology state.
+
+```yaml
+- type: topology_server
+  name: topo_server
+  config:
+    host: 127.0.0.1   # default
+    port: 6789        # default
+```
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `host` | string | `127.0.0.1` | Bind address — use `0.0.0.0` to expose externally |
+| `port` | int | `6789` | Port for the HTTP server |
+
+Endpoints: `GET /health`, `GET /topology`, `GET /agents`, `GET /agents/{name}`. See [Dynamic supervision — TopologyServer](supervision.md#topologyserver) for details.
+
 ### `eval_agent`
 
 Corrective observability loop that monitors agent behavior.
