@@ -382,7 +382,7 @@ Ordered tasks — each step is independently mergeable.
 
 ### M4.1b — Dynamic Agent Spawning
 
-**Status: 🔄 In Progress — v0.4 | Priority: 🔴 High**
+**Status: ✅ Completed — April 2026 | Priority: 🔴 High**
 
 Agents spawn and decommission other agents at runtime. Enables LLM-driven orchestrators that create specialist agents on demand. See [design spec](design/dynamic-spawning.md).
 
