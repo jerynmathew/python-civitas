@@ -15,18 +15,19 @@ Public API:
 from __future__ import annotations
 
 from civitas.components import ComponentSet
-from civitas.errors import CivitasError, ErrorAction
+from civitas.errors import CivitasError, ErrorAction, SpawnError
 from civitas.evalloop import CorrectionSignal, EvalAgent, EvalEvent, EvalExporter
 from civitas.gateway.core import GatewayConfig, HTTPGateway
 from civitas.genserver import GenServer
 from civitas.messages import Message
 from civitas.process import AgentProcess
 from civitas.runtime import Runtime
-from civitas.supervisor import Supervisor
+from civitas.supervisor import DynamicSupervisor, Supervisor
 from civitas.worker import Worker
 
 __all__ = [
     "AgentProcess",
+    "DynamicSupervisor",
     "GenServer",
     "EvalAgent",
     "EvalEvent",
@@ -41,4 +42,5 @@ __all__ = [
     "Message",
     "CivitasError",
     "ErrorAction",
+    "SpawnError",
 ]

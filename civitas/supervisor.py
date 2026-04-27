@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import logging
 import random
 import time
 from collections import deque
 from collections.abc import Callable
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from civitas.messages import Message, _new_span_id, _uuid7
 from civitas.process import AgentProcess, ProcessStatus
@@ -468,3 +469,328 @@ class Supervisor:
             if isinstance(child, Supervisor):
                 supervisors.extend(child.all_supervisors())
         return supervisors
+
+
+class RestartMode(Enum):
+    """Restart policy for dynamic children."""
+
+    PERMANENT = "permanent"
+    TRANSIENT = "transient"
+    NEVER = "never"
+
+
+class DynamicSupervisor(AgentProcess):
+    """Dynamic supervisor — starts empty, children added at runtime via spawn().
+
+    Declared as a static child in topology YAML under ``type: dynamic_supervisor``.
+    Only its children change at runtime. Enforces ONE_FOR_ONE restart semantics —
+    no escalation to parent on restart exhaustion; fires on_child_terminated instead.
+
+    Agents call self.spawn() / self.despawn() / self.stop() to manage children.
+    All requests travel as bus messages (civitas.dynamic.*) so the same API works
+    in-process (v0.4) and cross-process (v0.5).
+    """
+
+    def __init__(
+        self,
+        name: str,
+        max_children: int | None = None,
+        max_total_spawns: int | None = None,
+        restart: str = "transient",
+        max_restarts: int = 3,
+        restart_window: float = 60.0,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(name, **kwargs)
+        self.max_children = max_children
+        self.max_total_spawns = max_total_spawns
+        self._restart_mode = RestartMode(restart)
+        self._ds_max_restarts = max_restarts
+        self._ds_restart_window = restart_window
+
+        # Live child tracking
+        self._dynamic_children: dict[str, AgentProcess] = {}
+        self._child_tasks: dict[str, asyncio.Task[None]] = {}
+        self._spawner_names: dict[str, str] = {}
+        self._child_restart_counts: dict[str, int] = {}
+        self._child_restart_timestamps: dict[str, deque[float]] = {}
+        self._total_spawns: int = 0
+        self._pending_child_tasks: set[asyncio.Task[None]] = set()
+
+    # ------------------------------------------------------------------
+    # Governance hook — override in subclasses
+    # ------------------------------------------------------------------
+
+    async def on_spawn_requested(
+        self, agent_class: type, name: str, config: dict[str, Any]
+    ) -> bool:
+        """Governance veto hook. Return False to deny the spawn request.
+
+        Default implementation approves all requests. Subclass to enforce
+        allowlists, rate limits, or policy checks.
+        """
+        return True
+
+    # ------------------------------------------------------------------
+    # Message handling
+    # ------------------------------------------------------------------
+
+    async def handle(self, message: Message) -> Message | None:  # noqa: PLR0911
+        if message.type == "civitas.dynamic.spawn":
+            return await self._handle_spawn(message)
+        if message.type == "civitas.dynamic.despawn":
+            return await self._handle_despawn(message)
+        if message.type == "civitas.dynamic.stop":
+            return await self._handle_stop(message)
+        return None
+
+    async def _handle_spawn(self, message: Message) -> Message | None:
+        payload = message.payload
+        class_path: str = payload.get("class_path", "")
+        child_name: str = payload.get("name", "")
+        config: dict[str, Any] = payload.get("config", {})
+        spawner: str = payload.get("spawner", "")
+
+        if child_name in self._dynamic_children:
+            return self.reply(
+                {"status": "error", "reason": f"agent '{child_name}' already running"}
+            )
+        if self.max_children is not None and len(self._dynamic_children) >= self.max_children:
+            return self.reply(
+                {"status": "error", "reason": f"max_children ({self.max_children}) reached"}
+            )
+        if self.max_total_spawns is not None and self._total_spawns >= self.max_total_spawns:
+            return self.reply(
+                {"status": "error", "reason": f"max_total_spawns ({self.max_total_spawns}) reached"}
+            )
+
+        # Resolve class from dotted path
+        module_path, _, class_name = class_path.rpartition(".")
+        if not module_path:
+            return self.reply({"status": "error", "reason": f"invalid class path: '{class_path}'"})
+        try:
+            module = importlib.import_module(module_path)
+            agent_class: type[AgentProcess] = getattr(module, class_name)
+        except Exception as exc:
+            return self.reply({"status": "error", "reason": f"cannot import '{class_path}': {exc}"})
+
+        approved = await self.on_spawn_requested(agent_class, child_name, config)
+        if not approved:
+            return self.reply({"status": "error", "reason": "spawn denied by governance policy"})
+
+        # Instantiate and wire
+        agent = agent_class(name=child_name)
+        agent._bus = self._bus
+        agent._tracer = self._tracer
+        agent._registry = self._registry
+        agent._dynamic_supervisor_name = self.name  # children spawn into their DynSup
+        agent.llm = self.llm
+        agent.tools = self.tools
+        agent.store = self.store
+
+        if self._registry is not None:
+            self._registry.register(child_name)
+        if self._bus is not None:
+            await self._bus.setup_agent(agent)
+
+        await agent._start()
+
+        self._dynamic_children[child_name] = agent
+        self._spawner_names[child_name] = spawner
+        self._total_spawns += 1
+
+        if agent._task is not None:
+            self._child_tasks[child_name] = agent._task
+
+            def _make_cb(n: str) -> Callable[[asyncio.Task[None]], None]:
+                def _cb(t: asyncio.Task[None]) -> None:
+                    self._on_child_done(n, t)
+
+                return _cb
+
+            agent._task.add_done_callback(_make_cb(child_name))
+
+        logger.info("[%s] spawned '%s' (%s)", self.name, child_name, class_path)
+        return self.reply({"status": "ok", "name": child_name})
+
+    async def _handle_despawn(self, message: Message) -> Message | None:
+        name = message.payload.get("name", "")
+        agent = self._dynamic_children.get(name)
+        if agent is None:
+            return self.reply({"status": "error", "reason": f"no dynamic agent '{name}'"})
+
+        task = self._child_tasks.get(name)
+        if task is not None and not task.done():
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
+
+        self._remove_child(name)
+        if self._registry is not None:
+            self._registry.deregister(name)
+        logger.info("[%s] despawned '%s'", self.name, name)
+        return self.reply({"status": "ok"})
+
+    async def _handle_stop(self, message: Message) -> Message | None:
+        name = message.payload.get("name", "")
+        drain = message.payload.get("drain", "current")
+        timeout = float(message.payload.get("timeout", 30.0))
+
+        agent = self._dynamic_children.get(name)
+        if agent is None:
+            return self.reply({"status": "error", "reason": f"no dynamic agent '{name}'"})
+
+        task = self._child_tasks.get(name)
+
+        if drain == "all":
+            # Normal-priority shutdown — queued behind pending messages
+            shutdown_msg = Message(
+                type="_agency.shutdown",
+                sender=self.name,
+                recipient=name,
+                priority=0,
+            )
+            await agent._mailbox.put(shutdown_msg)
+        else:
+            # drain="current": priority shutdown, finishes current then stops
+            await agent._stop()
+
+        # Wait with timeout; fall back to hard cancel
+        if task is not None and not task.done():
+            try:
+                async with asyncio.timeout(timeout):
+                    await task
+            except TimeoutError:
+                task.cancel()
+                try:
+                    await task
+                except (asyncio.CancelledError, Exception):
+                    pass
+
+        self._remove_child(name)
+        if self._registry is not None:
+            self._registry.deregister(name)
+        logger.info("[%s] stopped '%s' (drain=%s)", self.name, name, drain)
+        return self.reply({"status": "ok"})
+
+    # ------------------------------------------------------------------
+    # Child monitoring and restart
+    # ------------------------------------------------------------------
+
+    def _on_child_done(self, name: str, task: asyncio.Task[None]) -> None:
+        if task.cancelled():
+            return  # despawned / hard-stopped — already removed
+        raw_exc = task.exception()
+        exc = raw_exc if isinstance(raw_exc, Exception) else None
+        t = asyncio.create_task(self._handle_child_exit(name, exc))
+        self._pending_child_tasks.add(t)
+        t.add_done_callback(self._pending_child_tasks.discard)
+
+    async def _handle_child_exit(self, name: str, exc: Exception | None) -> None:
+        if name not in self._dynamic_children:
+            return  # already removed by stop/despawn handler
+
+        crashed = exc is not None
+
+        if self._restart_mode == RestartMode.NEVER:
+            self._remove_child(name)
+            await self._notify_spawner(name, "restarts_exhausted" if crashed else "clean_exit")
+            return
+
+        if self._restart_mode == RestartMode.TRANSIENT and not crashed:
+            self._remove_child(name)
+            await self._notify_spawner(name, "clean_exit")
+            return
+
+        # permanent or transient+crashed: attempt restart
+        now = time.time()
+        self._child_restart_counts.setdefault(name, 0)
+        self._child_restart_counts[name] += 1
+
+        self._child_restart_timestamps.setdefault(name, deque())
+        ts = self._child_restart_timestamps[name]
+        cutoff = now - self._ds_restart_window
+        ts.append(now)
+        while ts and ts[0] <= cutoff:
+            ts.popleft()
+
+        if len(ts) > self._ds_max_restarts:
+            # Exhausted — remove and notify spawner; do NOT escalate to parent supervisor
+            self._remove_child(name)
+            await self._notify_spawner(name, "restarts_exhausted")
+            logger.warning(
+                "[%s] child '%s' exhausted restarts (%d) — removed",
+                self.name,
+                name,
+                self._ds_max_restarts,
+            )
+            return
+
+        agent = self._dynamic_children.get(name)
+        if agent is None:
+            return
+
+        logger.info(
+            "[%s] restarting '%s' (attempt %d/%d)",
+            self.name,
+            name,
+            self._child_restart_counts[name],
+            self._ds_max_restarts,
+        )
+        agent._status = ProcessStatus.INITIALIZING
+        await agent._start()
+
+        if agent._task is not None:
+            self._child_tasks[name] = agent._task
+
+            def _make_cb(n: str) -> Callable[[asyncio.Task[None]], None]:
+                def _cb(t: asyncio.Task[None]) -> None:
+                    self._on_child_done(n, t)
+
+                return _cb
+
+            agent._task.add_done_callback(_make_cb(name))
+
+    def _remove_child(self, name: str) -> None:
+        self._dynamic_children.pop(name, None)
+        self._child_tasks.pop(name, None)
+
+    async def _notify_spawner(self, child_name: str, reason: str) -> None:
+        spawner_name = self._spawner_names.get(child_name)
+        if not spawner_name or self._bus is None:
+            return
+        await self.send(
+            spawner_name,
+            {"child_name": child_name, "reason": reason},
+            message_type="civitas.dynamic.terminated",
+        )
+
+    # ------------------------------------------------------------------
+    # Introspection
+    # ------------------------------------------------------------------
+
+    def all_dynamic_agents(self) -> list[AgentProcess]:
+        """Return the currently live dynamic children."""
+        return list(self._dynamic_children.values())
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    async def on_stop(self) -> None:
+        """Cancel all dynamic children on shutdown."""
+        for name, _agent in list(self._dynamic_children.items()):
+            task = self._child_tasks.get(name)
+            if task is not None and not task.done():
+                task.cancel()
+                try:
+                    await task
+                except (asyncio.CancelledError, Exception):
+                    pass
+
+        for t in list(self._pending_child_tasks):
+            t.cancel()
+        if self._pending_child_tasks:
+            await asyncio.gather(*self._pending_child_tasks, return_exceptions=True)

@@ -10,7 +10,7 @@ from typing import Any, cast
 import yaml
 
 from civitas.components import ComponentSet, build_component_set
-from civitas.errors import ConfigurationError
+from civitas.errors import ConfigurationError, SpawnError
 from civitas.eval.exporters import (
     ArizeExporter,
     BraintrustExporter,
@@ -26,7 +26,7 @@ from civitas.messages import Message, _new_span_id, _uuid7
 from civitas.plugins.loader import load_plugins_from_config
 from civitas.process import AgentProcess
 from civitas.serializer import Serializer
-from civitas.supervisor import Supervisor
+from civitas.supervisor import DynamicSupervisor, Supervisor
 
 logger = logging.getLogger(__name__)
 
@@ -191,6 +191,15 @@ class Runtime:
                     backoff_base=sup_cfg.get("backoff_base", 1.0),
                     backoff_max=sup_cfg.get("backoff_max", 60.0),
                 )
+            elif node.get("type") == "dynamic_supervisor" and "name" in node:
+                return DynamicSupervisor(
+                    name=node["name"],
+                    max_children=node.get("max_children"),
+                    max_total_spawns=node.get("max_total_spawns"),
+                    restart=node.get("restart", "transient"),
+                    max_restarts=node.get("max_restarts", 3),
+                    restart_window=node.get("restart_window", 60.0),
+                )
             elif node.get("type") == "eval_agent" and "name" in node:
                 return EvalAgent(
                     name=node["name"],
@@ -318,7 +327,9 @@ class Runtime:
                 label = f"[sup] {node.name} ({node.strategy.value})"
             else:
                 status = node.status.value if hasattr(node, "status") else "?"
-                if isinstance(node, EvalAgent):
+                if isinstance(node, DynamicSupervisor):
+                    prefix_tag = "[dyn]"
+                elif isinstance(node, EvalAgent):
                     prefix_tag = "[eval]"
                 elif isinstance(node, HTTPGateway):
                     prefix_tag = "[http]"
@@ -389,6 +400,27 @@ class Runtime:
             sup._bus = cs.bus
             sup._registry = cs.registry
             sup._tracer = cs.tracer
+
+        # Wire _dynamic_supervisor_name for all agents based on the static topology.
+        # Each agent receives the name of the nearest DynamicSupervisor in its
+        # ancestor-or-sibling subtree, enabling self.spawn() without explicit naming.
+        def _wire_dyn_sup(
+            node: Supervisor | AgentProcess,
+            nearest_dyn: str | None,
+        ) -> None:
+            if isinstance(node, DynamicSupervisor):
+                node._dynamic_supervisor_name = node.name  # spawns into itself
+            elif isinstance(node, Supervisor):
+                dyn_child = next(
+                    (c for c in node.children if isinstance(c, DynamicSupervisor)), None
+                )
+                new_nearest = dyn_child.name if dyn_child is not None else nearest_dyn
+                for child in node.children:
+                    _wire_dyn_sup(child, new_nearest)
+            else:
+                node._dynamic_supervisor_name = nearest_dyn
+
+        _wire_dyn_sup(self._root_supervisor, None)
 
         # 9. Register all AgentProcesses in Registry; build O(1) name→process map (F04-10)
         for agent in all_agents:
@@ -543,3 +575,55 @@ class Runtime:
             span_id=_new_span_id(),
         )
         await self._bus.route(message)
+
+    # ------------------------------------------------------------------
+    # Dynamic spawning — external entry points for non-agent callers
+    # ------------------------------------------------------------------
+
+    async def spawn(
+        self,
+        supervisor_name: str,
+        agent_class: type[AgentProcess],
+        name: str,
+        config: dict[str, Any] | None = None,
+    ) -> str:
+        """Spawn a dynamic agent via the named DynamicSupervisor.
+
+        Returns the agent name on success. Raises SpawnError on failure.
+        """
+        class_path = f"{agent_class.__module__}.{agent_class.__qualname__}"
+        reply = await self.ask(
+            supervisor_name,
+            {"class_path": class_path, "name": name, "config": config or {}, "spawner": "_runtime"},
+            message_type="civitas.dynamic.spawn",
+        )
+        if reply.payload.get("status") != "ok":
+            raise SpawnError(reply.payload.get("reason", "spawn failed"))
+        return name
+
+    async def despawn(self, supervisor_name: str, name: str) -> None:
+        """Hard-stop a dynamic child via the named DynamicSupervisor."""
+        reply = await self.ask(
+            supervisor_name,
+            {"name": name},
+            message_type="civitas.dynamic.despawn",
+        )
+        if reply.payload.get("status") != "ok":
+            raise SpawnError(reply.payload.get("reason", "despawn failed"))
+
+    async def stop_agent(
+        self,
+        supervisor_name: str,
+        name: str,
+        drain: str = "current",
+        timeout: float = 30.0,
+    ) -> None:
+        """Soft-stop a dynamic child via the named DynamicSupervisor."""
+        reply = await self.ask(
+            supervisor_name,
+            {"name": name, "drain": drain, "timeout": timeout},
+            message_type="civitas.dynamic.stop",
+            timeout=timeout + 5.0,
+        )
+        if reply.payload.get("status") != "ok":
+            raise SpawnError(reply.payload.get("reason", "stop failed"))

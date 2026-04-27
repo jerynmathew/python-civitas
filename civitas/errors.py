@@ -64,3 +64,7 @@ class PluginError(CivitasError):
             f"Failed to load {plugin_type} plugin '{name}': {reason}\n"
             f"  Hint: pip install civitas[{name}]"
         )
+
+
+class SpawnError(CivitasError):
+    """Raised when a dynamic agent spawn, despawn, or stop operation fails."""

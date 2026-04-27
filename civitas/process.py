@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from civitas.errors import ErrorAction
+from civitas.errors import ErrorAction, SpawnError
 from civitas.mcp.client import MCPClient
 from civitas.mcp.tool import MCPTool
 from civitas.messages import Message, _new_span_id, _uuid7
 from civitas.observability.tracer import Span
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from civitas.bus import MessageBus
@@ -20,6 +23,7 @@ if TYPE_CHECKING:
     from civitas.plugins.model import ModelProvider
     from civitas.plugins.state import StateStore
     from civitas.plugins.tools import ToolRegistry
+    from civitas.registry import Registry
 
 
 class ProcessStatus(Enum):
@@ -114,9 +118,13 @@ class AgentProcess:
         # Injected by Runtime/Worker during setup
         self._bus: MessageBus | None = None
         self._tracer: Tracer | None = None
+        self._registry: Registry | None = None
         self.llm: ModelProvider | None = None
         self.tools: ToolRegistry | None = None
         self.store: StateStore | None = None
+
+        # Set by Runtime to the nearest DynamicSupervisor ancestor name (if any)
+        self._dynamic_supervisor_name: str | None = None
 
         # MCP clients opened via connect_mcp() — keyed by server name
         self._mcp_clients: dict[str, Any] = {}
@@ -168,6 +176,14 @@ class AgentProcess:
         message.payload["reason"]. halt corrections never reach this hook —
         they stop the message loop directly.
         """
+
+    async def on_child_terminated(self, name: str, reason: str) -> None:
+        """Called when a dynamically spawned child is permanently removed.
+
+        reason is one of: "restarts_exhausted", "despawned", "clean_exit".
+        Default implementation logs a warning. Override to re-spawn, alert, etc.
+        """
+        logger.warning("[%s] dynamic child '%s' terminated: %s", self.name, name, reason)
 
     # ------------------------------------------------------------------
     # State persistence — checkpoint and restore
@@ -282,6 +298,69 @@ class AgentProcess:
             {"agent_name": self.name, "event_type": event_type, **payload},
             message_type="civitas.eval.event",
         )
+
+    async def spawn(
+        self,
+        agent_class: type,
+        name: str,
+        config: dict[str, Any] | None = None,
+    ) -> str:
+        """Spawn a dynamic agent via the nearest ancestor DynamicSupervisor.
+
+        Sends a civitas.dynamic.spawn message and awaits confirmation.
+        Raises SpawnError if no DynamicSupervisor ancestor exists or spawn is denied.
+        Returns the agent name on success.
+        """
+        if self._dynamic_supervisor_name is None:
+            raise SpawnError("No DynamicSupervisor ancestor found in supervision tree")
+        class_path = f"{agent_class.__module__}.{agent_class.__qualname__}"
+        reply = await self.ask(
+            self._dynamic_supervisor_name,
+            {"class_path": class_path, "name": name, "config": config or {}, "spawner": self.name},
+            message_type="civitas.dynamic.spawn",
+        )
+        if reply.payload.get("status") != "ok":
+            raise SpawnError(reply.payload.get("reason", "spawn failed"))
+        return name
+
+    async def despawn(self, name: str) -> None:
+        """Hard-stop a dynamic child immediately.
+
+        Cancels the agent's task. on_stop() still fires. Pending ask() callers
+        into the agent receive SpawnError. The slot is freed immediately.
+        """
+        if self._dynamic_supervisor_name is None:
+            raise SpawnError("No DynamicSupervisor ancestor found in supervision tree")
+        reply = await self.ask(
+            self._dynamic_supervisor_name,
+            {"name": name},
+            message_type="civitas.dynamic.despawn",
+        )
+        if reply.payload.get("status") != "ok":
+            raise SpawnError(reply.payload.get("reason", "despawn failed"))
+
+    async def stop(
+        self,
+        name: str,
+        drain: str = "current",
+        timeout: float = 30.0,
+    ) -> None:
+        """Soft-stop a dynamic child. Awaitable — returns when fully stopped.
+
+        drain="current" — finishes the message currently being handled, then stops.
+        drain="all"     — drains the full mailbox, then stops.
+        timeout         — fallback hard stop if drain isn't complete in time.
+        """
+        if self._dynamic_supervisor_name is None:
+            raise SpawnError("No DynamicSupervisor ancestor found in supervision tree")
+        reply = await self.ask(
+            self._dynamic_supervisor_name,
+            {"name": name, "drain": drain, "timeout": timeout},
+            message_type="civitas.dynamic.stop",
+            timeout=timeout + 5.0,
+        )
+        if reply.payload.get("status") != "ok":
+            raise SpawnError(reply.payload.get("reason", "stop failed"))
 
     async def connect_mcp(self, config: Any) -> None:
         """Connect to an MCP server and register its tools into self.tools.
@@ -451,6 +530,12 @@ class AgentProcess:
                             trace_id=message.trace_id,
                         )
                         await self._bus.route(ack)
+                    continue
+                if message.type == "civitas.dynamic.terminated":
+                    await self.on_child_terminated(
+                        message.payload.get("child_name", ""),
+                        message.payload.get("reason", ""),
+                    )
                     continue
                 self._current_message = message
                 await self._dispatch(message)

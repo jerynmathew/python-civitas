@@ -77,6 +77,7 @@ class ComponentSet:
         """Inject bus and plugin references into an agent process."""
         agent._bus = self.bus
         agent._tracer = self.tracer
+        agent._registry = self.registry
         agent.llm = self.model_provider
         agent.tools = self.tool_registry
         agent.store = self.store
