@@ -29,7 +29,7 @@ Development progress across all phases of Civitas.
 | 3 | [Developer Experience — MCP Integration](#m34-mcp-integration) | ✅ Completed | Apr 2026 |
 | 3 | [Developer Experience — GenServer](#m35-genserver) | ✅ Completed | Apr 2026 |
 | — | [Infrastructure & Release](#infrastructure--release) | ✅ Completed | Apr 2026 |
-| 4 | [Dynamic Agent Spawning](#m41b-dynamic-agent-spawning) | ⏳ Planned | v0.4 |
+| 4 | [Dynamic Agent Spawning](#m41b-dynamic-agent-spawning) | ✅ Completed | Apr 2026 |
 | 4 | [Security Hardening](#m42-security-hardening) | ⏳ Planned | v0.4 |
 | 4 | [Codebase Security & Enterprise Posture](#m43-codebase-security--enterprise-posture) | ✅ Completed | Apr 2026 |
 | 4 | [Capability-Aware Registry](#m44-capability-aware-registry) | ⏳ Planned | v0.5 |
@@ -382,7 +382,7 @@ Ordered tasks — each step is independently mergeable.
 
 ### M4.1b — Dynamic Agent Spawning
 
-**Status: 🔄 In Design — v0.4 | Priority: 🔴 High**
+**Status: 🔄 In Progress — v0.4 | Priority: 🔴 High**
 
 Agents spawn and decommission other agents at runtime. Enables LLM-driven orchestrators that create specialist agents on demand. See [design spec](design/dynamic-spawning.md).
 
@@ -403,16 +403,18 @@ Agents spawn and decommission other agents at runtime. Enables LLM-driven orches
 
 | Deliverable | Status |
 |-------------|--------|
-| `DynamicSupervisor` class — starts empty, ONE_FOR_ONE, `max_children` limit | ⏳ |
-| `type: dynamic_supervisor` in topology YAML | ⏳ |
-| `self.spawn(AgentClass, name, config)` — nearest ancestor routing | ⏳ |
-| `self.despawn(name)` — clean decommission | ⏳ |
-| `on_spawn_requested` governance hook on `DynamicSupervisor` | ⏳ |
-| `Runtime.spawn()` / `Runtime.despawn()` — external entry points | ⏳ |
-| `TopologyServer(GenServer)` — supervised JSON HTTP management endpoint | ⏳ |
-| `topology show` pings `TopologyServer`; falls back to static YAML | ⏳ |
-| ≥ 15 unit tests + ≥ 2 integration tests | ⏳ |
-| `examples/dynamic_spawning.py` | ⏳ |
+| `DynamicSupervisor` class — starts empty, ONE_FOR_ONE, `max_children` + `max_total_spawns` limits | ✅ |
+| `type: dynamic_supervisor` in topology YAML | ✅ |
+| `self.spawn(AgentClass, name, config)` — nearest ancestor routing | ✅ |
+| `self.despawn(name)` — hard stop; `self.stop(drain, timeout)` — soft stop | ✅ |
+| `on_spawn_requested` governance hook on `DynamicSupervisor` | ✅ |
+| `on_child_terminated` notification hook on spawning agent | ✅ |
+| `Runtime.spawn()` / `Runtime.despawn()` / `Runtime.stop_agent()` — external entry points | ✅ |
+| `SpawnError` added to error hierarchy | ✅ |
+| 38 unit + integration tests | ✅ |
+| `TopologyServer(GenServer)` — supervised JSON HTTP management endpoint | ✅ |
+| `topology show` pings `TopologyServer`; falls back to static YAML | ✅ |
+| `examples/dynamic_spawning.py` | ✅ |
 
 ---
 
