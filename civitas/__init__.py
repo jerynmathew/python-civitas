@@ -1,17 +1,19 @@
 """Civitas — The Production Runtime for Python Agents.
 
 Public API:
-    AgentProcess  — subclass to create agent processes
-    GenServer     — OTP-style generic server for stateful service processes
-    Supervisor    — monitors children, applies restart strategies
-    Runtime       — wires components, manages lifecycle
-    Worker        — hosts agents in a remote worker process
-    ComponentSet  — assembled infrastructure wiring (transport, bus, registry, tracer)
-    Message       — standard message envelope
-    CivitasError   — base exception
-    ErrorAction   — enum: RETRY, SKIP, ESCALATE, STOP
-    SignatureError — raised on missing, invalid, or replayed message signatures
-    SecurityConfig — security block parsed from topology YAML
+    AgentProcess    — subclass to create agent processes
+    GenServer       — OTP-style generic server for stateful service processes
+    Supervisor      — monitors children, applies restart strategies
+    Runtime         — wires components, manages lifecycle
+    Worker          — hosts agents in a remote worker process
+    ComponentSet    — assembled infrastructure wiring (transport, bus, registry, tracer)
+    Message         — standard message envelope
+    CivitasError    — base exception
+    ErrorAction     — enum: RETRY, SKIP, ESCALATE, STOP
+    SignatureError  — raised on missing, invalid, or replayed message signatures
+    SecurityConfig  — security block parsed from topology YAML
+    SecretsProvider — protocol for secret resolution
+    substitute_vars — resolve ${VAR} patterns in YAML config dicts
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ from civitas.genserver import GenServer
 from civitas.messages import Message
 from civitas.process import AgentProcess
 from civitas.runtime import Runtime
+from civitas.secrets import SecretsProvider, substitute_vars
 from civitas.security.config import SecurityConfig
 from civitas.supervisor import DynamicSupervisor, Supervisor
 from civitas.topology_server import TopologyServer
@@ -40,6 +43,7 @@ __all__ = [
     "GatewayConfig",
     "HTTPGateway",
     "SecurityConfig",
+    "SecretsProvider",
     "SignatureError",
     "Supervisor",
     "Runtime",
@@ -50,4 +54,5 @@ __all__ = [
     "ErrorAction",
     "SpawnError",
     "TopologyServer",
+    "substitute_vars",
 ]

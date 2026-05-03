@@ -123,6 +123,10 @@ class AgentProcess:
         self.tools: ToolRegistry | None = None
         self.store: StateStore | None = None
 
+        # Per-agent credential map — populated from topology credentials: block.
+        # Keys are provider names (e.g. "anthropic"); values are credential strings.
+        self._credentials: dict[str, str] = {}
+
         # Set by Runtime to the nearest DynamicSupervisor ancestor name (if any)
         self._dynamic_supervisor_name: str | None = None
 
@@ -139,6 +143,47 @@ class AgentProcess:
     @property
     def status(self) -> ProcessStatus:
         return self._status
+
+    # ------------------------------------------------------------------
+    # Credential helpers (M4.2c)
+    # ------------------------------------------------------------------
+
+    def get_credential(self, provider_name: str) -> str | None:
+        """Return the per-agent credential value for ``provider_name``, or None.
+
+        Credentials are set via the ``credentials:`` block in the topology YAML::
+
+            agents:
+              - name: research_agent
+                credentials:
+                  anthropic: ${RESEARCH_AGENT_ANTHROPIC_KEY}
+        """
+        return self._credentials.get(provider_name)
+
+    def model_for(self, provider_name: str) -> ModelProvider:
+        """Return a ModelProvider scoped to this agent's credentials.
+
+        If a per-agent credential is configured for ``provider_name``, a new
+        provider instance is created with that credential. Otherwise falls back
+        to the globally injected ``self.llm``.
+
+        Raises:
+            ConfigurationError: if no credential and no global provider.
+        """
+        from civitas.errors import ConfigurationError
+        from civitas.plugins.loader import resolve_plugin_class
+
+        api_key = self._credentials.get(provider_name)
+        if api_key is not None:
+            cls = resolve_plugin_class("model", provider_name)
+            provider: ModelProvider = cls(api_key=api_key)
+            return provider
+        if self.llm is not None:
+            return self.llm
+        raise ConfigurationError(
+            f"No model provider available for '{provider_name}'. "
+            f"Set agent credentials.{provider_name} in topology or inject a global provider."
+        )
 
     async def receive(self, message: Message) -> None:
         """Deliver an inbound message to this agent's mailbox."""

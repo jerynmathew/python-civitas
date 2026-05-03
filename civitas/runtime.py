@@ -32,6 +32,31 @@ from civitas.topology_server import TopologyServer
 logger = logging.getLogger(__name__)
 
 
+def _extract_agent_credentials(config: dict[str, Any]) -> dict[str, dict[str, str]]:
+    """Walk the supervision tree and collect {agent_name: {provider: credential}} entries."""
+    result: dict[str, dict[str, str]] = {}
+
+    def _scan(node: dict[str, Any]) -> None:
+        if "agent" in node:
+            cfg = node["agent"]
+            creds = cfg.get("credentials")
+            if creds and isinstance(creds, dict):
+                result[cfg["name"]] = {str(k): str(v) for k, v in creds.items()}
+        elif "supervisor" in node:
+            for child in node["supervisor"].get("children", []):
+                _scan(child)
+        elif "credentials" in node and "name" in node:
+            creds = node["credentials"]
+            if isinstance(creds, dict):
+                result[node["name"]] = {str(k): str(v) for k, v in creds.items()}
+
+    sup = config.get("supervision") or config.get("supervisor", {})
+    sup_dict: dict[str, Any] = sup if isinstance(sup, dict) else {}
+    for child in sup_dict.get("children", []):
+        _scan(child)
+    return result
+
+
 def _extract_public_keys(config: dict[str, Any]) -> dict[str, str]:
     """Walk the supervision tree and collect {agent_name: public_key_b64} entries."""
     result: dict[str, str] = {}
@@ -114,6 +139,9 @@ class Runtime:
         self._security_config: Any = None
         self._topology_public_keys: dict[str, str] = {}
 
+        # Per-agent credentials — populated by from_config() from credentials: blocks
+        self._agent_credentials: dict[str, dict[str, str]] = {}
+
         # Set during start() — exposed for stop(), ask()/send(), and get_agent()
         self._serializer: Serializer | None = None
         self._tracer: Any = None
@@ -135,7 +163,10 @@ class Runtime:
         actual Python class. If not provided, types are resolved via
         ``importlib`` from dotted module paths (e.g. "myapp.agents.MyAgent").
         """
+        from civitas.secrets.substitution import substitute_vars
+
         config = yaml.safe_load(Path(path).read_text())
+        config = substitute_vars(config)
         classes = agent_classes or {}
 
         def _resolve_class(type_str: str) -> type[AgentProcess]:
@@ -340,6 +371,9 @@ class Runtime:
                     )
                 )
 
+        # Per-agent credentials — parsed here, applied in start()
+        runtime._agent_credentials = _extract_agent_credentials(config)
+
         # Security config — parsed here, applied in start()
         security_section = config.get("security")
         if security_section:
@@ -472,6 +506,9 @@ class Runtime:
 
         for agent in all_agents:
             cs.inject(agent)
+            # Wire per-agent credentials from topology credentials: blocks
+            if self._agent_credentials:
+                agent._credentials = self._agent_credentials.get(agent.name, {})
 
         # Inject into supervisors (supervisor-specific wiring, not via ComponentSet)
         for sup in self._root_supervisor.all_supervisors():
