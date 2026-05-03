@@ -6,7 +6,7 @@ import asyncio
 import json
 from collections.abc import Awaitable, Callable
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -993,3 +993,358 @@ class TestOpenAPI:
         spec = json.loads(body_evt["body"])
         assert spec["openapi"] == "3.1.0"
         assert "/v1/chat" in spec["paths"]
+
+
+# ---------------------------------------------------------------------------
+# _parse_query — query string parsing (lines 46-50 in asgi.py)
+# ---------------------------------------------------------------------------
+
+
+class TestParseQuery:
+    def test_empty_bytes_returns_empty(self) -> None:
+        from civitas.gateway.asgi import _parse_query
+
+        assert _parse_query(b"") == {}
+
+    def test_single_param(self) -> None:
+        from civitas.gateway.asgi import _parse_query
+
+        assert _parse_query(b"foo=bar") == {"foo": "bar"}
+
+    def test_multiple_params(self) -> None:
+        from civitas.gateway.asgi import _parse_query
+
+        result = _parse_query(b"a=1&b=2")
+        assert result == {"a": "1", "b": "2"}
+
+    def test_pair_without_equals_skipped(self) -> None:
+        from civitas.gateway.asgi import _parse_query
+
+        result = _parse_query(b"noequalssign&key=val")
+        assert result == {"key": "val"}
+
+
+# ---------------------------------------------------------------------------
+# GatewayASGI — lifespan events (lines 80->exit, 92->88)
+# ---------------------------------------------------------------------------
+
+
+class TestLifespan:
+    @pytest.mark.asyncio
+    async def test_lifespan_startup_then_shutdown(self) -> None:
+        asgi, _ = _make_asgi()
+        events = [
+            {"type": "lifespan.startup"},
+            {"type": "lifespan.shutdown"},
+        ]
+        idx = 0
+
+        async def receive() -> dict:
+            nonlocal idx
+            e = events[idx]
+            idx += 1
+            return e
+
+        sent: list[dict] = []
+
+        async def send(msg: dict) -> None:
+            sent.append(msg)
+
+        await asgi({"type": "lifespan"}, receive, send)
+        types = [s["type"] for s in sent]
+        assert "lifespan.startup.complete" in types
+        assert "lifespan.shutdown.complete" in types
+
+
+# ---------------------------------------------------------------------------
+# GatewayASGI — docs / OpenAPI endpoints (lines 108->118)
+# ---------------------------------------------------------------------------
+
+
+async def _http_request_with_qs(
+    asgi: GatewayASGI,
+    *,
+    method: str = "GET",
+    path: str = "/docs",
+    query_string: bytes = b"",
+    body: dict | None = None,
+    headers: dict[str, str] | None = None,
+) -> tuple[int, bytes]:
+    """Drive GatewayASGI, returns raw (status, body_bytes)."""
+    raw_headers = [(k.encode(), v.encode()) for k, v in (headers or {}).items()]
+    scope = {
+        "type": "http",
+        "method": method,
+        "path": path,
+        "headers": raw_headers,
+        "query_string": query_string,
+    }
+    body_bytes = json.dumps(body or {}).encode()
+
+    async def receive() -> dict:
+        return {"body": body_bytes, "more_body": False}
+
+    sent: list[dict] = []
+
+    async def send(msg: dict) -> None:
+        sent.append(msg)
+
+    await asgi(scope, receive, send)
+    start = next(e for e in sent if e["type"] == "http.response.start")
+    body_evt = next(e for e in sent if e["type"] == "http.response.body")
+    return start["status"], body_evt["body"]
+
+
+class TestDocsEndpoints:
+    @pytest.mark.asyncio
+    async def test_swagger_ui_served_at_docs_path(self) -> None:
+        asgi, _ = _make_asgi()
+        status, body = await _http_request_with_qs(asgi, method="GET", path="/docs")
+        assert status == 200
+        assert b"swagger" in body.lower() or b"openapi" in body.lower()
+
+    @pytest.mark.asyncio
+    async def test_openapi_json_served(self) -> None:
+        asgi, _ = _make_asgi()
+        status, body = await _http_request_with_qs(asgi, method="GET", path="/docs/openapi.json")
+        assert status == 200
+        spec = json.loads(body)
+        assert spec.get("openapi") is not None
+
+    @pytest.mark.asyncio
+    async def test_root_openapi_json_alias(self) -> None:
+        asgi, _ = _make_asgi()
+        status, body = await _http_request_with_qs(asgi, method="GET", path="/openapi.json")
+        assert status == 200
+
+    @pytest.mark.asyncio
+    async def test_docs_disabled_does_not_serve_swagger(self) -> None:
+        gateway = MagicMock(spec=HTTPGateway)
+        gateway.name = "api"
+        config = GatewayConfig(docs_enabled=False)
+        route_table = RouteTable.from_config([])
+        asgi = GatewayASGI(gateway=gateway, route_table=route_table, config=config)
+        gateway.ask = AsyncMock(side_effect=TimeoutError())
+        status, _ = await _http_request_with_qs(asgi, method="GET", path="/docs")
+        assert status == 404  # docs disabled → no route match
+
+
+# ---------------------------------------------------------------------------
+# GatewayASGI — non-dict JSON body → 400 (lines 133-136)
+# ---------------------------------------------------------------------------
+
+
+class TestNonDictBody:
+    @pytest.mark.asyncio
+    async def test_json_array_returns_400(self) -> None:
+        asgi, _ = _make_asgi()
+        scope = {
+            "type": "http",
+            "method": "POST",
+            "path": "/agents/foo",
+            "headers": [],
+            "query_string": b"",
+        }
+        array_body = json.dumps([1, 2, 3]).encode()
+
+        async def receive() -> dict:
+            return {"body": array_body, "more_body": False}
+
+        sent: list[dict] = []
+
+        async def send(msg: dict) -> None:
+            sent.append(msg)
+
+        await asgi(scope, receive, send)
+        start = next(e for e in sent if e["type"] == "http.response.start")
+        assert start["status"] == 400
+
+
+# ---------------------------------------------------------------------------
+# GatewayASGI — query params parsed into payload (lines 256-260)
+# ---------------------------------------------------------------------------
+
+
+class TestQueryParams:
+    @pytest.mark.asyncio
+    async def test_query_params_in_scope_parsed(self) -> None:
+        asgi, gateway = _make_asgi()
+        reply = MagicMock(spec=Message)
+        reply.payload = {"ok": True}
+        gateway.ask = AsyncMock(return_value=reply)
+
+        status, _ = await _http_request_with_qs(
+            asgi,
+            method="POST",
+            path="/agents/foo",
+            query_string=b"key=val&other=x",
+        )
+        assert status == 200
+
+
+# ---------------------------------------------------------------------------
+# GatewayASGI — contract validation (lines 186->189, 191, 196-199)
+# ---------------------------------------------------------------------------
+
+
+class TestContractValidation:
+    @pytest.mark.asyncio
+    async def test_request_schema_failure_returns_422(self) -> None:
+        from pydantic import BaseModel
+
+        class ChatRequest(BaseModel):
+            query: str
+
+        asgi, gateway = _make_asgi(
+            routes=[{"method": "POST", "path": "/chat", "agent": "assistant", "mode": "call"}]
+        )
+        # Inject schema directly — from_config only wires schemas from @contract metadata
+        asgi._route_table.entries()[0].request_schema = ChatRequest
+
+        status, body = await _http_request(asgi, method="POST", path="/chat", body={})
+        assert status == 422
+
+    @pytest.mark.asyncio
+    async def test_response_schema_failure_returns_500(self) -> None:
+        from pydantic import BaseModel
+
+        class ChatResponse(BaseModel):
+            answer: str
+
+        asgi, gateway = _make_asgi(
+            routes=[{"method": "POST", "path": "/chat", "agent": "assistant", "mode": "call"}]
+        )
+        asgi._route_table.entries()[0].response_schema = ChatResponse
+
+        reply = MagicMock(spec=Message)
+        reply.payload = {"wrong_key": "value"}  # missing required "answer"
+        gateway.ask = AsyncMock(return_value=reply)
+
+        status, _ = await _http_request(asgi, method="POST", path="/chat", body={"q": "hi"})
+        assert status == 500
+
+    @pytest.mark.asyncio
+    async def test_error_in_reply_payload_returns_400(self) -> None:
+        asgi, gateway = _make_asgi(
+            routes=[{"method": "POST", "path": "/chat", "agent": "assistant", "mode": "call"}]
+        )
+        reply = MagicMock(spec=Message)
+        reply.payload = {"error": "something went wrong"}
+        gateway.ask = AsyncMock(return_value=reply)
+
+        status, _ = await _http_request(asgi, method="POST", path="/chat", body={})
+        assert status == 400
+
+
+# ---------------------------------------------------------------------------
+# GatewayASGI — cast/call generic exceptions → 500 (lines 259-260, 271-273)
+# ---------------------------------------------------------------------------
+
+
+class TestDispatchErrors:
+    @pytest.mark.asyncio
+    async def test_cast_generic_exception_returns_500(self) -> None:
+        asgi, gateway = _make_asgi()
+        gateway.send = AsyncMock(side_effect=RuntimeError("unexpected"))
+        status, _ = await _http_request(asgi, method="POST", path="/agents/foo/cast")
+        assert status == 500
+
+    @pytest.mark.asyncio
+    async def test_call_generic_exception_returns_500(self) -> None:
+        asgi, gateway = _make_asgi()
+        gateway.ask = AsyncMock(side_effect=RuntimeError("unexpected"))
+        status, _ = await _http_request(asgi, method="POST", path="/agents/foo")
+        assert status == 500
+
+
+# ---------------------------------------------------------------------------
+# GatewayASGI — middleware load failure (lines 69-72)
+# ---------------------------------------------------------------------------
+
+
+class TestMiddlewareLoadFailure:
+    def test_bad_middleware_path_logged_not_raised(self) -> None:
+        gateway = MagicMock(spec=HTTPGateway)
+        gateway.name = "api"
+        config = GatewayConfig(middleware=["nonexistent.module.Middleware"])
+        route_table = RouteTable.from_config([])
+        # Should not raise — bad middleware is logged and skipped
+        asgi = GatewayASGI(gateway=gateway, route_table=route_table, config=config)
+        assert asgi._middlewares == []
+
+
+# ---------------------------------------------------------------------------
+# HTTPGateway — on_start uvicorn import failure (lines 78-79)
+# ---------------------------------------------------------------------------
+
+
+class TestHTTPGatewayCore:
+    @pytest.mark.asyncio
+    async def test_on_start_raises_when_uvicorn_missing(self) -> None:
+        import sys
+
+        gw = HTTPGateway("api", GatewayConfig(port=9999))
+        gw._bus = None
+
+        saved = sys.modules.get("uvicorn", ...)
+        sys.modules["uvicorn"] = None  # type: ignore[assignment]  # causes ImportError on import
+        try:
+            with pytest.raises(RuntimeError, match="civitas\\[http\\]"):
+                await gw.on_start()
+        finally:
+            if saved is ...:
+                sys.modules.pop("uvicorn", None)
+            else:
+                sys.modules["uvicorn"] = saved
+
+    @pytest.mark.asyncio
+    async def test_handle_does_nothing(self) -> None:
+        gw = HTTPGateway("api")
+        msg = MagicMock(spec=Message)
+        result = await gw.handle(msg)
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_on_stop_with_uvicorn_server_set(self) -> None:
+        gw = HTTPGateway("api")
+        mock_server = MagicMock()
+        gw._uvicorn_server = mock_server
+        gw._server_task = asyncio.create_task(asyncio.sleep(100))
+        gw._h3_server = None
+
+        await gw.on_stop()
+
+        assert mock_server.should_exit is True
+        assert gw._uvicorn_server is None
+        assert gw._server_task is None
+
+    @pytest.mark.asyncio
+    async def test_on_stop_with_h3_server(self) -> None:
+        gw = HTTPGateway("api")
+        mock_h3 = AsyncMock()
+        gw._h3_server = mock_h3
+        gw._uvicorn_server = None
+        gw._server_task = None
+
+        await gw.on_stop()
+
+        mock_h3.stop.assert_awaited_once()
+        assert gw._h3_server is None
+
+    @pytest.mark.asyncio
+    async def test_on_stop_server_task_timeout(self) -> None:
+        gw = HTTPGateway("api")
+        gw._uvicorn_server = None
+        gw._h3_server = None
+
+        async def hang() -> None:
+            await asyncio.sleep(9999)
+
+        task = asyncio.create_task(hang())
+        gw._server_task = task
+
+        # Patch wait_for to immediately raise TimeoutError
+        with patch("asyncio.wait_for", side_effect=TimeoutError()):
+            await gw.on_stop()
+
+        assert gw._server_task is None

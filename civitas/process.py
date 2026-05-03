@@ -6,9 +6,11 @@ import asyncio
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import UTC
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
+from civitas.audit.types import AuditEvent, AuditSink
 from civitas.errors import ConfigurationError, ErrorAction, SpawnError
 from civitas.mcp.client import MCPClient
 from civitas.mcp.tool import MCPTool
@@ -128,6 +130,9 @@ class AgentProcess:
         # Keys are provider names (e.g. "anthropic"); values are credential strings.
         self._credentials: dict[str, str] = {}
 
+        # Audit sink — injected by ComponentSet, None when auditing is disabled.
+        self._audit_sink: AuditSink | None = None
+
         # Set by Runtime to the nearest DynamicSupervisor ancestor name (if any)
         self._dynamic_supervisor_name: str | None = None
 
@@ -159,7 +164,25 @@ class AgentProcess:
                 credentials:
                   anthropic: ${RESEARCH_AGENT_ANTHROPIC_KEY}
         """
-        return self._credentials.get(provider_name)
+        value = self._credentials.get(provider_name)
+        _sink = getattr(self, "_audit_sink", None)
+        if value is not None and _sink is not None:
+            import asyncio
+            from datetime import datetime
+
+            event = AuditEvent(
+                event="secret.access",
+                ts=datetime.now(UTC).isoformat(),
+                agent=self.name,
+                signer_id="",
+                details={"provider": provider_name},
+            )
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(_sink.emit(event))
+            except RuntimeError:
+                pass  # no running loop — skip audit in sync context
+        return value
 
     def model_for(self, provider_name: str) -> ModelProvider:
         """Return a ModelProvider scoped to this agent's credentials.
@@ -420,13 +443,19 @@ class AgentProcess:
             except Exception:
                 pass
 
-        client = MCPClient(config)
+        client = MCPClient(config, audit_sink=self._audit_sink, agent_name=self.name)
         await client.connect()
         schemas = await client.list_tools()
 
         if self.tools is not None:
             for schema in schemas:
-                mcp_tool = MCPTool(client, schema, tracer=self._tracer)
+                mcp_tool = MCPTool(
+                    client,
+                    schema,
+                    tracer=self._tracer,
+                    audit_sink=self._audit_sink,
+                    agent_name=self.name,
+                )
                 self.tools.register(mcp_tool)
 
         self._mcp_clients[config.name] = client

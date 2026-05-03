@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import UTC
 from typing import TYPE_CHECKING
 
+from civitas.audit.types import AuditEvent, AuditSink
 from civitas.errors import MessageRoutingError, MessageValidationError
 from civitas.messages import SYSTEM_MESSAGE_TYPES, Message
 from civitas.observability.tracer import Tracer
@@ -34,11 +36,13 @@ class MessageBus:
         registry: Registry,
         serializer: Serializer,
         tracer: Tracer,
+        audit_sink: AuditSink | None = None,
     ) -> None:
         self._transport = transport
         self._registry = registry
         self._serializer = serializer
         self._tracer = tracer
+        self._audit_sink = audit_sink
 
     async def setup_agent(self, agent: AgentProcess) -> None:
         """Subscribe the transport to deliver messages to an agent's mailbox."""
@@ -97,6 +101,25 @@ class MessageBus:
             await self._transport.publish(address, data)
         finally:
             span.end()
+
+        if self._audit_sink is not None:
+            from datetime import datetime
+
+            await self._audit_sink.emit(
+                AuditEvent(
+                    event="message.route",
+                    ts=datetime.now(UTC).isoformat(),
+                    agent=message.sender,
+                    signer_id=message.sender,  # verified sender == signer when signing is active
+                    details={
+                        "sender": message.sender,
+                        "recipient": message.recipient,
+                        "type": message.type,
+                        "correlation_id": message.correlation_id or "",
+                        "message_id": message.id,
+                    },
+                )
+            )
 
     async def request(self, message: Message, timeout: float = 30.0) -> Message:
         """Send a request message and await a reply.

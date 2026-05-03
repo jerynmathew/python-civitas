@@ -24,6 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from civitas.audit.types import AuditSink
 from civitas.bus import MessageBus
 from civitas.config import settings
 from civitas.observability.tracer import Tracer
@@ -34,6 +35,7 @@ from civitas.transport import Transport
 
 if TYPE_CHECKING:
     from civitas.process import AgentProcess
+    from civitas.security.config import NatsTlsConfig, ZmqCurveConfig
 
 
 @dataclass
@@ -63,6 +65,7 @@ class ComponentSet:
     store: Any = None  # StateStore | None
     model_provider: Any = None
     tool_registry: Any = None
+    audit_sink: AuditSink | None = None
     bus: MessageBus = field(init=False)
 
     def __post_init__(self) -> None:
@@ -71,6 +74,7 @@ class ComponentSet:
             registry=self.registry,
             serializer=self.serializer,
             tracer=self.tracer,
+            audit_sink=self.audit_sink,
         )
 
     def inject(self, agent: AgentProcess) -> None:
@@ -81,6 +85,7 @@ class ComponentSet:
         agent.llm = self.model_provider
         agent.tools = self.tool_registry
         agent.store = self.store
+        agent._audit_sink = self.audit_sink
 
 
 def build_component_set(
@@ -89,12 +94,15 @@ def build_component_set(
     model_provider: Any = None,
     tool_registry: Any = None,
     state_store: Any = None,
+    audit_sink: AuditSink | None = None,
     zmq_pub_addr: str = "tcp://127.0.0.1:5559",
     zmq_sub_addr: str = "tcp://127.0.0.1:5560",
     zmq_start_proxy: bool = True,
+    zmq_curve_config: ZmqCurveConfig | None = None,
     nats_servers: str | list[str] = "nats://localhost:4222",
     nats_jetstream: bool = False,
     nats_stream_name: str = "AGENCY",
+    nats_tls_config: NatsTlsConfig | None = None,
 ) -> ComponentSet:
     """Build a ComponentSet from primitive configuration values.
 
@@ -125,6 +133,7 @@ def build_component_set(
             pub_addr=zmq_pub_addr,
             sub_addr=zmq_sub_addr,
             start_proxy=zmq_start_proxy,
+            curve_config=zmq_curve_config,
         )
     elif transport_type == "nats":
         from civitas.transport.nats import NATSTransport
@@ -134,6 +143,7 @@ def build_component_set(
             servers=nats_servers,
             jetstream=nats_jetstream,
             stream_name=nats_stream_name,
+            tls_config=nats_tls_config,
         )
     else:
         from civitas.transport.inprocess import InProcessTransport
@@ -155,4 +165,5 @@ def build_component_set(
         store=state_store,
         model_provider=model_provider,
         tool_registry=tool_registry,
+        audit_sink=audit_sink,
     )

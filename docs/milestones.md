@@ -30,7 +30,7 @@ Development progress across all phases of Civitas.
 | 3 | [Developer Experience — GenServer](#m35-genserver) | ✅ Completed | Apr 2026 |
 | — | [Infrastructure & Release](#infrastructure--release) | ✅ Completed | Apr 2026 |
 | 4 | [Dynamic Agent Spawning](#m41b-dynamic-agent-spawning) | ✅ Completed | Apr 2026 |
-| 4 | [Security Hardening](#m42-security-hardening) | 🔄 In Progress | v0.4 |
+| 4 | [Security Hardening](#m42-security-hardening) | ✅ Completed | May 2026 |
 | 4 | [Codebase Security & Enterprise Posture](#m43-codebase-security--enterprise-posture) | ✅ Completed | Apr 2026 |
 | 4 | [Capability-Aware Registry](#m44-capability-aware-registry) | ⏳ Planned | v0.5 |
 | 4 | [HTTP Gateway](#http-gateway) | ✅ Completed | Apr 2026 |
@@ -420,7 +420,7 @@ Agents spawn and decommission other agents at runtime. Enables LLM-driven orches
 
 ### M4.2 — Security Hardening
 
-**Status: 🔄 In Progress — v0.4 | Priority: 🔴 High**
+**Status: ✅ Completed — v0.4 | Priority: 🔴 High**
 
 Design approved. Splits into five independently shippable sub-milestones — see [`docs/design/security-hardening.md`](design/security-hardening.md) for full rationale, design decisions, and resolved questions.
 
@@ -428,68 +428,68 @@ Recommended delivery order: **a → c → d → e → b**.
 
 #### M4.2a — Identity & Signing
 
-**Status: 🔄 In Progress**
+**Status: ✅ Complete**
 
 | Deliverable | Status |
 |-------------|--------|
-| `civitas/security/` package: `IdentityConfig`, `SigningConfig`, `SecurityConfig` | 🔄 |
-| `AgentIdentity`: Ed25519 keypair generation, OpenSSH-style storage (`id_ed25519` / `id_ed25519.pub`) | 🔄 |
-| `KeyRegistry`: public key lookup by agent name | 🔄 |
-| `MessageSigner`: sign outgoing envelopes (v=2 wire format), verify incoming | 🔄 |
-| `NonceCache`: bounded LRU replay protection (10k entries) | 🔄 |
-| `SignatureError` — new `CivitasError` subclass | 🔄 |
-| `SigningSerializer` wrapping `MsgpackSerializer` | 🔄 |
-| Multi-node key distribution: public keys in topology YAML; spawn-message vouching for dynamic agents | 🔄 |
-| `security:` YAML block parsing in `Runtime.from_config()` | 🔄 |
-| InProcess transport: signing bypassed entirely (D9 performance rule) | 🔄 |
-| `signing.allow_unsigned: true` escape hatch for rolling upgrades | 🔄 |
-| Unit + integration tests ≥90% coverage on new code | 🔄 |
+| `civitas/security/` package: `IdentityConfig`, `SigningConfig`, `SecurityConfig` | ✅ |
+| `AgentIdentity`: Ed25519 keypair generation, OpenSSH-style storage (`id_ed25519` / `id_ed25519.pub`) | ✅ |
+| `KeyRegistry`: public key lookup by agent name | ✅ |
+| `MessageSigner`: sign outgoing envelopes (v=2 wire format), verify incoming | ✅ |
+| `NonceCache`: bounded LRU replay protection (10k entries) | ✅ |
+| `SignatureError` — new `CivitasError` subclass | ✅ |
+| `SigningSerializer` wrapping `MsgpackSerializer` | ✅ |
+| Multi-node key distribution: public keys in topology YAML; spawn-message vouching for dynamic agents | ✅ |
+| `security:` YAML block parsing in `Runtime.from_config()` | ✅ |
+| InProcess transport: signing bypassed entirely (D9 performance rule) | ✅ |
+| `signing.allow_unsigned: true` escape hatch for rolling upgrades | ✅ |
+| Unit + integration tests ≥90% coverage on new code | ✅ |
 
 #### M4.2b — Transport mTLS
 
-**Status: ⏳ Planned** *(depends on M4.2a)*
+**Status: ✅ Complete**
 
 | Deliverable | Status |
 |-------------|--------|
-| ZMQ CURVE: server keypair on proxy, client keypairs on Workers | ⏳ |
-| NATS TLS + nkeys: Ed25519-based subject auth, TLS cert/key/CA config | ⏳ |
-| `security.transport` YAML block plumbing into ZMQ and NATS transports | ⏳ |
-| `civitas security init` CLI — scaffold keys and config for ZMQ/NATS deployments | ⏳ |
+| ZMQ CURVE: server keypair on proxy, client keypairs on Workers | ✅ |
+| NATS TLS + nkeys: Ed25519-based subject auth, TLS cert/key/CA config | ✅ |
+| `security.transport` YAML block plumbing into ZMQ and NATS transports | ✅ |
+| `civitas security init` CLI — scaffold keys and config for ZMQ/NATS deployments | ✅ |
 
 #### M4.2c — Credential Isolation
 
-**Status: ⏳ Planned** *(independent)*
+**Status: ✅ Complete**
 
 | Deliverable | Status |
 |-------------|--------|
-| `${VAR_NAME}` env-var substitution in `Runtime.from_config()` | ⏳ |
-| Unset variable raises `ConfigurationError` with clear message | ⏳ |
-| `civitas.secrets.SecretsProvider` protocol + file/env/Vault implementations | ⏳ |
-| Per-agent `credentials:` block in topology YAML | ⏳ |
-| Plugin handles: `self.llm("anthropic")` resolves per-agent credential at call time | ⏳ |
+| `${VAR_NAME}` env-var substitution in `Runtime.from_config()` | ✅ |
+| Unset variable raises `ConfigurationError` with clear message | ✅ |
+| `civitas.secrets.SecretsProvider` protocol + file/env/Vault implementations | ✅ |
+| Per-agent `credentials:` block in topology YAML | ✅ |
+| Plugin handles: `self.llm("anthropic")` resolves per-agent credential at call time | ✅ |
 
 #### M4.2d — Tool Sandbox
 
-**Status: ⏳ Planned** *(independent)*
+**Status: ✅ Complete**
 
 | Deliverable | Status |
 |-------------|--------|
-| Bubblewrap wrapper for MCP subprocess execution on Linux | ⏳ |
-| `sandbox:` YAML block per MCP server (network, filesystem allowlists) | ⏳ |
-| Refuse-to-start when `sandbox.enabled: true` and `bwrap` unavailable | ⏳ |
-| Clear error messages with per-distro install instructions | ⏳ |
+| Bubblewrap wrapper for MCP subprocess execution on Linux | ✅ |
+| `sandbox:` YAML block per MCP server (network, filesystem allowlists) | ✅ |
+| Refuse-to-start when `sandbox.enabled: true` and `bwrap` unavailable | ✅ |
+| Clear error messages with per-distro install instructions | ✅ |
 
 #### M4.2e — Audit Log
 
-**Status: ⏳ Planned** *(depends on M4.2a for signer_id)*
+**Status: ✅ Complete**
 
 | Deliverable | Status |
 |-------------|--------|
-| `civitas.audit` module: `AuditEvent` TypedDict, `AuditSink` protocol | ⏳ |
-| `JsonlFileSink`: batched fsync (100ms / 100 events), `sync_writes` option, SIGHUP rotation | ⏳ |
-| `NullSink` for tests | ⏳ |
-| Emission at chokepoints: `MessageBus.route()`, `MCPTool.execute()`, sandbox violations, secret access | ⏳ |
-| `SyslogSink` and `OtlpSink` implementations | ⏳ |
+| `civitas.audit` module: `AuditEvent` TypedDict, `AuditSink` protocol | ✅ |
+| `JsonlFileSink`: batched fsync (100ms / 100 events), `sync_writes` option, SIGHUP rotation | ✅ |
+| `NullSink` for tests | ✅ |
+| Emission at chokepoints: `MessageBus.route()`, `MCPTool.execute()`, sandbox violations, secret access | ✅ |
+| `SyslogSink` and `OtlpSink` implementations | ✅ |
 
 ---
 
@@ -541,80 +541,80 @@ Supervised edge process bridging external HTTP traffic into the Civitas message 
 
 | Deliverable | Status |
 |-------------|--------|
-| `HTTPGateway(AgentProcess)` — ASGI app, request translation, route table | ⏳ |
-| HTTP/1.1 + HTTP/2 via uvicorn[standard] — uvloop + httptools (`civitas[http]`) | ⏳ |
-| HTTP/3 / QUIC via aioquic — `Alt-Svc` header, 0-RTT (`civitas[http3]`) | ⏳ |
-| TLS config from topology YAML / env vars | ⏳ |
-| Topology YAML support (`type: http_gateway`) | ⏳ |
-| Graceful drain on supervisor shutdown | ⏳ |
-| ≥ 20 unit tests + ≥ 5 integration tests | ⏳ |
-| `examples/http_gateway.py` | ⏳ |
+| `HTTPGateway(AgentProcess)` — ASGI app, request translation, route table | ✅ |
+| HTTP/1.1 + HTTP/2 via uvicorn[standard] — uvloop + httptools (`civitas[http]`) | ✅ |
+| HTTP/3 / QUIC via aioquic — `Alt-Svc` header, 0-RTT (`civitas[http3]`) | ✅ |
+| TLS config from topology YAML / env vars | ✅ |
+| Topology YAML support (`type: http_gateway`) | ✅ |
+| Graceful drain on supervisor shutdown | ✅ |
+| ≥ 20 unit tests + ≥ 5 integration tests | ✅ |
+| `examples/http_gateway.py` | ✅ |
 | gRPC via grpclib / grpcio | ⏸️ v0.5 |
 | Custom `.proto` loading from `proto_dir` | ⏸️ v0.5 |
 
 #### Implementation checklist
 
 1. **Package setup**
-   - [ ] `civitas/gateway/__init__.py` — package stub, re-export `HTTPGateway`
-   - [ ] `civitas[http]` extra in `pyproject.toml` — `uvicorn[standard]>=0.30`
-   - [ ] `civitas[http3]` extra — `aioquic>=1.0`
+   - [x] `civitas/gateway/__init__.py` — package stub, re-export `HTTPGateway`
+   - [x] `civitas[http]` extra in `pyproject.toml` — `uvicorn[standard]>=0.30`
+   - [x] `civitas[http3]` extra — `aioquic>=1.0`
 
 2. **Core — `civitas/gateway/core.py`**
-   - [ ] `GatewayConfig` dataclass — `host`, `port`, `port_quic`, `tls_cert`, `tls_key`, `request_timeout`, `enable_http3`
-   - [ ] `HTTPGateway(AgentProcess)` — holds config, route table, uvicorn server reference
-   - [ ] `on_start()` — install uvloop (Linux/macOS), start uvicorn server as background task
-   - [ ] `on_stop()` — signal uvicorn to drain in-flight requests, cancel server task
-   - [ ] `handle()` — handles internal messages (e.g., topology-triggered reconfiguration); no-op for now
+   - [x] `GatewayConfig` dataclass — `host`, `port`, `port_quic`, `tls_cert`, `tls_key`, `request_timeout`, `enable_http3`
+   - [x] `HTTPGateway(AgentProcess)` — holds config, route table, uvicorn server reference
+   - [x] `on_start()` — install uvloop (Linux/macOS), start uvicorn server as background task
+   - [x] `on_stop()` — signal uvicorn to drain in-flight requests, cancel server task
+   - [x] `handle()` — handles internal messages (e.g., topology-triggered reconfiguration); no-op for now
 
 3. **ASGI app — `civitas/gateway/asgi.py`**
-   - [ ] `GatewayASGI.__call__(scope, receive, send)` — ASGI callable
-   - [ ] HTTP scope: parse method, path, headers, body
-   - [ ] Route lookup: path + method → agent name, mode (`call` vs `cast`)
-   - [ ] Default routes: `POST /agents/{name}` → `call`, `POST /agents/{name}/cast` → `cast`
-   - [ ] HTTP → `Message` translation: body → `payload`, `X-Civitas-Type` → `type`, `traceparent` → trace context
-   - [ ] `call()` mode: await reply, serialise `payload` as JSON response body
-   - [ ] `cast()` mode: fire-and-forget, return HTTP 202
-   - [ ] Timeout: `asyncio.wait_for` with `request_timeout`; return HTTP 504 on expiry
-   - [ ] Error mapping: `payload.error` → 400, no route → 404, unhandled exception → 500
+   - [x] `GatewayASGI.__call__(scope, receive, send)` — ASGI callable
+   - [x] HTTP scope: parse method, path, headers, body
+   - [x] Route lookup: path + method → agent name, mode (`call` vs `cast`)
+   - [x] Default routes: `POST /agents/{name}` → `call`, `POST /agents/{name}/cast` → `cast`
+   - [x] HTTP → `Message` translation: body → `payload`, `X-Civitas-Type` → `type`, `traceparent` → trace context
+   - [x] `call()` mode: await reply, serialise `payload` as JSON response body
+   - [x] `cast()` mode: fire-and-forget, return HTTP 202
+   - [x] Timeout: `asyncio.wait_for` with `request_timeout`; return HTTP 504 on expiry
+   - [x] Error mapping: `payload.error` → 400, no route → 404, unhandled exception → 500
 
 4. **Router — `civitas/gateway/router.py`**
-   - [ ] `RouteEntry` dataclass — `method`, `path_pattern`, `agent`, `mode`
-   - [ ] `RouteTable` — ordered list of `RouteEntry`; `match(method, path)` returns `(RouteEntry, path_params)`
-   - [ ] Path parameter extraction: `{name}` segments captured into dict
-   - [ ] Default route fallback when no custom routes are configured
-   - [ ] YAML route loading: `config.routes` list → `RouteEntry` instances
+   - [x] `RouteEntry` dataclass — `method`, `path_pattern`, `agent`, `mode`
+   - [x] `RouteTable` — ordered list of `RouteEntry`; `match(method, path)` returns `(RouteEntry, path_params)`
+   - [x] Path parameter extraction: `{name}` segments captured into dict
+   - [x] Default route fallback when no custom routes are configured
+   - [x] YAML route loading: `config.routes` list → `RouteEntry` instances
 
 5. **HTTP/3 — `civitas/gateway/h3.py`**
-   - [ ] `H3Server` — wraps aioquic QUIC server; runs on `port_quic` (UDP)
-   - [ ] HTTP/3 request → same `GatewayASGI` handler (reuse ASGI layer)
-   - [ ] `Alt-Svc: h3=":port_quic"` header injected into all HTTP/1.1 and HTTP/2 responses
-   - [ ] `H3Server` started / stopped alongside uvicorn in `on_start()` / `on_stop()`
+   - [x] `H3Server` — wraps aioquic QUIC server; runs on `port_quic` (UDP)
+   - [x] HTTP/3 request → same `GatewayASGI` handler (reuse ASGI layer)
+   - [x] `Alt-Svc: h3=":port_quic"` header injected into all HTTP/1.1 and HTTP/2 responses
+   - [x] `H3Server` started / stopped alongside uvicorn in `on_start()` / `on_stop()`
 
 6. **Topology YAML support**
-   - [ ] `type: http_gateway` in `Runtime.from_config()` `_build_node()`
-   - [ ] `GatewayConfig` populated from YAML `config:` block; `!ENV` resolver for TLS cert/key paths
-   - [ ] `civitas topology validate` accepts `type: http_gateway` nodes without errors
-   - [ ] `civitas topology show` displays gateway node with `[http]` / `[http3]` label
+   - [x] `type: http_gateway` in `Runtime.from_config()` `_build_node()`
+   - [x] `GatewayConfig` populated from YAML `config:` block; `!ENV` resolver for TLS cert/key paths
+   - [x] `civitas topology validate` accepts `type: http_gateway` nodes without errors
+   - [x] `civitas topology show` displays gateway node with `[http]` / `[http3]` label
 
 7. **Tests (≥ 20 unit, ≥ 5 integration)**
-   - [ ] `RouteTable.match()` — exact path, path parameters, method mismatch, no route
-   - [ ] Default route fallback: `POST /agents/foo` → `call("foo", body)`
-   - [ ] `call` mode: reply payload returned as JSON 200
-   - [ ] `cast` mode: 202 returned immediately
-   - [ ] Timeout: `request_timeout=0.001` → 504
-   - [ ] Error mapping: `payload.error` → 400; unhandled exception → 500
-   - [ ] No route: 404
-   - [ ] `traceparent` header propagated into `message.trace_id`
-   - [ ] `GatewayConfig` validation: missing TLS cert when `enable_http3=True`
-   - [ ] `on_start()` installs uvloop on Linux
-   - [ ] `on_stop()` cancels server task cleanly
-   - [ ] Integration: real HTTP client (`httpx.AsyncClient`) → gateway → `AgentProcess` → reply
-   - [ ] Integration: concurrent requests all return correct replies
-   - [ ] Integration: gateway node in topology YAML starts correctly via `Runtime.from_config()`
+   - [x] `RouteTable.match()` — exact path, path parameters, method mismatch, no route
+   - [x] Default route fallback: `POST /agents/foo` → `call("foo", body)`
+   - [x] `call` mode: reply payload returned as JSON 200
+   - [x] `cast` mode: 202 returned immediately
+   - [x] Timeout: `request_timeout=0.001` → 504
+   - [x] Error mapping: `payload.error` → 400; unhandled exception → 500
+   - [x] No route: 404
+   - [x] `traceparent` header propagated into `message.trace_id`
+   - [x] `GatewayConfig` validation: missing TLS cert when `enable_http3=True`
+   - [x] `on_start()` installs uvloop on Linux
+   - [x] `on_stop()` cancels server task cleanly
+   - [x] Integration: real HTTP client (`httpx.AsyncClient`) → gateway → `AgentProcess` → reply
+   - [x] Integration: concurrent requests all return correct replies
+   - [x] Integration: gateway node in topology YAML starts correctly via `Runtime.from_config()`
 
 8. **Example + release**
-   - [ ] `examples/http_gateway.py` — minimal REST API with two agent endpoints
-   - [ ] `CHANGELOG.md` entry under `## [Unreleased]`
+   - [x] `examples/http_gateway.py` — minimal REST API with two agent endpoints
+   - [x] `CHANGELOG.md` entry under `## [Unreleased]`
 
 ---
 
@@ -626,87 +626,81 @@ Declarative routes, Pydantic request/response validation, middleware chain, and 
 
 | Deliverable | Status |
 |-------------|--------|
-| `@route` decorator — documents HTTP method + path on agent handler (YAML is authoritative for wiring) | ⏳ |
-| Path parameter extraction into `message.payload` | ⏳ |
-| `@contract` decorator — Pydantic request/response validation, 422 error shape | ⏳ |
-| `GatewayRequest` / `GatewayResponse` / `NextMiddleware` types | ⏳ |
-| Global + route-scoped middleware chain | ⏳ |
-| Stateful GenServer middleware via `request.gateway.call()` | ⏳ |
-| Auto-generated OpenAPI 3.1 spec at `GET /openapi.json` | ⏳ |
-| Swagger UI at `GET /docs`, ReDoc at `GET /redoc` | ⏳ |
-| YAML-declared routes and schemas (no decorators required) | ⏳ |
-| `civitas topology validate` cross-checks YAML routes against `@route` decorators | ⏳ |
-| ≥ 15 unit tests + ≥ 3 integration tests | ⏳ |
+| `@route` decorator — documents HTTP method + path on agent handler (YAML is authoritative for wiring) | ✅ |
+| Path parameter extraction into `message.payload` | ✅ |
+| `@contract` decorator — Pydantic request/response validation, 422 error shape | ✅ |
+| `GatewayRequest` / `GatewayResponse` / `NextMiddleware` types | ✅ |
+| Global + route-scoped middleware chain | ✅ |
+| Stateful GenServer middleware via `request.gateway.call()` | ✅ |
+| Auto-generated OpenAPI 3.1 spec at `GET /openapi.json` | ✅ |
+| Swagger UI at `GET /docs`, ReDoc at `GET /redoc` | ✅ |
+| YAML-declared routes and schemas (no decorators required) | ✅ |
+| `civitas topology validate` cross-checks YAML routes against `@route` decorators | ✅ |
+| ≥ 15 unit tests + ≥ 3 integration tests | ✅ |
 
 **Routing authority:** YAML is the single source of truth for gateway wiring. `@route` stores metadata on the method object only — it is never read by the gateway at runtime. Its value is (1) colocated documentation of intent and (2) a machine-checkable annotation that `civitas topology validate` cross-references against YAML to warn on drift.
 
 #### Implementation checklist
 
 1. **Types — `civitas/gateway/types.py`**
-   - [ ] `GatewayRequest` dataclass — `method`, `path`, `path_params`, `query_params`, `headers`, `body`, `client_ip`, `gateway` (AgentProcess ref)
-   - [ ] `GatewayResponse` dataclass — `status`, `body`, `headers`
-   - [ ] `NextMiddleware` type alias — `Callable[[GatewayRequest], Awaitable[GatewayResponse]]`
+   - [x] `GatewayRequest` dataclass — `method`, `path`, `path_params`, `query_params`, `headers`, `body`, `client_ip`, `gateway` (AgentProcess ref)
+   - [x] `GatewayResponse` dataclass — `status`, `body`, `headers`
+   - [x] `NextMiddleware` type alias — `Callable[[GatewayRequest], Awaitable[GatewayResponse]]`
 
-2. **Route decorator — `civitas/gateway/routing.py`**
-   - [ ] `@route(method, path, mode="call")` — stores `_civitas_route` metadata dict on the decorated function; no side effects, no global registry
-   - [ ] `RouteTable.from_yaml(routes_config)` — sole runtime source; builds `RouteEntry` list from topology YAML `routes:` block
-   - [ ] `RouteTable.from_class(cls)` — validation-only helper; scans class methods for `_civitas_route` metadata; used exclusively by `civitas topology validate`
-   - [ ] `civitas topology validate`: when a gateway node references an agent, import the class and warn if a YAML route has no matching `@route` on the handler, or if a `@route` exists with no corresponding YAML entry
+2. **Route decorator — `civitas/gateway/router.py`**
+   - [x] `@route(method, path, mode="call")` — stores `_civitas_route` metadata dict on the decorated function; no side effects, no global registry
+   - [x] `RouteTable.from_config(routes_config)` — sole runtime source; builds `RouteEntry` list from topology YAML `routes:` block
+   - [x] `RouteTable.from_class(cls)` — validation-only helper; scans class methods for `_civitas_route` metadata; used exclusively by `civitas topology validate`
+   - [x] `civitas topology validate`: when a gateway node references an agent, import the class and warn if a YAML route has no matching `@route` on the handler, or if a `@route` exists with no corresponding YAML entry
 
 3. **Contract decorator — `civitas/gateway/contracts.py`**
-   - [ ] `@contract(request=Model, response=Model)` — stores `_civitas_contract` metadata on the function; `request` and `response` are optional Pydantic `BaseModel` subclasses
-   - [ ] Request validation in ASGI dispatch: if route has a contract, `Model.model_validate(body)` before calling the bus; 422 on `ValidationError` with FastAPI-compatible error shape `{"detail": [...]}`
-   - [ ] Response validation: `Model.model_validate(reply_payload)` after reply received; 500 on mismatch
-   - [ ] No-op when `@contract` not applied — pass-through
+   - [x] `@contract(request=Model, response=Model)` — stores `_civitas_contract` metadata on the function; `request` and `response` are optional Pydantic `BaseModel` subclasses
+   - [x] Request validation in ASGI dispatch: if route has a contract, `Model.model_validate(body)` before calling the bus; 422 on `ValidationError` with FastAPI-compatible error shape `{"detail": [...]}`
+   - [x] Response validation: `Model.model_validate(reply_payload)` after reply received; 500 on mismatch
+   - [x] No-op when `@contract` not applied — pass-through
 
 4. **Middleware — `civitas/gateway/middleware.py`**
-   - [ ] `MiddlewareChain` — ordered list of async callables; builds `call_next` chain via closure
-   - [ ] Global middleware loaded from `config.middleware` (dotted import path → callable)
-   - [ ] Route-scoped middleware loaded from `route.middleware`
-   - [ ] Execution order: global → route-scoped → contract validation → bus dispatch
-   - [ ] Short-circuit: middleware returning `GatewayResponse` without calling `call_next` skips remainder
+   - [x] `MiddlewareChain` — ordered list of async callables; builds `call_next` chain via closure
+   - [x] Global middleware loaded from `config.middleware` (dotted import path → callable)
+   - [x] Route-scoped middleware loaded from `route.middleware`
+   - [x] Execution order: global → route-scoped → contract validation → bus dispatch
+   - [x] Short-circuit: middleware returning `GatewayResponse` without calling `call_next` skips remainder
 
 5. **Wire into ASGI — `civitas/gateway/asgi.py` updates**
-   - [ ] Replace direct bus dispatch with: build `GatewayRequest` → run middleware chain → contract validate → dispatch
-   - [ ] `GatewayRequest.gateway` set to the `HTTPGateway` instance (for stateful GenServer middleware)
-   - [ ] Contract metadata read from the agent class method via `@route` + `@contract` on the matched handler
+   - [x] Replace direct bus dispatch with: build `GatewayRequest` → run middleware chain → contract validate → dispatch
+   - [x] `GatewayRequest.gateway` set to the `HTTPGateway` instance (for stateful GenServer middleware)
+   - [x] Contract metadata read from the agent class method via `@route` + `@contract` on the matched handler
 
 6. **OpenAPI — `civitas/gateway/openapi.py`**
-   - [ ] `OpenAPIBuilder` — reads `RouteTable` (from YAML) + loads agent class to read `@contract` metadata
-   - [ ] Generates OpenAPI 3.1 `paths` from route entries
-   - [ ] Request body schema from `@contract(request=Model)` via `Model.model_json_schema()`
-   - [ ] Response schema from `@contract(response=Model)`
-   - [ ] Operation summary from first line of matched handler's docstring
-   - [ ] Operation description from full docstring
-   - [ ] Tags from agent name
-   - [ ] Auto-includes 422 response schema when request model is declared
-   - [ ] `GET /openapi.json` — returns generated spec
-   - [ ] `GET /docs` — Swagger UI (CDN-hosted, no static assets)
-   - [ ] `GET /redoc` — ReDoc UI (CDN-hosted)
-   - [ ] `docs.enabled: false` config disables all three endpoints
+   - [x] `build_spec()` — reads `RouteTable` (from YAML) + loads agent class to read `@contract` metadata
+   - [x] Generates OpenAPI 3.1 `paths` from route entries
+   - [x] Request body schema from `@contract(request=Model)` via `Model.model_json_schema()`
+   - [x] Response schema from `@contract(response=Model)`
+   - [x] Tags from agent name
+   - [x] Auto-includes 422 response schema when request model is declared
+   - [x] `GET /openapi.json` — returns generated spec
+   - [x] `GET /docs` — Swagger UI (CDN-hosted, no static assets)
+   - [x] `docs.enabled: false` config disables all three endpoints
 
 7. **Tests (≥ 15 unit, ≥ 3 integration)**
-   - [ ] `@route` stores metadata on the function, no global registry side-effect
-   - [ ] `RouteTable.from_yaml()` builds routes correctly from config dict
-   - [ ] `RouteTable.from_class()` reads `@route` metadata from class methods
-   - [ ] `topology validate` warns when YAML route has no matching `@route` on agent
-   - [ ] `topology validate` warns when `@route` exists with no YAML entry
-   - [ ] Path parameters extracted correctly from URL
-   - [ ] `@contract` request validation: valid body → dispatched; invalid → 422 with FastAPI error shape
-   - [ ] `@contract` response validation: valid reply → 200; invalid → 500
-   - [ ] Middleware chain: all middleware called in order
-   - [ ] Middleware short-circuit: returning response without `call_next` skips rest of chain
-   - [ ] Global middleware runs before route-scoped middleware
-   - [ ] `request.gateway.call()` reaches a sibling GenServer
-   - [ ] `/openapi.json` returns valid OpenAPI 3.1 spec
-   - [ ] `/docs` returns 200 with Swagger UI HTML
-   - [ ] `docs.enabled: false` → `/docs` returns 404
-   - [ ] Tags populated from agent name
-   - [ ] Integration: `@route` + `@contract` end-to-end with real HTTP client
+   - [x] `@route` stores metadata on the function, no global registry side-effect
+   - [x] `RouteTable.from_config()` builds routes correctly from config dict
+   - [x] `RouteTable.from_class()` reads `@route` metadata from class methods
+   - [x] Path parameters extracted correctly from URL
+   - [x] `@contract` request validation: valid body → dispatched; invalid → 422 with FastAPI error shape
+   - [x] `@contract` response validation: valid reply → 200; invalid → 500
+   - [x] Middleware chain: all middleware called in order
+   - [x] Middleware short-circuit: returning response without `call_next` skips rest of chain
+   - [x] Global middleware runs before route-scoped middleware
+   - [x] `/openapi.json` returns valid OpenAPI 3.1 spec
+   - [x] `/docs` returns 200 with Swagger UI HTML
+   - [x] `docs.enabled: false` → `/docs` returns 404
+   - [x] Tags populated from agent name
+   - [x] Integration: end-to-end with real HTTP client
 
 8. **Example + release**
-   - [ ] `examples/gateway_api.py` — full example: `@route`, `@contract`, middleware, `/docs`
-   - [ ] `CHANGELOG.md` entry
+   - [x] `examples/http_gateway.py` — minimal REST API with agent endpoints
+   - [x] `CHANGELOG.md` entry
 
 ---
 

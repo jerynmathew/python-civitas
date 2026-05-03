@@ -492,6 +492,10 @@ mistral = [
 nats = [
     { name = "nats-py" },
 ]
+nkeys = [
+    { name = "nats-py" },
+    { name = "nkeys" },
+]
 openai = [
     { name = "openai" },
 ]
@@ -531,6 +535,8 @@ requires-dist = [
     { name = "msgpack", specifier = ">=1.1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "nats-py", marker = "extra == 'nats'", specifier = ">=2.6" },
+    { name = "nats-py", marker = "extra == 'nkeys'", specifier = ">=2.6" },
+    { name = "nkeys", marker = "extra == 'nkeys'", specifier = ">=0.2" },
     { name = "openai", marker = "extra == 'openai'", specifier = ">=1.0" },
     { name = "opentelemetry-exporter-otlp-proto-grpc", marker = "extra == 'arize'", specifier = ">=1.20" },
     { name = "opentelemetry-exporter-otlp-proto-grpc", marker = "extra == 'dev'", specifier = ">=1.20" },
@@ -557,7 +563,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'http'", specifier = ">=0.30" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'http3'", specifier = ">=0.30" },
 ]
-provides-extras = ["otel", "anthropic", "mcp", "openai", "gemini", "mistral", "litellm", "zmq", "nats", "arize", "langfuse", "braintrust", "langsmith", "fiddler", "http", "http3", "dev", "docs", "security"]
+provides-extras = ["otel", "anthropic", "mcp", "openai", "gemini", "mistral", "litellm", "zmq", "nats", "nkeys", "arize", "langfuse", "braintrust", "langsmith", "fiddler", "http", "http3", "dev", "docs", "security"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pynacl", specifier = ">=1.6.2" }]
@@ -2048,6 +2054,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/c3/f8/b956c4621ba88748e
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f9/39/0e87753df1072254bac190b33ed34b264f28f6aa9bea0f01b7e818071756/nats_py-2.14.0-py3-none-any.whl", hash = "sha256:4116f5d2233ce16e63c3d5538fa40a5e207f75fcf42a741773929ddf1e29d19d", size = 82259, upload-time = "2026-02-23T22:45:00.152Z" },
 ]
+
+[[package]]
+name = "nkeys"
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pynacl" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e1/8d/d17254baea57fe4a7dd1ba89827d3cf0a21106988ec8971a46bfc5239b15/nkeys-0.2.1.tar.gz", hash = "sha256:3a201dcd203d8bb05ba2884d441b2c92918b2a537a10d324e73738887dde9da3", size = 10667, upload-time = "2024-09-11T06:32:09.03Z" }
 
 [[package]]
 name = "nodeenv"

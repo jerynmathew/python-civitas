@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import contextlib
+from datetime import UTC
 from typing import Any
 
+from civitas.audit.types import AuditEvent, AuditSink
 from civitas.mcp.types import MCPServerConfig, MCPToolError, MCPToolSchema
 from civitas.sandbox.bubblewrap import BubblewrapSandbox
 
@@ -30,7 +32,12 @@ class MCPClient:
     One MCPClient per server per agent. Shared pooling across agents is Fabrica's job.
     """
 
-    def __init__(self, config: MCPServerConfig) -> None:
+    def __init__(
+        self,
+        config: MCPServerConfig,
+        audit_sink: AuditSink | None = None,
+        agent_name: str = "",
+    ) -> None:
         if not _HAS_MCP:
             raise ImportError(
                 "civitas[mcp] is required for MCP integration. "
@@ -39,6 +46,8 @@ class MCPClient:
         self.config = config
         self._session: Any = None  # ClientSession when connected
         self._exit_stack = contextlib.AsyncExitStack()
+        self._audit_sink = audit_sink
+        self._agent_name = agent_name
 
     async def connect(self) -> None:
         """Open transport, initialize ClientSession. Must be called before list_tools/call_tool."""
@@ -51,8 +60,41 @@ class MCPClient:
             cmd_args = self.config.args or []
             if self.config.sandbox is not None and self.config.sandbox.enabled:
                 sb = BubblewrapSandbox(self.config.sandbox)
+                if self._audit_sink is not None:
+                    from datetime import datetime
+
+                    if not sb.available():
+                        await self._audit_sink.emit(
+                            AuditEvent(
+                                event="sandbox.deny",
+                                ts=datetime.now(UTC).isoformat(),
+                                agent=self._agent_name,
+                                signer_id="",
+                                details={
+                                    "server": self.config.name,
+                                    "command": cmd,
+                                    "reason": "bwrap not available",
+                                },
+                            )
+                        )
                 sb.check_or_raise()
                 cmd, cmd_args = sb.wrap(cmd, cmd_args)
+                if self._audit_sink is not None:
+                    from datetime import datetime
+
+                    await self._audit_sink.emit(
+                        AuditEvent(
+                            event="sandbox.exec",
+                            ts=datetime.now(UTC).isoformat(),
+                            agent=self._agent_name,
+                            signer_id="",
+                            details={
+                                "server": self.config.name,
+                                "command": cmd,
+                                "network": self.config.sandbox.network,
+                            },
+                        )
+                    )
             params = StdioServerParameters(
                 command=cmd,
                 args=cmd_args,

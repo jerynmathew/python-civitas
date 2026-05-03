@@ -51,6 +51,7 @@ mistral   = ["mistralai>=1.0"]
 litellm   = ["litellm>=1.40"]
 zmq       = ["pyzmq>=25"]
 nats      = ["nats-py>=2.6"]
+nkeys     = ["nats-py>=2.6", "nkeys>=0.2"]
 arize     = ["opentelemetry-sdk>=1.20", "opentelemetry-exporter-otlp-proto-grpc>=1.20"]
 langfuse  = ["langfuse>=2.0"]
 braintrust = ["braintrust>=0.0.100"]
@@ -159,6 +160,8 @@ ignore = [
     # ASYNC109: timeout as a named parameter is intentional public API for ask()/request().
     # Callers pass it as a kwarg; using asyncio.timeout() internally is already done.
     "ASYNC109",
+    # B008: typer.Option() in function defaults is idiomatic Typer usage.
+    "B008",
 ]
 
 [tool.ruff.lint.isort]
@@ -174,7 +177,7 @@ warn_return_any = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["msgpack.*", "zmq.*", "nats.*", "litellm.*", "openai.*", "google", "google.*", "mistralai.*", "mcp.*", "aioquic", "aioquic.*", "uvicorn", "uvicorn.*", "nacl", "nacl.*"]
+module = ["msgpack.*", "zmq.*", "nats.*", "nkeys", "nkeys.*", "litellm.*", "openai.*", "google", "google.*", "mistralai.*", "mcp.*", "aioquic", "aioquic.*", "uvicorn", "uvicorn.*", "nacl", "nacl.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

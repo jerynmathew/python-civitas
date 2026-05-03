@@ -9,6 +9,7 @@ from typing import Any, cast
 
 import yaml
 
+from civitas.audit.sinks import sink_from_config
 from civitas.components import ComponentSet, build_component_set
 from civitas.errors import ConfigurationError, SpawnError
 from civitas.eval.exporters import (
@@ -147,6 +148,12 @@ class Runtime:
 
         # Per-agent credentials — populated by from_config() from credentials: blocks
         self._agent_credentials: dict[str, dict[str, str]] = {}
+
+        # Audit sink — populated by from_config() when an audit: block is present
+        self._audit_sink: Any = None
+
+        # Transport security (ZMQ CURVE / NATS TLS) — populated by from_config()
+        self._transport_security: Any = None
 
         # Set during start() — exposed for stop(), ask()/send(), and get_agent()
         self._serializer: Serializer | None = None
@@ -388,6 +395,19 @@ class Runtime:
             runtime._security_config = SecurityConfig.from_dict(security_section)
             runtime._topology_public_keys = _extract_public_keys(config)
 
+        # Audit sink — parsed here, threaded into ComponentSet during start()
+        audit_section = config.get("audit")
+        if audit_section:
+            runtime._audit_sink = sink_from_config(audit_section)
+
+        # Transport security (CURVE / TLS) — parsed from security.transport block
+        if security_section:
+            from civitas.security.config import TransportSecurityConfig
+
+            transport_section = security_section.get("transport", {})
+            if transport_section:
+                runtime._transport_security = TransportSecurityConfig.from_dict(transport_section)
+
         return runtime
 
     def all_agents(self) -> list[AgentProcess]:
@@ -448,18 +468,22 @@ class Runtime:
         if self._components is not None:
             cs = self._components
         else:
+            ts = self._transport_security
             cs = build_component_set(
                 transport_type=self._transport_type,
                 serializer=self._custom_serializer,
                 model_provider=self._model_provider,
                 tool_registry=self._tool_registry,
                 state_store=self._state_store,
+                audit_sink=self._audit_sink,
                 zmq_pub_addr=self._zmq_pub_addr,
                 zmq_sub_addr=self._zmq_sub_addr,
                 zmq_start_proxy=self._zmq_start_proxy,
+                zmq_curve_config=ts.zmq if ts is not None and ts.zmq.enabled else None,
                 nats_servers=self._nats_servers,
                 nats_jetstream=self._nats_jetstream,
                 nats_stream_name=self._nats_stream_name,
+                nats_tls_config=ts.nats if ts is not None and ts.nats.enabled else None,
             )
 
         # Expose on self for stop(), ask(), send(), and get_agent()
@@ -624,6 +648,10 @@ class Runtime:
         # 4. Flush Tracer
         if self._tracer is not None:
             self._tracer.flush()
+
+        # 5. Close Audit sink
+        if self._audit_sink is not None:
+            await self._audit_sink.close()
 
         self._agents_by_name.clear()
         self._started = False
