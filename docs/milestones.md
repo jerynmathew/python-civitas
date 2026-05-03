@@ -30,7 +30,7 @@ Development progress across all phases of Civitas.
 | 3 | [Developer Experience — GenServer](#m35-genserver) | ✅ Completed | Apr 2026 |
 | — | [Infrastructure & Release](#infrastructure--release) | ✅ Completed | Apr 2026 |
 | 4 | [Dynamic Agent Spawning](#m41b-dynamic-agent-spawning) | ✅ Completed | Apr 2026 |
-| 4 | [Security Hardening](#m42-security-hardening) | ⏳ Planned | v0.4 |
+| 4 | [Security Hardening](#m42-security-hardening) | 🔄 In Progress | v0.4 |
 | 4 | [Codebase Security & Enterprise Posture](#m43-codebase-security--enterprise-posture) | ✅ Completed | Apr 2026 |
 | 4 | [Capability-Aware Registry](#m44-capability-aware-registry) | ⏳ Planned | v0.5 |
 | 4 | [HTTP Gateway](#http-gateway) | ✅ Completed | Apr 2026 |
@@ -420,16 +420,76 @@ Agents spawn and decommission other agents at runtime. Enables LLM-driven orches
 
 ### M4.2 — Security Hardening
 
-**Status: ⏳ Planned — v0.4 | Priority: 🔴 High**
+**Status: 🔄 In Progress — v0.4 | Priority: 🔴 High**
+
+Design approved. Splits into five independently shippable sub-milestones — see [`docs/design/security-hardening.md`](design/security-hardening.md) for full rationale, design decisions, and resolved questions.
+
+Recommended delivery order: **a → c → d → e → b**.
+
+#### M4.2a — Identity & Signing
+
+**Status: 🔄 In Progress**
 
 | Deliverable | Status |
 |-------------|--------|
-| mTLS for all inter-agent communication (ZMQ + NATS) | ⏳ |
-| Message signing with tamper detection | ⏳ |
-| Credential isolation (agents cannot access other agents' secrets) | ⏳ |
-| Secret injection via environment / mounted secrets (not YAML) | ⏳ |
-| Sandboxed tool execution with filesystem isolation | ⏳ |
-| Audit log: all events logged with agent identity | ⏳ |
+| `civitas/security/` package: `IdentityConfig`, `SigningConfig`, `SecurityConfig` | 🔄 |
+| `AgentIdentity`: Ed25519 keypair generation, OpenSSH-style storage (`id_ed25519` / `id_ed25519.pub`) | 🔄 |
+| `KeyRegistry`: public key lookup by agent name | 🔄 |
+| `MessageSigner`: sign outgoing envelopes (v=2 wire format), verify incoming | 🔄 |
+| `NonceCache`: bounded LRU replay protection (10k entries) | 🔄 |
+| `SignatureError` — new `CivitasError` subclass | 🔄 |
+| `SigningSerializer` wrapping `MsgpackSerializer` | 🔄 |
+| Multi-node key distribution: public keys in topology YAML; spawn-message vouching for dynamic agents | 🔄 |
+| `security:` YAML block parsing in `Runtime.from_config()` | 🔄 |
+| InProcess transport: signing bypassed entirely (D9 performance rule) | 🔄 |
+| `signing.allow_unsigned: true` escape hatch for rolling upgrades | 🔄 |
+| Unit + integration tests ≥90% coverage on new code | 🔄 |
+
+#### M4.2b — Transport mTLS
+
+**Status: ⏳ Planned** *(depends on M4.2a)*
+
+| Deliverable | Status |
+|-------------|--------|
+| ZMQ CURVE: server keypair on proxy, client keypairs on Workers | ⏳ |
+| NATS TLS + nkeys: Ed25519-based subject auth, TLS cert/key/CA config | ⏳ |
+| `security.transport` YAML block plumbing into ZMQ and NATS transports | ⏳ |
+| `civitas security init` CLI — scaffold keys and config for ZMQ/NATS deployments | ⏳ |
+
+#### M4.2c — Credential Isolation
+
+**Status: ⏳ Planned** *(independent)*
+
+| Deliverable | Status |
+|-------------|--------|
+| `${VAR_NAME}` env-var substitution in `Runtime.from_config()` | ⏳ |
+| Unset variable raises `ConfigurationError` with clear message | ⏳ |
+| `civitas.secrets.SecretsProvider` protocol + file/env/Vault implementations | ⏳ |
+| Per-agent `credentials:` block in topology YAML | ⏳ |
+| Plugin handles: `self.llm("anthropic")` resolves per-agent credential at call time | ⏳ |
+
+#### M4.2d — Tool Sandbox
+
+**Status: ⏳ Planned** *(independent)*
+
+| Deliverable | Status |
+|-------------|--------|
+| Bubblewrap wrapper for MCP subprocess execution on Linux | ⏳ |
+| `sandbox:` YAML block per MCP server (network, filesystem allowlists) | ⏳ |
+| Refuse-to-start when `sandbox.enabled: true` and `bwrap` unavailable | ⏳ |
+| Clear error messages with per-distro install instructions | ⏳ |
+
+#### M4.2e — Audit Log
+
+**Status: ⏳ Planned** *(depends on M4.2a for signer_id)*
+
+| Deliverable | Status |
+|-------------|--------|
+| `civitas.audit` module: `AuditEvent` TypedDict, `AuditSink` protocol | ⏳ |
+| `JsonlFileSink`: batched fsync (100ms / 100 events), `sync_writes` option, SIGHUP rotation | ⏳ |
+| `NullSink` for tests | ⏳ |
+| Emission at chokepoints: `MessageBus.route()`, `MCPTool.execute()`, sandbox violations, secret access | ⏳ |
+| `SyslogSink` and `OtlpSink` implementations | ⏳ |
 
 ---
 

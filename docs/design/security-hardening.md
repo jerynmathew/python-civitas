@@ -1,6 +1,6 @@
 # Design: Runtime Security Hardening (M4.2)
 
-**Status:** Proposal — v0.4
+**Status:** Approved — v0.4
 **Author:** Jeryn Mathew Varghese
 **Last updated:** 2026-05
 
@@ -51,6 +51,7 @@ security:
     enabled: true
     algorithm: ed25519
     require_verification: true  # reject unsigned messages
+    allow_unsigned: false       # set true only during rolling upgrades
   transport:
     tls_cert: /etc/civitas/server.crt
     tls_key:  /etc/civitas/server.key
@@ -75,6 +76,51 @@ Each agent holds an Ed25519 signing keypair. Messages carry `(signer_id, signatu
 
 The runtime auto-generates keypairs on first start (`mode: auto`) and stashes them in a configurable key directory. Production deployments use `mode: provisioned` and bring their own keys.
 
+#### Key storage format
+
+Keys use OpenSSH-style filenames (`id_ed25519`, `id_ed25519.pub`) for familiarity, with base64-encoded raw key material:
+
+```
+{key_dir}/{agent_name}/
+├── id_ed25519       # base64-encoded 32-byte Ed25519 seed (mode 0600)
+└── id_ed25519.pub   # base64-encoded 32-byte verify key (mode 0644)
+```
+
+The choice of OpenSSH naming (rather than a custom JSON manifest) reflects that:
+- Every developer already knows this layout from `ssh-keygen`
+- Rotation date, allowed roles, and other metadata are deployment-layer concerns — they belong in a sidecar `.meta.json` or your secrets manager, not in the key file itself
+- A custom format would require custom tooling with no ecosystem benefit
+
+#### Key distribution across deployment shapes
+
+Private keys never leave their host. Only public keys (32 bytes each, not sensitive) need to be distributed. The distribution mechanism varies by deployment topology:
+
+| Shape | Distribution mechanism |
+|---|---|
+| **Single-node (any process count)** | Shared `key_dir` path on the local filesystem. All processes on the same host read and write the same directory. `mode: auto` generates keys on first start; subsequent processes find and use them. |
+| **Multi-node, static topology** | Public keys declared inline in `topology.yaml` (see below). The topology is already distributed to every node by the deployment layer (kubectl apply, Ansible, Terraform). Piggyback on that — no additional infrastructure required. |
+| **Multi-node, dynamic agents** | The `civitas.dynamic.spawn` message carries the new agent's public key. The receiver verifies the spawn message against the spawning supervisor's already-registered public key, then trusts the enclosed key transitively. This is a certificate chain of depth 1, rooted in the supervisor's known identity. |
+| **Multi-node, no mTLS** | Warn at startup: message signing provides no multi-node guarantee without transport-layer authentication. Signing defends against rogue agents *within* the cluster; it does not defend against network adversaries. If you don't have transport mTLS, you have a bigger problem than message signing. |
+
+For multi-node static topologies, public keys go directly in the topology file alongside the agent declaration:
+
+```yaml
+supervision:
+  name: root
+  strategy: ONE_FOR_ONE
+  children:
+    - agent:
+        name: research_agent
+        type: myapp.agents.ResearchAgent
+        public_key: "base64-encoded-verify-key"   # not sensitive; safe in source
+    - agent:
+        name: writer_agent
+        type: myapp.agents.WriterAgent
+        public_key: "base64-encoded-verify-key"
+```
+
+For `mode: provisioned`, the private key is loaded from `{key_dir}/{agent_name}/id_ed25519`. The public key is derived from the private key; the `public_key` topology field is only used when connecting to agents hosted on **other nodes** (where you don't have the key file locally).
+
 ### D3 — Sign the envelope, not the payload
 
 Signing happens at the serializer layer, **after** `Message.to_dict()` but **before** msgpack encoding. The wire format wraps the message:
@@ -87,9 +133,9 @@ Signing happens at the serializer layer, **after** `Message.to_dict()` but **bef
 }
 ```
 
-Verification at deserialize-time recovers the message dict, verifies the signature against the registered public key for `signer`, and rejects on mismatch (raises `SignatureError`, a new `CivitasError` subclass).
+The signed bytes are `msgpack.packb({"v": 2, "msg": msg_dict, "signer": signer_id, "nonce": nonce})` — a deterministic encoding of the full envelope minus the signature value. This protects routing fields (`sender`, `recipient`, `correlation_id`) from tampering, not just the payload.
 
-Rationale: signing the envelope (not just the payload) protects routing fields (`sender`, `recipient`, `correlation_id`) from tampering. The schema bumps from v1 to v2; v1 messages remain readable by deserializers when `require_verification: false`.
+Verification at deserialize-time recovers the message dict, verifies the signature against the registered public key for `signer`, and rejects on mismatch (raises `SignatureError`, a new `CivitasError` subclass). The schema bumps from v1 to v2; v1 messages remain readable by deserializers when `require_verification: false`.
 
 ### D4 — ZMQ CURVE for ZMQ; TLS + nkeys for NATS
 
@@ -133,7 +179,7 @@ agents:
 
 When `agent.credentials.<plugin>` is unset, the handle falls back to the global plugin instance (current behaviour). This is opt-in and additive — existing agents keep working unchanged.
 
-### D7 — Tool execution sandbox: bubblewrap on Linux, warn elsewhere
+### D7 — Tool execution sandbox: bubblewrap on Linux, refuse-to-start elsewhere
 
 MCP servers spawn as subprocesses today. M4.2 wraps that subprocess with [`bubblewrap`](https://github.com/containers/bubblewrap) on Linux: read-only root filesystem, no network unless declared, scratch tmpfs for `/tmp`. The sandbox profile is per-MCP-server in YAML:
 
@@ -150,7 +196,7 @@ plugins:
           - /etc/ssl/certs:ro
 ```
 
-On non-Linux platforms (or when `bwrap` is missing), the runtime logs a HIGH-severity warning at startup and runs unsandboxed. We do **not** ship a Python-level sandbox (no real isolation in-process). Stronger isolation (gVisor, Firecracker) is out of scope.
+When `sandbox.enabled: true` and `bwrap` is not available (macOS, Windows, or Linux without bubblewrap installed), the runtime **refuses to start** with a clear error message and install instructions. The right escape hatch is `sandbox.enabled: false` on development topologies — not silent degradation of a declared security control. We do **not** ship a Python-level sandbox (no real isolation in-process). Stronger isolation (gVisor, Firecracker) is out of scope.
 
 ### D8 — Audit log is separate from OTel
 
@@ -168,7 +214,7 @@ class AuditEvent(TypedDict):
     metadata: dict        # event-specific
 ```
 
-Default sink is `JsonlFileSink` — newline-delimited JSON, fsync-on-write. A `NullSink` exists for tests. Users can plug `SyslogSink`, `OtlpSink`, or custom sinks via `civitas.audit.AuditSink` protocol.
+Default sink is `JsonlFileSink` — newline-delimited JSON, batched fsync (every 100ms or 100 events). Log rotation is handled via SIGHUP: on `SIGHUP`, the sink closes and re-opens the file descriptor, making it compatible with `logrotate` without requiring built-in rotation logic. A `sync_writes: true` option exists for compliance-strict deployments. A `NullSink` exists for tests. Users can plug `SyslogSink`, `OtlpSink`, or custom sinks via `civitas.audit.AuditSink` protocol.
 
 Audit events are emitted at well-defined chokepoints:
 - `MessageBus.route()` — on signature failure or denied message
@@ -180,7 +226,7 @@ Audit events are emitted at well-defined chokepoints:
 
 Security primitives have measurable cost. Three rules keep that cost predictable:
 
-1. **InProcess signing is a no-op.** When both sender and receiver are in the same OS process, signature verification adds nothing — the OS already provides isolation. The `Signer` for InProcess transport returns a sentinel signature; the verifier accepts it without computing Ed25519. Cross-process and cross-host transports always sign and verify.
+1. **InProcess signing is a no-op.** When both sender and receiver are in the same OS process, the runtime does not create a `SigningSerializer` — the regular serializer is used and no Ed25519 operations occur. Cross-process and cross-host transports always sign and verify.
 
 2. **Audit log batches by default.** `JsonlFileSink` buffers events in memory and fsyncs every 100ms or every 100 events, whichever comes first. A `sync_writes: true` option exists for compliance-strict deployments but is **off by default**. Per-event fsync at high throughput drops the bus to <1k msg/sec — the one configuration that would make security feel painful.
 
@@ -207,11 +253,11 @@ M4.2 is too big for one PR. It splits into five sub-milestones, each independent
 
 | Sub-milestone | Scope | Depends on |
 |---|---|---|
-| **M4.2a — Identity & Signing** | Ed25519 keypairs, signed envelopes, `SignatureError`, public key registry, `security:` YAML block | — |
+| **M4.2a — Identity & Signing** | Ed25519 keypairs, signed envelopes, `SignatureError`, public key registry, nonce cache, `security:` YAML block, multi-node key distribution | — |
 | **M4.2b — Transport mTLS** | ZMQ CURVE, NATS TLS + nkeys, transport config plumbing | M4.2a (shares identity store) |
 | **M4.2c — Credential Isolation** | `${VAR}` env substitution, `SecretsProvider` protocol, per-agent credential scope, plugin handles | — (independent) |
-| **M4.2d — Tool Sandbox** | Bubblewrap wrapper for MCP subprocesses, sandbox YAML schema, platform fallback warnings | — (independent) |
-| **M4.2e — Audit Log** | `civitas.audit` module, default JsonlFileSink, integration at chokepoints | M4.2a (auth events use signer_id) |
+| **M4.2d — Tool Sandbox** | Bubblewrap wrapper for MCP subprocesses, sandbox YAML schema, refuse-to-start on unsupported platforms | — (independent) |
+| **M4.2e — Audit Log** | `civitas.audit` module, `JsonlFileSink` (batched, SIGHUP rotation), integration at chokepoints | M4.2a (auth events use signer_id) |
 
 Recommended order: **a → c → d → e → b**. Identity and signing unlock the audit log's notion of an authenticated actor; credentials and sandbox harden the local-trust scenarios most users hit first; transport mTLS lands last because it requires the most operational change (cert provisioning).
 
@@ -230,13 +276,22 @@ A new test directory: `tests/security/` for cross-cutting tests that combine mul
 
 ---
 
-## Open Questions
+## Resolved Design Questions
 
-- **Q1 — Key directory format:** OpenSSH-style (`id_ed25519`, `id_ed25519.pub`) for familiarity, or a custom JSON manifest for richer metadata (rotation date, allowed roles)? Recommend OpenSSH for v0.4.
-- **Q2 — Replay protection scope:** signing alone doesn't prevent replay. Do we ship a `seen_nonces` cache (LRU, bounded), or treat replay as out-of-scope and document it as a TLS-layer concern? Recommend ship a bounded cache — it's a common-class threat and the cost is low.
-- **Q3 — Audit log rotation:** ship logrotate-friendly behaviour (close+reopen on SIGHUP), or include rotation in the sink? Recommend SIGHUP — keeps the sink simple and lets ops use existing tooling.
-- **Q4 — Sandbox on macOS/Windows:** is "warn and run unsandboxed" acceptable, or should we refuse to start unsandboxed when `sandbox.enabled: true`? Recommend refuse — fail-closed is the right default for a security feature.
-- **Q5 — Backwards-compatible signing:** when a topology has `signing.enabled: true` but receives an unsigned message (e.g., from an older agent), do we reject (strict) or log+accept (compat mode for rolling upgrades)? Recommend strict by default, with a `signing.allow_unsigned: true` escape hatch documented as transitional.
+**Q1 — Key directory format**
+Resolved: OpenSSH-style filenames (`id_ed25519`, `id_ed25519.pub`) with simple base64 key material. See D2 for full rationale and the multi-node key distribution breakdown by deployment shape.
+
+**Q2 — Replay protection scope**
+Resolved: Ship a bounded nonce cache. Each signed envelope carries a 16-byte random nonce. The receiver maintains an LRU set capped at 10,000 entries (~320KB). Duplicate nonces raise `SignatureError`. Rationale: signing may be the only layer (mTLS is not always deployed), the cost is trivial, and replay is a common-class threat.
+
+**Q3 — Audit log rotation**
+Resolved: SIGHUP. On `SIGHUP`, `JsonlFileSink` closes and re-opens the file descriptor. This integrates cleanly with `logrotate` and keeps the sink implementation simple. Built-in rotation would duplicate a solved problem.
+
+**Q4 — Sandbox on macOS/Windows**
+Resolved: Refuse to start when `sandbox.enabled: true` and `bwrap` is unavailable. The operator declared a security requirement; the runtime honours it by failing loudly rather than silently degrading. Development topologies should use `sandbox.enabled: false`. See updated D7.
+
+**Q5 — Backwards-compatible signing**
+Resolved: Strict rejection by default. When `signing.enabled: true` and an unsigned message arrives, the runtime raises `SignatureError`. A `signing.allow_unsigned: true` escape hatch is documented as transitional-only (rolling upgrades). The operator explicitly acknowledges the degraded state; the runtime does not make that choice silently.
 
 ---
 
@@ -244,13 +299,13 @@ A new test directory: `tests/security/` for cross-cutting tests that combine mul
 
 - **Operational complexity.** mTLS + key rotation + sandbox profiles add significant deployment burden. Mitigation: ship sane defaults, a `civitas security init` CLI command to scaffold keys/configs, and recipes in `docs/security/recipes.md`.
 - **Performance.** Cross-process round-trip adds ~300µs (Ed25519 sign + verify on both sides; verify is the dominant ~80–120µs cost). For LLM-orchestration workloads this is invisible against the LLM call itself (500ms–5s). For high-throughput pipelines sustaining >10k msg/sec/core, signing becomes the bottleneck. The audit log is the bigger hidden risk: synchronous fsync per event would drop the bus to <1k msg/sec. Mitigations are codified in **D9 — Performance discipline**: InProcess transport short-circuits signing, audit log batches by default (100ms or 100 events), and a CI benchmark gate fails any change that regresses InProcess throughput by >30%.
-- **Bubblewrap availability.** Not on macOS, optional on most Linux distros. Mitigation: clear startup warnings, documented install commands per distro, refuse-to-start mode for production.
+- **Bubblewrap availability.** Not on macOS, optional on most Linux distros. Mitigation: clear error messages with install instructions per distro, refuse-to-start when `sandbox.enabled: true` and `bwrap` is absent.
 - **Scope creep.** "Security" is unbounded; M4.2 explicitly lists what's out of scope above. Resist additions during implementation — capture them as v0.5+ candidates.
 
 ---
 
-## Next steps
+## Next Steps
 
-1. Resolve Q1–Q5 with the user.
-2. Update `docs/milestones.md` M4.2 deliverables to match the five sub-milestone breakdown.
-3. Land **M4.2a — Identity & Signing** first; it's the foundation for everything else.
+1. Land **M4.2a — Identity & Signing**: `civitas/security/` package, `SigningSerializer`, runtime wiring, tests.
+2. Update `docs/milestones.md` M4.2 deliverables to the five sub-milestone breakdown.
+3. Follow recommended order: a → c → d → e → b.

@@ -79,6 +79,9 @@ docs      = [
     "mkdocstrings[python]>=0.25",
     "mkdocs-gen-files>=0.5",
 ]
+security = [
+    "pynacl",
+]
 
 [project.scripts]
 civitas = "civitas.cli:main"
