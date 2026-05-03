@@ -347,7 +347,7 @@ class TestAgentProcessCredentials:
         mock_provider_instance = MagicMock()
         mock_provider_cls.return_value = mock_provider_instance
 
-        with patch("civitas.plugins.loader.resolve_plugin_class", return_value=mock_provider_cls):
+        with patch("civitas.process.resolve_plugin_class", return_value=mock_provider_cls):
             result = agent.model_for("anthropic")
 
         mock_provider_cls.assert_called_once_with(api_key="sk-ant-per-agent")
@@ -379,7 +379,7 @@ class TestAgentProcessCredentials:
         mock_instance = MagicMock()
         mock_cls.return_value = mock_instance
 
-        with patch("civitas.plugins.loader.resolve_plugin_class", return_value=mock_cls):
+        with patch("civitas.process.resolve_plugin_class", return_value=mock_cls):
             result = agent.model_for("anthropic")
 
         assert result is mock_instance

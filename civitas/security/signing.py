@@ -8,7 +8,7 @@ from typing import Any
 
 import msgpack
 
-from civitas.errors import DeserializationError
+from civitas.errors import DeserializationError, SignatureError
 from civitas.messages import Message
 from civitas.security.config import SigningConfig
 from civitas.security.identity import AgentIdentity
@@ -60,8 +60,6 @@ class MessageSigner:
         If the sender has no local identity (system messages, unknown sender),
         the signature value is empty and the receiver handles it per config.
         """
-        from civitas.errors import SignatureError
-
         sender = str(msg_dict.get("sender", ""))
         identity = self._identities.get(sender)
         nonce = os.urandom(16)
@@ -98,8 +96,6 @@ class MessageSigner:
         Raises:
             SignatureError: on replay, unknown signer (when strict), or bad signature.
         """
-        from civitas.errors import SignatureError
-
         sig = envelope.get("sig", {})
         signer = str(sig.get("signer", ""))
         nonce: bytes = sig.get("nonce", b"")
@@ -155,8 +151,6 @@ class SigningSerializer:
         return result
 
     def deserialize(self, data: bytes) -> Message:
-        from civitas.errors import SignatureError
-
         try:
             raw: dict[str, Any] = msgpack.unpackb(data, raw=False)
         except Exception as exc:

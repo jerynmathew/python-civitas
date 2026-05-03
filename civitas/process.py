@@ -9,11 +9,12 @@ from contextlib import contextmanager
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from civitas.errors import ErrorAction, SpawnError
+from civitas.errors import ConfigurationError, ErrorAction, SpawnError
 from civitas.mcp.client import MCPClient
 from civitas.mcp.tool import MCPTool
 from civitas.messages import Message, _new_span_id, _uuid7
 from civitas.observability.tracer import Span
+from civitas.plugins.loader import resolve_plugin_class
 
 logger = logging.getLogger(__name__)
 
@@ -170,9 +171,6 @@ class AgentProcess:
         Raises:
             ConfigurationError: if no credential and no global provider.
         """
-        from civitas.errors import ConfigurationError
-        from civitas.plugins.loader import resolve_plugin_class
-
         api_key = self._credentials.get(provider_name)
         if api_key is not None:
             cls = resolve_plugin_class("model", provider_name)

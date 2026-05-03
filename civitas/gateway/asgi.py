@@ -7,7 +7,9 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from civitas.errors import MessageRoutingError
+from civitas.gateway.contracts import validate_request, validate_response
 from civitas.gateway.middleware import build_chain, load_middleware
+from civitas.gateway.openapi import build_spec, swagger_html
 from civitas.gateway.types import GatewayRequest, GatewayResponse, MiddlewareCallable
 
 if TYPE_CHECKING:
@@ -180,8 +182,6 @@ class GatewayASGI:
 
             # Request contract validation
             if entry.request_schema is not None:
-                from civitas.gateway.contracts import validate_request
-
                 valid, err = validate_request(entry.request_schema, payload)
                 if not valid:
                     return GatewayResponse(422, err or {})
@@ -193,8 +193,6 @@ class GatewayASGI:
             # Response contract validation
             reply_msg = result
             if entry.response_schema is not None:
-                from civitas.gateway.contracts import validate_response
-
                 valid, err_msg = validate_response(entry.response_schema, reply_msg.payload)
                 if not valid:
                     logger.error("Response validation failed for %s %s: %s", method, path, err_msg)
@@ -282,8 +280,6 @@ class GatewayASGI:
 
     def _get_openapi_spec(self) -> dict[str, Any]:
         if self._openapi_spec is None:
-            from civitas.gateway.openapi import build_spec
-
             self._openapi_spec = build_spec(self._route_table, self._config)
         return self._openapi_spec
 
@@ -303,8 +299,6 @@ class GatewayASGI:
         await send({"type": "http.response.body", "body": encoded})
 
     async def _serve_swagger(self, send: _Send) -> None:
-        from civitas.gateway.openapi import swagger_html
-
         docs_path = self._config.docs_path.rstrip("/")
         html = swagger_html(docs_path + "/openapi.json").encode()
         await send(

@@ -5,18 +5,15 @@ from __future__ import annotations
 import base64
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    pass
+from civitas.errors import ConfigurationError
 
 
 def _require_nacl() -> None:
     try:
         import nacl.signing  # noqa: F401
     except ImportError as exc:
-        from civitas.errors import ConfigurationError
-
         raise ConfigurationError(
             "pynacl is required for message signing. "
             "Install it with: pip install 'civitas[security]'"

@@ -25,6 +25,11 @@ from civitas.mcp.types import MCPServerConfig
 from civitas.messages import Message, _new_span_id, _uuid7
 from civitas.plugins.loader import load_plugins_from_config
 from civitas.process import AgentProcess
+from civitas.secrets.substitution import substitute_vars
+from civitas.security.config import SecurityConfig
+from civitas.security.identity import AgentIdentity
+from civitas.security.registry import KeyRegistry
+from civitas.security.signing import MessageSigner, SigningSerializer
 from civitas.serializer import Serializer
 from civitas.supervisor import DynamicSupervisor, Supervisor
 from civitas.topology_server import TopologyServer
@@ -163,8 +168,6 @@ class Runtime:
         actual Python class. If not provided, types are resolved via
         ``importlib`` from dotted module paths (e.g. "myapp.agents.MyAgent").
         """
-        from civitas.secrets.substitution import substitute_vars
-
         config = yaml.safe_load(Path(path).read_text())
         config = substitute_vars(config)
         classes = agent_classes or {}
@@ -377,8 +380,6 @@ class Runtime:
         # Security config — parsed here, applied in start()
         security_section = config.get("security")
         if security_section:
-            from civitas.security.config import SecurityConfig
-
             runtime._security_config = SecurityConfig.from_dict(security_section)
             runtime._topology_public_keys = _extract_public_keys(config)
 
@@ -478,10 +479,6 @@ class Runtime:
             and self._security_config.signing.enabled
             and self._transport_type != "in_process"
         ):
-            from civitas.security.identity import AgentIdentity
-            from civitas.security.registry import KeyRegistry
-            from civitas.security.signing import MessageSigner, SigningSerializer
-
             key_dir = self._security_config.identity.key_dir
             identities: dict[str, AgentIdentity] = {}
             for agent in all_agents:
