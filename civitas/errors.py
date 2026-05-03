@@ -68,3 +68,7 @@ class PluginError(CivitasError):
 
 class SpawnError(CivitasError):
     """Raised when a dynamic agent spawn, despawn, or stop operation fails."""
+
+
+class SignatureError(CivitasError):
+    """Raised when a message signature is missing, invalid, or replayed."""

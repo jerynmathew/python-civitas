@@ -10,18 +10,21 @@ Public API:
     Message       — standard message envelope
     CivitasError   — base exception
     ErrorAction   — enum: RETRY, SKIP, ESCALATE, STOP
+    SignatureError — raised on missing, invalid, or replayed message signatures
+    SecurityConfig — security block parsed from topology YAML
 """
 
 from __future__ import annotations
 
 from civitas.components import ComponentSet
-from civitas.errors import CivitasError, ErrorAction, SpawnError
+from civitas.errors import CivitasError, ErrorAction, SignatureError, SpawnError
 from civitas.evalloop import CorrectionSignal, EvalAgent, EvalEvent, EvalExporter
 from civitas.gateway.core import GatewayConfig, HTTPGateway
 from civitas.genserver import GenServer
 from civitas.messages import Message
 from civitas.process import AgentProcess
 from civitas.runtime import Runtime
+from civitas.security.config import SecurityConfig
 from civitas.supervisor import DynamicSupervisor, Supervisor
 from civitas.topology_server import TopologyServer
 from civitas.worker import Worker
@@ -36,6 +39,8 @@ __all__ = [
     "EvalExporter",
     "GatewayConfig",
     "HTTPGateway",
+    "SecurityConfig",
+    "SignatureError",
     "Supervisor",
     "Runtime",
     "Worker",

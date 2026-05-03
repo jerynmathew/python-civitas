@@ -32,6 +32,28 @@ from civitas.topology_server import TopologyServer
 logger = logging.getLogger(__name__)
 
 
+def _extract_public_keys(config: dict[str, Any]) -> dict[str, str]:
+    """Walk the supervision tree and collect {agent_name: public_key_b64} entries."""
+    result: dict[str, str] = {}
+
+    def _scan(node: dict[str, Any]) -> None:
+        if "agent" in node:
+            cfg = node["agent"]
+            if "public_key" in cfg:
+                result[cfg["name"]] = cfg["public_key"]
+        elif "supervisor" in node:
+            for child in node["supervisor"].get("children", []):
+                _scan(child)
+        elif "public_key" in node and "name" in node:
+            result[node["name"]] = node["public_key"]
+
+    sup = config.get("supervision") or config.get("supervisor", {})
+    sup_dict: dict[str, Any] = sup if isinstance(sup, dict) else {}
+    for child in sup_dict.get("children", []):
+        _scan(child)
+    return result
+
+
 class Runtime:
     """Assembles and manages the full Civitas runtime.
 
@@ -87,6 +109,10 @@ class Runtime:
 
         # MCP server configs parsed from topology YAML
         self._mcp_configs: list[Any] = []
+
+        # Security config — populated by from_config() when a security: block is present
+        self._security_config: Any = None
+        self._topology_public_keys: dict[str, str] = {}
 
         # Set during start() — exposed for stop(), ask()/send(), and get_agent()
         self._serializer: Serializer | None = None
@@ -314,6 +340,14 @@ class Runtime:
                     )
                 )
 
+        # Security config — parsed here, applied in start()
+        security_section = config.get("security")
+        if security_section:
+            from civitas.security.config import SecurityConfig
+
+            runtime._security_config = SecurityConfig.from_dict(security_section)
+            runtime._topology_public_keys = _extract_public_keys(config)
+
         return runtime
 
     def all_agents(self) -> list[AgentProcess]:
@@ -402,6 +436,40 @@ class Runtime:
 
         # 8. Inject dependencies into all AgentProcesses
         all_agents = self._root_supervisor.all_agents()
+
+        # Security: build signing infrastructure if configured for non-InProcess transports.
+        # InProcess transport skips signing entirely (D9 — same OS process, no wire to protect).
+        if (
+            self._security_config is not None
+            and self._security_config.signing.enabled
+            and self._transport_type != "in_process"
+        ):
+            from civitas.security.identity import AgentIdentity
+            from civitas.security.registry import KeyRegistry
+            from civitas.security.signing import MessageSigner, SigningSerializer
+
+            key_dir = self._security_config.identity.key_dir
+            identities: dict[str, AgentIdentity] = {}
+            for agent in all_agents:
+                if isinstance(agent, DynamicSupervisor | TopologyServer):
+                    continue
+                if self._security_config.identity.mode == "auto":
+                    identities[agent.name] = AgentIdentity.load_or_generate(agent.name, key_dir)
+                else:
+                    identities[agent.name] = AgentIdentity.load(agent.name, key_dir)
+
+            registry = KeyRegistry()
+            for name, identity in identities.items():
+                registry.register(name, identity.verify_key)
+            for name, pub_b64 in self._topology_public_keys.items():
+                if name not in registry:
+                    registry.register_b64(name, pub_b64)
+
+            signer = MessageSigner(identities, registry, self._security_config.signing)
+            signing_ser = SigningSerializer(signer, self._security_config.signing)
+            self._serializer = signing_ser
+            cs.bus._serializer = signing_ser
+
         for agent in all_agents:
             cs.inject(agent)
 

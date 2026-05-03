@@ -86,6 +86,11 @@ security = [
 [project.scripts]
 civitas = "civitas.cli:main"
 
+[dependency-groups]
+dev = [
+    "pynacl>=1.6.2",
+]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests/unit"]
@@ -169,7 +174,7 @@ warn_return_any = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["msgpack.*", "zmq.*", "nats.*", "litellm.*", "openai.*", "google", "google.*", "mistralai.*", "mcp.*", "aioquic", "aioquic.*", "uvicorn", "uvicorn.*"]
+module = ["msgpack.*", "zmq.*", "nats.*", "litellm.*", "openai.*", "google", "google.*", "mistralai.*", "mcp.*", "aioquic", "aioquic.*", "uvicorn", "uvicorn.*", "nacl", "nacl.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
