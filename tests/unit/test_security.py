@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from civitas.errors import DeserializationError, SignatureError
+from civitas.errors import ConfigurationError, DeserializationError, SignatureError
 from civitas.messages import Message
 from civitas.security.config import IdentityConfig, SecurityConfig, SigningConfig
 from civitas.security.identity import AgentIdentity
@@ -128,6 +128,19 @@ class TestAgentIdentity:
         a = AgentIdentity.generate("agent_a")
         b = AgentIdentity.generate("agent_b")
         assert a.public_key_b64() != b.public_key_b64()
+
+    def test_require_nacl_raises_config_error_when_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import sys
+
+        from civitas.security.identity import _require_nacl
+
+        with monkeypatch.context() as m:
+            m.setitem(sys.modules, "nacl", None)
+            m.setitem(sys.modules, "nacl.signing", None)
+            with pytest.raises(ConfigurationError, match="pynacl is required"):
+                _require_nacl()
 
 
 # ---------------------------------------------------------------------------
@@ -323,6 +336,29 @@ class TestMessageSigner:
         assert envelope["v"] == 2
         assert envelope["sig"]["value"] == b""
 
+    def test_verify_known_signer_empty_signature_strict_raises(self) -> None:
+        signer, _ = _make_signer(["agent_a"])
+        # Construct a v=2 envelope with a known signer but deliberately empty signature
+        nonce = os.urandom(16)
+        envelope = {
+            "v": 2,
+            "msg": Message(sender="agent_a").to_dict(),
+            "sig": {"signer": "agent_a", "alg": "ed25519", "value": b"", "nonce": nonce},
+        }
+        with pytest.raises(SignatureError, match="Missing signature"):
+            signer.verify(envelope)
+
+    def test_verify_known_signer_empty_signature_allow_unsigned_passes(self) -> None:
+        signer, _ = _make_signer(["agent_a"], allow_unsigned=True)
+        nonce = os.urandom(16)
+        envelope = {
+            "v": 2,
+            "msg": Message(sender="agent_a").to_dict(),
+            "sig": {"signer": "agent_a", "alg": "ed25519", "value": b"", "nonce": nonce},
+        }
+        result = signer.verify(envelope)
+        assert isinstance(result, dict)
+
 
 # ---------------------------------------------------------------------------
 # SigningSerializer
@@ -405,6 +441,35 @@ class TestSigningSerializer:
         data = ser.serialize(msg)
         ser.deserialize(data)
         with pytest.raises(SignatureError, match="Replayed"):
+            ser.deserialize(data)
+
+    def test_deserialize_v2_no_sig_block_strict_raises(self) -> None:
+        import msgpack
+
+        ser = _make_signing_serializer(["agent_a"])
+        envelope = {"v": 2, "msg": Message(sender="agent_a").to_dict()}  # no "sig" key
+        data = msgpack.packb(envelope, use_bin_type=True)
+        with pytest.raises(SignatureError, match="no signature block"):
+            ser.deserialize(data)
+
+    def test_deserialize_v2_no_sig_block_allow_unsigned_passes(self) -> None:
+        import msgpack
+
+        ser = _make_signing_serializer(["agent_a"], allow_unsigned=True)
+        envelope = {"v": 2, "msg": Message(sender="agent_a").to_dict()}
+        data = msgpack.packb(envelope, use_bin_type=True)
+        result = ser.deserialize(data)
+        assert result.sender == "agent_a"
+
+    def test_deserialize_msg_dict_not_reconstructable_raises(self) -> None:
+        import msgpack
+
+        ser = _make_signing_serializer(["agent_a"], allow_unsigned=True)
+        # v=1 unsigned (allow_unsigned=True) but payload contains bytes — not JSON-serialisable,
+        # so Message.__post_init__ raises ValueError, caught as DeserializationError.
+        bad = {"schema_version": 1, "payload": b"binary not json"}
+        data = msgpack.packb(bad, use_bin_type=True)
+        with pytest.raises(DeserializationError):
             ser.deserialize(data)
 
 
