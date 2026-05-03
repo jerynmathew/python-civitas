@@ -25,6 +25,7 @@ from civitas.mcp.types import MCPServerConfig
 from civitas.messages import Message, _new_span_id, _uuid7
 from civitas.plugins.loader import load_plugins_from_config
 from civitas.process import AgentProcess
+from civitas.sandbox.config import SandboxConfig
 from civitas.secrets.substitution import substitute_vars
 from civitas.security.config import SecurityConfig
 from civitas.security.identity import AgentIdentity
@@ -363,6 +364,9 @@ class Runtime:
         mcp_section = config.get("mcp", {})
         if mcp_section.get("servers"):
             for srv in mcp_section["servers"]:
+                sandbox = None
+                if srv.get("sandbox"):
+                    sandbox = SandboxConfig.from_dict(srv["sandbox"])
                 runtime._mcp_configs.append(
                     MCPServerConfig(
                         name=srv["name"],
@@ -371,6 +375,7 @@ class Runtime:
                         args=srv.get("args", []),
                         env=srv.get("env"),
                         url=srv.get("url"),
+                        sandbox=sandbox,
                     )
                 )
 

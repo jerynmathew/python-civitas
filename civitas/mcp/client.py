@@ -6,6 +6,7 @@ import contextlib
 from typing import Any
 
 from civitas.mcp.types import MCPServerConfig, MCPToolError, MCPToolSchema
+from civitas.sandbox.bubblewrap import BubblewrapSandbox
 
 try:
     from mcp import ClientSession, StdioServerParameters, stdio_client
@@ -46,9 +47,15 @@ class MCPClient:
 
         if self.config.transport == "stdio":
             assert self.config.command is not None  # validated by MCPServerConfig.__post_init__
+            cmd = self.config.command
+            cmd_args = self.config.args or []
+            if self.config.sandbox is not None and self.config.sandbox.enabled:
+                sb = BubblewrapSandbox(self.config.sandbox)
+                sb.check_or_raise()
+                cmd, cmd_args = sb.wrap(cmd, cmd_args)
             params = StdioServerParameters(
-                command=self.config.command,
-                args=self.config.args or [],
+                command=cmd,
+                args=cmd_args,
                 env=self.config.env,
             )
             read, write = await self._exit_stack.enter_async_context(stdio_client(params))
