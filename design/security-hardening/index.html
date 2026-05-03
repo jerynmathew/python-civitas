@@ -1,0 +1,2324 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="The production runtime for Python agents">
+      
+      
+      
+        <link rel="canonical" href="https://jerynmathew.github.io/python-civitas/design/security-hardening/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+    
+    
+      
+        <title>Design: Runtime Security Hardening (M4.2) - civitas</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config",""),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#design-runtime-security-hardening-m42" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="civitas" class="md-header__button md-logo" aria-label="civitas" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            civitas
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Design: Runtime Security Hardening (M4.2)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/jerynmathew/python-civitas" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jerynmathew/python-civitas
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../concepts/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../milestones/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Milestones
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../mcp-integration/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Design
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../rfc/0001-tool-retrieval/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  RFCs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="civitas" class="md-nav__button md-logo" aria-label="civitas" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    civitas
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/jerynmathew/python-civitas" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jerynmathew/python-civitas
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../supervision/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supervision
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../messaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Messaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../transports/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transports
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugins
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Topology YAML
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adapters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adapters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/process/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AgentProcess
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/genserver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GenServer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/supervisor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supervisor
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/runtime/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/messages/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Message
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/bus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MessageBus
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/transport/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transport
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/plugins/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plugins
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../milestones/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Milestones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Design
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp-integration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integration (M3.4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../genserver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GenServer (M3.5)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http-gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP Gateway (M4.x)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gateway-api-surface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gateway API Surface (M4.x)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RFCs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    RFCs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rfc/0001-tool-retrieval/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RFC 0001 — Selective Tool Retrieval
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#motivation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Motivation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#design-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Decisions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Design Decisions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#d1-security-is-opt-in-per-topology-not-a-global-flag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D1 — Security is opt-in per topology, not a global flag
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d2-ed25519-keypairs-per-agent-not-hmac" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D2 — Ed25519 keypairs per agent (not HMAC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d3-sign-the-envelope-not-the-payload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D3 — Sign the envelope, not the payload
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d4-zmq-curve-for-zmq-tls-nkeys-for-nats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D4 — ZMQ CURVE for ZMQ; TLS + nkeys for NATS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d5-env-var-substitution-in-yaml-secrets-never-in-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D5 — Env-var substitution in YAML; secrets never in source
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d6-per-agent-credential-scope-via-plugin-handles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D6 — Per-agent credential scope via plugin handles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d7-tool-execution-sandbox-bubblewrap-on-linux-refuse-to-start-elsewhere" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D7 — Tool execution sandbox: bubblewrap on Linux, refuse-to-start elsewhere
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d8-audit-log-is-separate-from-otel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D8 — Audit log is separate from OTel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#d9-performance-discipline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D9 — Performance discipline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phasing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phasing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resolved-design-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolved Design Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#risks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Risks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="design-runtime-security-hardening-m42">Design: Runtime Security Hardening (M4.2)<a class="headerlink" href="#design-runtime-security-hardening-m42" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Approved — v0.4
+<strong>Author:</strong> Jeryn Mathew Varghese
+<strong>Last updated:</strong> 2026-05</p>
+<hr />
+<h2 id="motivation">Motivation<a class="headerlink" href="#motivation" title="Permanent link">&para;</a></h2>
+<p>M4.3 produced a STRIDE threat model identifying <strong>10 HIGH</strong> and <strong>8 MEDIUM</strong> risks in the Civitas runtime. Most of those findings explicitly defer their mitigation to M4.2. Today the runtime ships with:</p>
+<ul>
+<li><strong>No transport encryption.</strong> ZMQ messages traverse loopback as raw msgpack (<a href="../../civitas/transport/zmq.py">civitas/transport/zmq.py:1-284</a>). NATS connects without client TLS. Cross-host deployments are not safe.</li>
+<li><strong>No message authentication.</strong> <code>Message.sender</code> is a string field set by the sender and never verified (<a href="../../civitas/messages.py">civitas/messages.py</a>). Any agent can spoof any other agent (Spoofing, HIGH).</li>
+<li><strong>Plaintext secrets in YAML.</strong> <code>from_config()</code> does not substitute env vars; API keys must be hardcoded into topology files or wrapped at the deployment layer (<a href="../../civitas/runtime.py">civitas/runtime.py:100-317</a>).</li>
+<li><strong>No per-agent credential scope.</strong> Plugins (LLM providers, tools) read env vars or take config dicts at instantiation; every agent shares the same credentials.</li>
+<li><strong>No tool sandboxing.</strong> MCP tools are executed as subprocesses with the runtime's full privileges (<a href="../../civitas/mcp/tool.py">civitas/mcp/tool.py:44-67</a>).</li>
+<li><strong>No structured audit log.</strong> OTel spans cover observability but are not designed as a tamper-evident audit trail.</li>
+</ul>
+<p>M4.2 closes these gaps. It is the implementation arm of the threat model.</p>
+<hr />
+<h2 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h2>
+<p><strong>In scope:</strong> mTLS for ZMQ + NATS, message signing with stable agent identity, env-var secret substitution + per-agent credential scoping, sandboxed tool execution, structured audit log.</p>
+<p><strong>Out of scope (deferred):</strong></p>
+<ul>
+<li>HSM / TPM-backed keys (post-v1.0)</li>
+<li>Fine-grained ACL DSL (M4.4 Capability-Aware Registry overlaps; revisit once that lands)</li>
+<li>Encrypted <code>StateStore</code> at rest (separate effort — can move to v0.5)</li>
+<li>PKI/CA integration (deployment-layer concern; we ship key generation but not certificate issuance)</li>
+<li>HTTPGateway authentication middleware (already a documented integration point; users plug in their own JWT/OIDC)</li>
+</ul>
+<hr />
+<h2 id="design-decisions">Design Decisions<a class="headerlink" href="#design-decisions" title="Permanent link">&para;</a></h2>
+<h3 id="d1-security-is-opt-in-per-topology-not-a-global-flag">D1 — Security is opt-in per topology, not a global flag<a class="headerlink" href="#d1-security-is-opt-in-per-topology-not-a-global-flag" title="Permanent link">&para;</a></h3>
+<p>A topology declares a <code>security:</code> block. When omitted, the runtime behaves exactly as today (in-process, no signing, no TLS) so existing demos and tests keep working. When present, every applicable layer is hardened.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">security</span><span class="p">:</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">identity</span><span class="p">:</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">auto</span><span class="w">                  </span><span class="c1"># auto-generate Ed25519 keypair per agent at startup</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="c1"># mode: provisioned         # load from key_dir</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="c1"># key_dir: /etc/civitas/keys</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">signing</span><span class="p">:</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="nt">algorithm</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ed25519</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">    </span><span class="nt">require_verification</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">  </span><span class="c1"># reject unsigned messages</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">    </span><span class="nt">allow_unsigned</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">       </span><span class="c1"># set true only during rolling upgrades</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">  </span><span class="nt">transport</span><span class="p">:</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="w">    </span><span class="nt">tls_cert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/etc/civitas/server.crt</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">    </span><span class="nt">tls_key</span><span class="p">:</span><span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">/etc/civitas/server.key</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="nt">tls_ca</span><span class="p">:</span><span class="w">   </span><span class="l l-Scalar l-Scalar-Plain">/etc/civitas/ca.crt</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">  </span><span class="nt">audit</span><span class="p">:</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">    </span><span class="nt">sink</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/log/civitas/audit.jsonl</span>
+</span></code></pre></div>
+<p>Rationale: backwards compatibility is non-negotiable for v0.4. Forcing global migration would break every existing topology. Per-topology opt-in lets production deployments harden without churning the entire ecosystem.</p>
+<h3 id="d2-ed25519-keypairs-per-agent-not-hmac">D2 — Ed25519 keypairs per agent (not HMAC)<a class="headerlink" href="#d2-ed25519-keypairs-per-agent-not-hmac" title="Permanent link">&para;</a></h3>
+<p>Each agent holds an Ed25519 signing keypair. Messages carry <code>(signer_id, signature)</code>. Verifiers need only the public key registry, not a shared secret. This matches the agent identity model (each agent is a distinct principal) and avoids the key distribution problem of HMAC (every verifier needs every secret).</p>
+<table>
+<thead>
+<tr>
+<th>Choice</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Ed25519</strong> over HMAC-SHA256</td>
+<td>Public-key model fits the multi-agent topology; verifiers don't hold sender secrets</td>
+</tr>
+<tr>
+<td><strong>Ed25519</strong> over RSA/ECDSA</td>
+<td>Faster signing/verification, smaller signatures (64 bytes), no parameter pitfalls</td>
+</tr>
+<tr>
+<td><strong>PyNaCl</strong> library</td>
+<td>Audited, single-purpose, already widely used in distributed systems</td>
+</tr>
+</tbody>
+</table>
+<p>The runtime auto-generates keypairs on first start (<code>mode: auto</code>) and stashes them in a configurable key directory. Production deployments use <code>mode: provisioned</code> and bring their own keys.</p>
+<h4 id="key-storage-format">Key storage format<a class="headerlink" href="#key-storage-format" title="Permanent link">&para;</a></h4>
+<p>Keys use OpenSSH-style filenames (<code>id_ed25519</code>, <code>id_ed25519.pub</code>) for familiarity, with base64-encoded raw key material:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>{key_dir}/{agent_name}/
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>├── id_ed25519       # base64-encoded 32-byte Ed25519 seed (mode 0600)
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>└── id_ed25519.pub   # base64-encoded 32-byte verify key (mode 0644)
+</span></code></pre></div>
+<p>The choice of OpenSSH naming (rather than a custom JSON manifest) reflects that:
+- Every developer already knows this layout from <code>ssh-keygen</code>
+- Rotation date, allowed roles, and other metadata are deployment-layer concerns — they belong in a sidecar <code>.meta.json</code> or your secrets manager, not in the key file itself
+- A custom format would require custom tooling with no ecosystem benefit</p>
+<h4 id="key-distribution-across-deployment-shapes">Key distribution across deployment shapes<a class="headerlink" href="#key-distribution-across-deployment-shapes" title="Permanent link">&para;</a></h4>
+<p>Private keys never leave their host. Only public keys (32 bytes each, not sensitive) need to be distributed. The distribution mechanism varies by deployment topology:</p>
+<table>
+<thead>
+<tr>
+<th>Shape</th>
+<th>Distribution mechanism</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Single-node (any process count)</strong></td>
+<td>Shared <code>key_dir</code> path on the local filesystem. All processes on the same host read and write the same directory. <code>mode: auto</code> generates keys on first start; subsequent processes find and use them.</td>
+</tr>
+<tr>
+<td><strong>Multi-node, static topology</strong></td>
+<td>Public keys declared inline in <code>topology.yaml</code> (see below). The topology is already distributed to every node by the deployment layer (kubectl apply, Ansible, Terraform). Piggyback on that — no additional infrastructure required.</td>
+</tr>
+<tr>
+<td><strong>Multi-node, dynamic agents</strong></td>
+<td>The <code>civitas.dynamic.spawn</code> message carries the new agent's public key. The receiver verifies the spawn message against the spawning supervisor's already-registered public key, then trusts the enclosed key transitively. This is a certificate chain of depth 1, rooted in the supervisor's known identity.</td>
+</tr>
+<tr>
+<td><strong>Multi-node, no mTLS</strong></td>
+<td>Warn at startup: message signing provides no multi-node guarantee without transport-layer authentication. Signing defends against rogue agents <em>within</em> the cluster; it does not defend against network adversaries. If you don't have transport mTLS, you have a bigger problem than message signing.</td>
+</tr>
+</tbody>
+</table>
+<p>For multi-node static topologies, public keys go directly in the topology file alongside the agent declaration:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">supervision</span><span class="p">:</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">root</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ONE_FOR_ONE</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">children</span><span class="p">:</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">agent</span><span class="p">:</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">research_agent</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">myapp.agents.ResearchAgent</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">        </span><span class="nt">public_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;base64-encoded-verify-key&quot;</span><span class="w">   </span><span class="c1"># not sensitive; safe in source</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">agent</span><span class="p">:</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">writer_agent</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">myapp.agents.WriterAgent</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">        </span><span class="nt">public_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;base64-encoded-verify-key&quot;</span>
+</span></code></pre></div>
+<p>For <code>mode: provisioned</code>, the private key is loaded from <code>{key_dir}/{agent_name}/id_ed25519</code>. The public key is derived from the private key; the <code>public_key</code> topology field is only used when connecting to agents hosted on <strong>other nodes</strong> (where you don't have the key file locally).</p>
+<h3 id="d3-sign-the-envelope-not-the-payload">D3 — Sign the envelope, not the payload<a class="headerlink" href="#d3-sign-the-envelope-not-the-payload" title="Permanent link">&para;</a></h3>
+<p>Signing happens at the serializer layer, <strong>after</strong> <code>Message.to_dict()</code> but <strong>before</strong> msgpack encoding. The wire format wraps the message:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="s2">&quot;v&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">serialized</span> <span class="n">message</span> <span class="nb">dict</span><span class="o">&gt;</span><span class="p">,</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="s2">&quot;sig&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;signer&quot;</span><span class="p">:</span> <span class="s2">&quot;agent_name&quot;</span><span class="p">,</span> <span class="s2">&quot;alg&quot;</span><span class="p">:</span> <span class="s2">&quot;ed25519&quot;</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="o">&lt;</span><span class="nb">bytes</span><span class="o">&gt;</span><span class="p">,</span> <span class="s2">&quot;nonce&quot;</span><span class="p">:</span> <span class="o">&lt;</span><span class="nb">bytes</span><span class="o">&gt;</span><span class="p">}</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p">}</span>
+</span></code></pre></div>
+<p>The signed bytes are <code>msgpack.packb({"v": 2, "msg": msg_dict, "signer": signer_id, "nonce": nonce})</code> — a deterministic encoding of the full envelope minus the signature value. This protects routing fields (<code>sender</code>, <code>recipient</code>, <code>correlation_id</code>) from tampering, not just the payload.</p>
+<p>Verification at deserialize-time recovers the message dict, verifies the signature against the registered public key for <code>signer</code>, and rejects on mismatch (raises <code>SignatureError</code>, a new <code>CivitasError</code> subclass). The schema bumps from v1 to v2; v1 messages remain readable by deserializers when <code>require_verification: false</code>.</p>
+<h3 id="d4-zmq-curve-for-zmq-tls-nkeys-for-nats">D4 — ZMQ CURVE for ZMQ; TLS + nkeys for NATS<a class="headerlink" href="#d4-zmq-curve-for-zmq-tls-nkeys-for-nats" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Transport</th>
+<th>Mechanism</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ZMQ</strong></td>
+<td>CURVE (libsodium, built into pyzmq)</td>
+<td>Native ZMQ support, no proxy changes, mature and battle-tested</td>
+</tr>
+<tr>
+<td><strong>NATS</strong></td>
+<td>TLS + nkeys (Ed25519-based subject auth)</td>
+<td>NATS-native, integrates with their permissions model</td>
+</tr>
+<tr>
+<td><strong>InProcess</strong></td>
+<td>No-op</td>
+<td>Single-process; no wire to protect</td>
+</tr>
+</tbody>
+</table>
+<p>The ZMQ proxy needs CURVE server keys; each Worker gets a CURVE client keypair. NATS clients receive an <code>nkey</code> seed and TLS material. Both are read from the <code>security.transport</code> block.</p>
+<p>The <code>security</code> block can also be partially configured: <code>signing.enabled: true</code> works without TLS (e.g., on trusted networks where the threat is rogue agents, not network adversaries).</p>
+<h3 id="d5-env-var-substitution-in-yaml-secrets-never-in-source">D5 — Env-var substitution in YAML; secrets never in source<a class="headerlink" href="#d5-env-var-substitution-in-yaml-secrets-never-in-source" title="Permanent link">&para;</a></h3>
+<p><code>Runtime.from_config()</code> walks the parsed YAML and resolves <code>${VAR_NAME}</code> patterns against <code>os.environ</code>. Unset variables raise a clear error. This is the <strong>only</strong> substitution syntax — no default values, no shell expansion, no nested expressions. The substitution layer is independent of any specific secrets manager: deployment owners use whatever surfaces env vars (Kubernetes secrets, Docker secrets, Vault sidecar, AWS Secrets Manager via their CLI).</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">plugins</span><span class="p">:</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">models</span><span class="p">:</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">      </span><span class="nt">config</span><span class="p">:</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">        </span><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ANTHROPIC_API_KEY}</span>
+</span></code></pre></div>
+<p>A separate optional <code>civitas.secrets.SecretsProvider</code> protocol (with file/env/Vault implementations) lets advanced users plug in dynamic resolution. The default implementation is the env-var substituter described above.</p>
+<h3 id="d6-per-agent-credential-scope-via-plugin-handles">D6 — Per-agent credential scope via plugin handles<a class="headerlink" href="#d6-per-agent-credential-scope-via-plugin-handles" title="Permanent link">&para;</a></h3>
+<p>Plugins are instantiated once per process today. To scope credentials per agent without refactoring every plugin, introduce <strong>plugin handles</strong>: an agent calls <code>self.llm("anthropic")</code> instead of receiving an injected <code>ModelProvider</code>. The handle resolves the right credential set at call time based on <code>topology.yaml</code>:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">agents</span><span class="p">:</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">research_agent</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="nt">credentials</span><span class="p">:</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">      </span><span class="nt">anthropic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${RESEARCH_AGENT_ANTHROPIC_KEY}</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">writer_agent</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="nt">credentials</span><span class="p">:</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">      </span><span class="nt">anthropic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${WRITER_AGENT_ANTHROPIC_KEY}</span>
+</span></code></pre></div>
+<p>When <code>agent.credentials.&lt;plugin&gt;</code> is unset, the handle falls back to the global plugin instance (current behaviour). This is opt-in and additive — existing agents keep working unchanged.</p>
+<h3 id="d7-tool-execution-sandbox-bubblewrap-on-linux-refuse-to-start-elsewhere">D7 — Tool execution sandbox: bubblewrap on Linux, refuse-to-start elsewhere<a class="headerlink" href="#d7-tool-execution-sandbox-bubblewrap-on-linux-refuse-to-start-elsewhere" title="Permanent link">&para;</a></h3>
+<p>MCP servers spawn as subprocesses today. M4.2 wraps that subprocess with <a href="https://github.com/containers/bubblewrap"><code>bubblewrap</code></a> on Linux: read-only root filesystem, no network unless declared, scratch tmpfs for <code>/tmp</code>. The sandbox profile is per-MCP-server in YAML:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">plugins</span><span class="p">:</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">mcp</span><span class="p">:</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shell_tool</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">      </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/usr/local/bin/shell_mcp</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">      </span><span class="nt">sandbox</span><span class="p">:</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">        </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">        </span><span class="nt">network</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deny</span><span class="w">           </span><span class="c1"># deny | allow | &lt;allowlist&gt;</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">        </span><span class="nt">filesystem</span><span class="p">:</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/workspace:rw</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/etc/ssl/certs:ro</span>
+</span></code></pre></div>
+<p>When <code>sandbox.enabled: true</code> and <code>bwrap</code> is not available (macOS, Windows, or Linux without bubblewrap installed), the runtime <strong>refuses to start</strong> with a clear error message and install instructions. The right escape hatch is <code>sandbox.enabled: false</code> on development topologies — not silent degradation of a declared security control. We do <strong>not</strong> ship a Python-level sandbox (no real isolation in-process). Stronger isolation (gVisor, Firecracker) is out of scope.</p>
+<h3 id="d8-audit-log-is-separate-from-otel">D8 — Audit log is separate from OTel<a class="headerlink" href="#d8-audit-log-is-separate-from-otel" title="Permanent link">&para;</a></h3>
+<p>OTel is for debugging and observability — its spans drop, sample, and export to user-controlled backends. An audit log has different requirements: append-only, never sampled, locally durable, structured for compliance review.</p>
+<p>M4.2 ships a <code>civitas.audit</code> module that emits structured events:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">AuditEvent</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">str</span>        <span class="c1"># ISO8601 with UTC offset</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">event_type</span><span class="p">:</span> <span class="nb">str</span>       <span class="c1"># auth.deny | sign.verify_fail | sandbox.violation | secret.access | ...</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">actor</span><span class="p">:</span> <span class="nb">str</span>            <span class="c1"># agent name</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">target</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>    <span class="c1"># message recipient, tool name, secret name</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    <span class="n">result</span><span class="p">:</span> <span class="nb">str</span>           <span class="c1"># allow | deny | error</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span>        <span class="c1"># event-specific</span>
+</span></code></pre></div>
+<p>Default sink is <code>JsonlFileSink</code> — newline-delimited JSON, batched fsync (every 100ms or 100 events). Log rotation is handled via SIGHUP: on <code>SIGHUP</code>, the sink closes and re-opens the file descriptor, making it compatible with <code>logrotate</code> without requiring built-in rotation logic. A <code>sync_writes: true</code> option exists for compliance-strict deployments. A <code>NullSink</code> exists for tests. Users can plug <code>SyslogSink</code>, <code>OtlpSink</code>, or custom sinks via <code>civitas.audit.AuditSink</code> protocol.</p>
+<p>Audit events are emitted at well-defined chokepoints:
+- <code>MessageBus.route()</code> — on signature failure or denied message
+- <code>MCPTool.execute()</code> — on every tool invocation (allow + result code)
+- Sandbox wrapper — on policy violation
+- Secret access — when a plugin handle resolves a credential</p>
+<h3 id="d9-performance-discipline">D9 — Performance discipline<a class="headerlink" href="#d9-performance-discipline" title="Permanent link">&para;</a></h3>
+<p>Security primitives have measurable cost. Three rules keep that cost predictable:</p>
+<ol>
+<li>
+<p><strong>InProcess signing is a no-op.</strong> When both sender and receiver are in the same OS process, the runtime does not create a <code>SigningSerializer</code> — the regular serializer is used and no Ed25519 operations occur. Cross-process and cross-host transports always sign and verify.</p>
+</li>
+<li>
+<p><strong>Audit log batches by default.</strong> <code>JsonlFileSink</code> buffers events in memory and fsyncs every 100ms or every 100 events, whichever comes first. A <code>sync_writes: true</code> option exists for compliance-strict deployments but is <strong>off by default</strong>. Per-event fsync at high throughput drops the bus to &lt;1k msg/sec — the one configuration that would make security feel painful.</p>
+</li>
+<li>
+<p><strong>CI benchmark gate.</strong> A <code>pytest-benchmark</code> test measures <code>MessageBus.route()</code> throughput on InProcess transport with signing+audit enabled vs. baseline. CI fails if the regression exceeds <strong>30%</strong>. This makes performance regressions visible at PR time rather than after release.</p>
+</li>
+</ol>
+<p>Concrete numbers (modern x86, single core):</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Cost</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ed25519 sign</td>
+<td>~30–50µs</td>
+<td>Sender pays</td>
+</tr>
+<tr>
+<td>Ed25519 verify</td>
+<td>~80–120µs</td>
+<td>Receiver pays — verify is slower than sign</td>
+</tr>
+<tr>
+<td>ChaCha20-Poly1305 (TLS/CURVE)</td>
+<td>~5µs / KB</td>
+<td>Negligible at message sizes</td>
+</tr>
+<tr>
+<td>Audit emit (batched)</td>
+<td>~10µs</td>
+<td>Default mode</td>
+</tr>
+<tr>
+<td>Audit emit (sync fsync)</td>
+<td>1–10ms</td>
+<td>Only when <code>sync_writes: true</code></td>
+</tr>
+<tr>
+<td>Plugin handle resolution</td>
+<td>~100ns</td>
+<td>Dict lookup</td>
+</tr>
+</tbody>
+</table>
+<p>For LLM-orchestration workloads, total per-message overhead is <strong>~300µs cross-process, 0µs in-process</strong> — invisible against a 500ms–5s LLM round-trip. For high-throughput pipelines (&gt;10k msg/sec/core sustained), signing on cross-process transports becomes the bottleneck; users can disable signing on trusted transports via <code>signing.enabled: false</code>.</p>
+<hr />
+<h2 id="phasing">Phasing<a class="headerlink" href="#phasing" title="Permanent link">&para;</a></h2>
+<p>M4.2 is too big for one PR. It splits into five sub-milestones, each independently shippable and testable:</p>
+<table>
+<thead>
+<tr>
+<th>Sub-milestone</th>
+<th>Scope</th>
+<th>Depends on</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>M4.2a — Identity &amp; Signing</strong></td>
+<td>Ed25519 keypairs, signed envelopes, <code>SignatureError</code>, public key registry, nonce cache, <code>security:</code> YAML block, multi-node key distribution</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>M4.2b — Transport mTLS</strong></td>
+<td>ZMQ CURVE, NATS TLS + nkeys, transport config plumbing</td>
+<td>M4.2a (shares identity store)</td>
+</tr>
+<tr>
+<td><strong>M4.2c — Credential Isolation</strong></td>
+<td><code>${VAR}</code> env substitution, <code>SecretsProvider</code> protocol, per-agent credential scope, plugin handles</td>
+<td>— (independent)</td>
+</tr>
+<tr>
+<td><strong>M4.2d — Tool Sandbox</strong></td>
+<td>Bubblewrap wrapper for MCP subprocesses, sandbox YAML schema, refuse-to-start on unsupported platforms</td>
+<td>— (independent)</td>
+</tr>
+<tr>
+<td><strong>M4.2e — Audit Log</strong></td>
+<td><code>civitas.audit</code> module, <code>JsonlFileSink</code> (batched, SIGHUP rotation), integration at chokepoints</td>
+<td>M4.2a (auth events use signer_id)</td>
+</tr>
+</tbody>
+</table>
+<p>Recommended order: <strong>a → c → d → e → b</strong>. Identity and signing unlock the audit log's notion of an authenticated actor; credentials and sandbox harden the local-trust scenarios most users hit first; transport mTLS lands last because it requires the most operational change (cert provisioning).</p>
+<hr />
+<h2 id="test-plan">Test Plan<a class="headerlink" href="#test-plan" title="Permanent link">&para;</a></h2>
+<p>Each sub-milestone ships with:</p>
+<ul>
+<li><strong>Unit tests</strong> for primitives (sign/verify roundtrip, env substitution edge cases, sandbox config parsing)</li>
+<li><strong>Integration tests</strong> at the MessageBus level (signed message accepted, unsigned rejected when required, replay rejected)</li>
+<li><strong>Negative tests</strong> — every threat model HIGH item gets a regression test that proves the mitigation works (e.g., spoofed sender → rejected; tampered payload → rejected; unauthorized tool path → sandbox blocks)</li>
+<li><strong>Coverage target</strong> ≥90% on new code; no drop below current 92% suite-wide</li>
+</ul>
+<p>A new test directory: <code>tests/security/</code> for cross-cutting tests that combine multiple primitives.</p>
+<hr />
+<h2 id="resolved-design-questions">Resolved Design Questions<a class="headerlink" href="#resolved-design-questions" title="Permanent link">&para;</a></h2>
+<p><strong>Q1 — Key directory format</strong>
+Resolved: OpenSSH-style filenames (<code>id_ed25519</code>, <code>id_ed25519.pub</code>) with simple base64 key material. See D2 for full rationale and the multi-node key distribution breakdown by deployment shape.</p>
+<p><strong>Q2 — Replay protection scope</strong>
+Resolved: Ship a bounded nonce cache. Each signed envelope carries a 16-byte random nonce. The receiver maintains an LRU set capped at 10,000 entries (~320KB). Duplicate nonces raise <code>SignatureError</code>. Rationale: signing may be the only layer (mTLS is not always deployed), the cost is trivial, and replay is a common-class threat.</p>
+<p><strong>Q3 — Audit log rotation</strong>
+Resolved: SIGHUP. On <code>SIGHUP</code>, <code>JsonlFileSink</code> closes and re-opens the file descriptor. This integrates cleanly with <code>logrotate</code> and keeps the sink implementation simple. Built-in rotation would duplicate a solved problem.</p>
+<p><strong>Q4 — Sandbox on macOS/Windows</strong>
+Resolved: Refuse to start when <code>sandbox.enabled: true</code> and <code>bwrap</code> is unavailable. The operator declared a security requirement; the runtime honours it by failing loudly rather than silently degrading. Development topologies should use <code>sandbox.enabled: false</code>. See updated D7.</p>
+<p><strong>Q5 — Backwards-compatible signing</strong>
+Resolved: Strict rejection by default. When <code>signing.enabled: true</code> and an unsigned message arrives, the runtime raises <code>SignatureError</code>. A <code>signing.allow_unsigned: true</code> escape hatch is documented as transitional-only (rolling upgrades). The operator explicitly acknowledges the degraded state; the runtime does not make that choice silently.</p>
+<hr />
+<h2 id="risks">Risks<a class="headerlink" href="#risks" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Operational complexity.</strong> mTLS + key rotation + sandbox profiles add significant deployment burden. Mitigation: ship sane defaults, a <code>civitas security init</code> CLI command to scaffold keys/configs, and recipes in <code>docs/security/recipes.md</code>.</li>
+<li><strong>Performance.</strong> Cross-process round-trip adds ~300µs (Ed25519 sign + verify on both sides; verify is the dominant ~80–120µs cost). For LLM-orchestration workloads this is invisible against the LLM call itself (500ms–5s). For high-throughput pipelines sustaining &gt;10k msg/sec/core, signing becomes the bottleneck. The audit log is the bigger hidden risk: synchronous fsync per event would drop the bus to &lt;1k msg/sec. Mitigations are codified in <strong>D9 — Performance discipline</strong>: InProcess transport short-circuits signing, audit log batches by default (100ms or 100 events), and a CI benchmark gate fails any change that regresses InProcess throughput by &gt;30%.</li>
+<li><strong>Bubblewrap availability.</strong> Not on macOS, optional on most Linux distros. Mitigation: clear error messages with install instructions per distro, refuse-to-start when <code>sandbox.enabled: true</code> and <code>bwrap</code> is absent.</li>
+<li><strong>Scope creep.</strong> "Security" is unbounded; M4.2 explicitly lists what's out of scope above. Resist additions during implementation — capture them as v0.5+ candidates.</li>
+</ul>
+<hr />
+<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Land <strong>M4.2a — Identity &amp; Signing</strong>: <code>civitas/security/</code> package, <code>SigningSerializer</code>, runtime wiring, tests.</li>
+<li>Update <code>docs/milestones.md</code> M4.2 deliverables to the five sub-milestone breakdown.</li>
+<li>Follow recommended order: a → c → d → e → b.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Apache 2.0 License
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/jerynmathew/python-civitas" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.expand", "navigation.top", "navigation.instant", "navigation.indexes", "content.code.copy", "content.code.annotate", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11/dist/mermaid.min.js"></script>
+      
+    
+  </body>
+</html>

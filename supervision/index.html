@@ -831,6 +831,100 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#dynamic-supervision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic supervision
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dynamic supervision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dynamicsupervisor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DynamicSupervisor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spawning-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spawning agents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restart-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Restart modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Governance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#termination-notifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Termination notifications
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topologyserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TopologyServer
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2046,6 +2140,100 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#dynamic-supervision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dynamic supervision
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Dynamic supervision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dynamicsupervisor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DynamicSupervisor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spawning-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spawning agents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restart-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Restart modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#governance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Governance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#termination-notifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Termination notifications
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topologyserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TopologyServer
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2512,6 +2700,147 @@
 </span><span id="__span-15-11"><a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="p">])</span>
 </span></code></pre></div>
 <p>After 2 failures in 30 seconds, <code>db_sup</code> escalates to <code>root</code>, which waits ~30s (exponential base) before restarting the subsystem.</p>
+<hr />
+<h2 id="dynamic-supervision">Dynamic supervision<a class="headerlink" href="#dynamic-supervision" title="Permanent link">&para;</a></h2>
+<p>Static supervision — the <code>Supervisor</code> class — covers processes whose identity is known at deploy time. Dynamic supervision covers processes that are created and destroyed at runtime, such as per-request workers, user sessions, or spawned research agents.</p>
+<h3 id="dynamicsupervisor">DynamicSupervisor<a class="headerlink" href="#dynamicsupervisor" title="Permanent link">&para;</a></h3>
+<p><code>DynamicSupervisor</code> is a separate class from <code>Supervisor</code>. It follows Erlang's design: the two are deliberately distinct because <code>ONE_FOR_ALL</code> and <code>REST_FOR_ONE</code> strategies depend on a fixed, ordered child list and lose coherence when children arrive and leave dynamically. <code>DynamicSupervisor</code> is always <code>ONE_FOR_ONE</code>.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">civitas</span><span class="w"> </span><span class="kn">import</span> <span class="n">DynamicSupervisor</span><span class="p">,</span> <span class="n">Supervisor</span><span class="p">,</span> <span class="n">Runtime</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="n">dyn</span> <span class="o">=</span> <span class="n">DynamicSupervisor</span><span class="p">(</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;workers&quot;</span><span class="p">,</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>    <span class="n">max_children</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>           <span class="c1"># hard capacity limit; spawn raises SpawnError when reached</span>
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    <span class="n">max_total_spawns</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>     <span class="c1"># optional lifetime cap across all spawns</span>
+</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="p">)</span>
+</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>
+</span><span id="__span-16-9"><a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="n">runtime</span> <span class="o">=</span> <span class="n">Runtime</span><span class="p">(</span><span class="n">supervisor</span><span class="o">=</span><span class="n">Supervisor</span><span class="p">(</span><span class="s2">&quot;root&quot;</span><span class="p">,</span> <span class="n">children</span><span class="o">=</span><span class="p">[</span><span class="n">orchestrator</span><span class="p">,</span> <span class="n">dyn</span><span class="p">]))</span>
+</span></code></pre></div>
+<p>Or in YAML:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nt">supervision</span><span class="p">:</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">root</span>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ONE_FOR_ONE</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">  </span><span class="nt">children</span><span class="p">:</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dynamic_supervisor</span>
+</span><span id="__span-17-6"><a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">workers</span>
+</span><span id="__span-17-7"><a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="w">      </span><span class="nt">config</span><span class="p">:</span>
+</span><span id="__span-17-8"><a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="w">        </span><span class="nt">max_children</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+</span><span id="__span-17-9"><a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="w">        </span><span class="nt">max_total_spawns</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1000</span>
+</span><span id="__span-17-10"><a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">agent</span>
+</span><span id="__span-17-11"><a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a><span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">orchestrator</span>
+</span><span id="__span-17-12"><a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a><span class="w">      </span><span class="nt">module</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">myapp.agents</span>
+</span><span id="__span-17-13"><a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a><span class="w">      </span><span class="nt">class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">OrchestratorAgent</span>
+</span></code></pre></div>
+<p><code>DynamicSupervisor</code> starts empty. Children are added at runtime via <code>self.spawn()</code>.</p>
+<h3 id="spawning-agents">Spawning agents<a class="headerlink" href="#spawning-agents" title="Permanent link">&para;</a></h3>
+<p>Any agent that has a <code>DynamicSupervisor</code> as a sibling or ancestor can spawn children using <code>self.spawn()</code>. The runtime resolves the <strong>nearest ancestor <code>DynamicSupervisor</code></strong> automatically — you don't name the target.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">OrchestratorAgent</span><span class="p">(</span><span class="n">AgentProcess</span><span class="p">):</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>        <span class="c1"># Finds the nearest DynamicSupervisor (&quot;workers&quot;) automatically</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>        <span class="n">name</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">spawn</span><span class="p">(</span><span class="n">ResearchAgent</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;researcher-1&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p><code>spawn()</code> sends a <code>civitas.dynamic.spawn</code> message to the <code>DynamicSupervisor</code> by name and awaits confirmation. It returns the agent name on success and raises <code>SpawnError</code> on failure (capacity reached, duplicate name, governance veto).</p>
+<h4 id="despawn-and-stop">Despawn and stop<a class="headerlink" href="#despawn-and-stop" title="Permanent link">&para;</a></h4>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># Hard stop — cancels the task immediately; on_stop() still fires</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">despawn</span><span class="p">(</span><span class="s2">&quot;researcher-1&quot;</span><span class="p">)</span>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="c1"># Soft stop — drain current message, then stop</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">(</span><span class="s2">&quot;researcher-1&quot;</span><span class="p">,</span> <span class="n">drain</span><span class="o">=</span><span class="s2">&quot;current&quot;</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">10.0</span><span class="p">)</span>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="c1"># Soft stop — drain entire queue, then stop</span>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">(</span><span class="s2">&quot;researcher-1&quot;</span><span class="p">,</span> <span class="n">drain</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">30.0</span><span class="p">)</span>
+</span></code></pre></div>
+<p><code>stop()</code> is awaitable and returns when the agent is fully stopped. If the agent does not stop within <code>timeout</code> seconds, it is force-cancelled.</p>
+<h3 id="restart-modes">Restart modes<a class="headerlink" href="#restart-modes" title="Permanent link">&para;</a></h3>
+<p>Dynamic children have a <code>restart_mode</code> that controls what happens when they exit:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRANSIENT</code> (default)</td>
+<td>Restarted only on abnormal exit (exception). Clean exit is not restarted.</td>
+</tr>
+<tr>
+<td><code>PERMANENT</code></td>
+<td>Always restarted, regardless of how it exited.</td>
+</tr>
+<tr>
+<td><code>NEVER</code></td>
+<td>Never restarted. When it exits for any reason, the slot is freed and the spawning agent is notified.</td>
+</tr>
+</tbody>
+</table>
+<p>Pass <code>restart_mode</code> when spawning:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">civitas.supervisor</span><span class="w"> </span><span class="kn">import</span> <span class="n">RestartMode</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">spawn</span><span class="p">(</span><span class="n">WorkerAgent</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;worker-1&quot;</span><span class="p">,</span> <span class="n">restart_mode</span><span class="o">=</span><span class="n">RestartMode</span><span class="o">.</span><span class="n">NEVER</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Unlike <code>Supervisor</code>, <code>DynamicSupervisor</code> does <strong>not</strong> escalate to its parent when a child exhausts its restart budget. Instead, it calls <code>on_child_terminated()</code> on the spawning agent.</p>
+<h3 id="governance">Governance<a class="headerlink" href="#governance" title="Permanent link">&para;</a></h3>
+<p>Override <code>on_spawn_requested()</code> on a <code>DynamicSupervisor</code> subclass to implement policy checks before a spawn is committed:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">GovernedPool</span><span class="p">(</span><span class="n">DynamicSupervisor</span><span class="p">):</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_spawn_requested</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">agent_class</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_blocklist</span><span class="p">:</span>
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>            <span class="k">return</span> <span class="kc">False</span>           <span class="c1"># deny</span>
+</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>        <span class="k">return</span> <span class="kc">True</span>                <span class="c1"># approve</span>
+</span></code></pre></div>
+<p>Returning <code>False</code> causes <code>self.spawn()</code> at the call site to raise <code>SpawnError("spawn denied by governance hook")</code>.</p>
+<h3 id="termination-notifications">Termination notifications<a class="headerlink" href="#termination-notifications" title="Permanent link">&para;</a></h3>
+<p>When a dynamic child exits (for any reason, including <code>despawn</code> or restart exhaustion), the spawning agent's <code>on_child_terminated()</code> hook is called:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">OrchestratorAgent</span><span class="p">(</span><span class="n">AgentProcess</span><span class="p">):</span>
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_child_terminated</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>        <span class="c1"># name  — the agent that exited</span>
+</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>        <span class="c1"># reason — &quot;clean_exit&quot; | &quot;exception&quot; | &quot;despawned&quot; | &quot;exhausted&quot;</span>
+</span><span id="__span-22-5"><a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;child </span><span class="si">%s</span><span class="s2"> terminated: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">reason</span><span class="p">)</span>
+</span></code></pre></div>
+<p>The default implementation just logs a warning.</p>
+<h3 id="external-api">External API<a class="headerlink" href="#external-api" title="Permanent link">&para;</a></h3>
+<p><code>Runtime</code> exposes <code>spawn</code>, <code>despawn</code>, and <code>stop_agent</code> for external control — useful for tests or admin scripts:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="k">await</span> <span class="n">runtime</span><span class="o">.</span><span class="n">spawn</span><span class="p">(</span><span class="s2">&quot;workers&quot;</span><span class="p">,</span> <span class="n">ResearchAgent</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;researcher-1&quot;</span><span class="p">)</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="k">await</span> <span class="n">runtime</span><span class="o">.</span><span class="n">despawn</span><span class="p">(</span><span class="s2">&quot;workers&quot;</span><span class="p">,</span> <span class="s2">&quot;researcher-1&quot;</span><span class="p">)</span>
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="k">await</span> <span class="n">runtime</span><span class="o">.</span><span class="n">stop_agent</span><span class="p">(</span><span class="s2">&quot;workers&quot;</span><span class="p">,</span> <span class="s2">&quot;researcher-1&quot;</span><span class="p">,</span> <span class="n">drain</span><span class="o">=</span><span class="s2">&quot;current&quot;</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="topologyserver">TopologyServer<a class="headerlink" href="#topologyserver" title="Permanent link">&para;</a></h3>
+<p><code>TopologyServer</code> is a supervised HTTP endpoint that exposes live topology state. Declare it in YAML as a sibling of other children:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">topology_server</span>
+</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">topo_server</span>
+</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="w">  </span><span class="nt">config</span><span class="p">:</span>
+</span><span id="__span-24-4"><a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="w">    </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">127.0.0.1</span><span class="w">   </span><span class="c1"># default</span>
+</span><span id="__span-24-5"><a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">6789</span><span class="w">        </span><span class="c1"># default</span>
+</span></code></pre></div>
+<p>Endpoints (all read-only, JSON):</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /health</code></td>
+<td><code>{"status": "ok"}</code></td>
+</tr>
+<tr>
+<td><code>GET /topology</code></td>
+<td>Full supervision tree with live dynamic children and their statuses</td>
+</tr>
+<tr>
+<td><code>GET /agents</code></td>
+<td>Flat list of all agents including dynamically spawned ones</td>
+</tr>
+<tr>
+<td><code>GET /agents/{name}</code></td>
+<td>Single agent status or <code>{"error": "..."}</code> with 404</td>
+</tr>
+</tbody>
+</table>
+<p><code>civitas topology show</code> automatically pings <code>/topology</code> if a <code>topology_server</code> node is present in the YAML. If the server is unreachable (runtime not running), it falls back to rendering the static YAML tree with a <code>(runtime not running)</code> annotation.</p>
+<p>See <a href="../examples/dynamic_spawning.py">examples/dynamic_spawning.py</a> for a complete working example.</p>
 
 
 
