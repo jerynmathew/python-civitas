@@ -12,6 +12,7 @@ Public API:
     CivitasError      — base exception
     ErrorAction       — enum: RETRY, SKIP, ESCALATE, STOP
     SignatureError    — raised on missing, invalid, or replayed message signatures
+    CapabilityNotFoundError — raised when no agent declares the requested capability
     SecurityConfig    — security block parsed from topology YAML
     SecretsProvider   — protocol for secret resolution
     substitute_vars   — resolve ${VAR} patterns in YAML config dicts
@@ -29,19 +30,28 @@ Public API:
     GatewayRequest    — request envelope passed to middleware handlers
     GatewayResponse   — response envelope returned from middleware handlers
     NextMiddleware    — type alias for the next() callable in a middleware chain
+    RoutingEntry      — registry entry with name, address, capabilities
+    RegistryListener  — async callable notified on register/deregister events
 """
 
 from __future__ import annotations
 
 from civitas.audit import AuditEvent, AuditSink, JsonlFileSink, NullSink, OtlpSink, SyslogSink
 from civitas.components import ComponentSet
-from civitas.errors import CivitasError, ErrorAction, SignatureError, SpawnError
+from civitas.errors import (
+    CapabilityNotFoundError,
+    CivitasError,
+    ErrorAction,
+    SignatureError,
+    SpawnError,
+)
 from civitas.evalloop import CorrectionSignal, EvalAgent, EvalEvent, EvalExporter
 from civitas.gateway.core import GatewayConfig, HTTPGateway
 from civitas.gateway.types import GatewayRequest, GatewayResponse, NextMiddleware
 from civitas.genserver import GenServer
 from civitas.messages import Message
 from civitas.process import AgentProcess
+from civitas.registry import RegistryListener, RoutingEntry
 from civitas.runtime import Runtime
 from civitas.sandbox import BubblewrapSandbox, FilesystemMount, SandboxConfig
 from civitas.secrets import SecretsProvider, substitute_vars
@@ -55,6 +65,7 @@ __all__ = [
     "AuditEvent",
     "AuditSink",
     "BubblewrapSandbox",
+    "CapabilityNotFoundError",
     "ComponentSet",
     "CivitasError",
     "CorrectionSignal",
@@ -74,6 +85,8 @@ __all__ = [
     "NextMiddleware",
     "NullSink",
     "OtlpSink",
+    "RegistryListener",
+    "RoutingEntry",
     "Runtime",
     "SandboxConfig",
     "SecurityConfig",

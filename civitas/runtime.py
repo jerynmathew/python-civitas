@@ -39,6 +39,35 @@ from civitas.topology_server import TopologyServer
 logger = logging.getLogger(__name__)
 
 
+def _extract_agent_capabilities(
+    config: dict[str, Any],
+) -> dict[str, tuple[list[str], dict[str, Any]]]:
+    """Walk the supervision tree and collect {agent_name: (capabilities, metadata)} entries."""
+    result: dict[str, tuple[list[str], dict[str, Any]]] = {}
+
+    def _scan(node: dict[str, Any]) -> None:
+        if "agent" in node:
+            cfg = node["agent"]
+            caps = cfg.get("capabilities")
+            meta = cfg.get("capability_metadata", {})
+            if caps and isinstance(caps, list):
+                result[cfg["name"]] = ([str(c) for c in caps], dict(meta) if meta else {})
+        elif "supervisor" in node:
+            for child in node["supervisor"].get("children", []):
+                _scan(child)
+        elif "capabilities" in node and "name" in node:
+            caps = node["capabilities"]
+            meta = node.get("capability_metadata", {})
+            if isinstance(caps, list):
+                result[node["name"]] = ([str(c) for c in caps], dict(meta) if meta else {})
+
+    sup = config.get("supervision") or config.get("supervisor", {})
+    sup_dict: dict[str, Any] = sup if isinstance(sup, dict) else {}
+    for child in sup_dict.get("children", []):
+        _scan(child)
+    return result
+
+
 def _extract_agent_credentials(config: dict[str, Any]) -> dict[str, dict[str, str]]:
     """Walk the supervision tree and collect {agent_name: {provider: credential}} entries."""
     result: dict[str, dict[str, str]] = {}
@@ -148,6 +177,9 @@ class Runtime:
 
         # Per-agent credentials — populated by from_config() from credentials: blocks
         self._agent_credentials: dict[str, dict[str, str]] = {}
+
+        # Per-agent capabilities — populated by from_config() from capabilities: blocks
+        self._agent_capabilities: dict[str, tuple[list[str], dict[str, Any]]] = {}
 
         # Audit sink — populated by from_config() when an audit: block is present
         self._audit_sink: Any = None
@@ -389,6 +421,9 @@ class Runtime:
         # Per-agent credentials — parsed here, applied in start()
         runtime._agent_credentials = _extract_agent_credentials(config)
 
+        # Per-agent capabilities — parsed here, applied in start()
+        runtime._agent_capabilities = _extract_agent_capabilities(config)
+
         # Security config — parsed here, applied in start()
         security_section = config.get("security")
         if security_section:
@@ -565,7 +600,13 @@ class Runtime:
 
         # 9. Register all AgentProcesses in Registry; build O(1) name→process map (F04-10)
         for agent in all_agents:
-            self._registry.register(agent.name)
+            yaml_caps = self._agent_capabilities.get(agent.name)
+            if yaml_caps is not None:
+                caps, meta = yaml_caps
+            else:
+                caps = list(agent.capabilities)
+                meta = dict(agent.capability_metadata)
+            self._registry.register(agent.name, capabilities=caps, capability_metadata=meta)
         self._agents_by_name = {a.name: a for a in all_agents}
 
         # Inject topology server references before supervision tree starts
@@ -589,7 +630,11 @@ class Runtime:
             name: str = msg.payload.get("name", "")
             if name:
                 try:
-                    self._registry.register_remote(name)
+                    self._registry.register_remote(
+                        name,
+                        capabilities=msg.payload.get("capabilities"),
+                        capability_metadata=msg.payload.get("capability_metadata"),
+                    )
                 except ValueError:
                     pass  # already registered locally — ignore
 

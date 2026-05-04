@@ -72,3 +72,11 @@ class SpawnError(CivitasError):
 
 class SignatureError(CivitasError):
     """Raised when a message signature is missing, invalid, or replayed."""
+
+
+class CapabilityNotFoundError(CivitasError):
+    """Raised when no registered agent declares the requested capability."""
+
+    def __init__(self, capability: str) -> None:
+        self.capability = capability
+        super().__init__(f"No agent registered with capability '{capability}'")

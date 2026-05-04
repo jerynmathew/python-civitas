@@ -32,7 +32,7 @@ Development progress across all phases of Civitas.
 | 4 | [Dynamic Agent Spawning](#m41b-dynamic-agent-spawning) | ✅ Completed | Apr 2026 |
 | 4 | [Security Hardening](#m42-security-hardening) | ✅ Completed | May 2026 |
 | 4 | [Codebase Security & Enterprise Posture](#m43-codebase-security--enterprise-posture) | ✅ Completed | Apr 2026 |
-| 4 | [Capability-Aware Registry](#m44-capability-aware-registry) | ⏳ Planned | v0.5 |
+| 4 | [Capability-Aware Registry](#m44-capability-aware-registry) | ✅ Completed | May 2026 |
 | 4 | [HTTP Gateway](#http-gateway) | ✅ Completed | Apr 2026 |
 | 4 | [Gateway API Surface](#gateway-api-surface) | ✅ Completed | Apr 2026 |
 | 4 | [Postgres StateStore + Migration](#postgres-statestore--migration) | 💡 Idea | v0.4 |
@@ -518,18 +518,33 @@ The deliverables are split across tooling (CI-enforced scanners), documentation 
 
 ### M4.4 — Capability-Aware Registry
 
-**Status: ⏳ Planned — v0.5 | Priority: 🟡 Medium**
+**Status: ✅ Completed — May 2026 | Priority: 🟡 Medium**
 
-Agents and LLMs discover capabilities at runtime — no pre-wiring needed.
+Agents declare capability tags at the class level; the registry supports filtered lookups; agents can route to any capable peer without knowing its name.
 
 | Deliverable | Status |
 |-------------|--------|
-| `AgentCardStore`: auto-generated from `@agent` decorator, queryable by skill / input type / tags | ⏳ |
-| `ToolStore`: unified registry replacing per-agent `ToolRegistry` | ⏳ |
-| `@agent(expose_as_tool=True)` — agent-as-tool | ⏳ |
-| `KeywordBackend` (default) and `LocalEmbedBackend` (`civitas[search]`) | ⏳ |
-| Schema versioning (semver) with forward compatibility | ⏳ |
-| 25+ test cases covering all registry operations | ⏳ |
+| `RoutingEntry.capabilities` + `RoutingEntry.capability_metadata` fields | ✅ |
+| `LocalRegistry.register()` / `register_remote()` accept capabilities | ✅ |
+| `find_by_capability(tag)` — all agents (local + remote) with that tag | ✅ |
+| `find_by_capabilities(tags, match="any"\|"all")` — multi-tag filtered lookups | ✅ |
+| `AgentProcess.capabilities` / `capability_metadata` class-level declarations | ✅ |
+| `AgentProcess.send_capable(capability, payload)` — fire-and-forget to any capable agent | ✅ |
+| `CapabilityNotFoundError` raised when no registered agent declares the tag | ✅ |
+| YAML `capabilities:` / `capability_metadata:` block overrides class-level defaults | ✅ |
+| Distributed propagation: Worker announcements carry capabilities; `_on_remote_register` populates remote entries | ✅ |
+| `RegistryListener` hook: async callbacks fired after every register/deregister (Presidium integration point) | ✅ |
+| `LocalRegistry.add_listener()` / `remove_listener()` — fire-and-forget tasks with error logging | ✅ |
+| Public exports: `RoutingEntry`, `RegistryListener`, `CapabilityNotFoundError` from `civitas` top-level | ✅ |
+| 29 unit tests covering all registry operations, listener lifecycle, and `send_capable` | ✅ |
+
+#### Design notes
+
+**Boundary with Presidium**: Civitas capability tags are operational routing data — plain strings by convention (e.g., `"text.summarize"`). Presidium owns the controlled vocabulary, human-readable descriptions, and governance metadata. Presidium plugs in via the `RegistryListener` hook — it receives every register/deregister event with full capability info and maintains its own authoritative Agent Registry.
+
+**Distributed topology**: Every node (Runtime and Worker) has a complete capability view of the deployment. Worker announcements include `capabilities` and `capability_metadata`; the Runtime's `_on_remote_register` handler populates `register_remote()` entries. `send_capable()` thus works transparently across process boundaries.
+
+**Tag format**: plain strings, dot-namespaced by convention (`"domain.action"`). No enum enforcement — Presidium owns the controlled vocabulary and Civitas treats tags as opaque routing keys.
 
 ---
 

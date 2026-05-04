@@ -94,13 +94,28 @@ class AgentProcess:
     Messaging methods available inside hooks:
     - send(recipient, payload, message_type): fire-and-forget
     - ask(recipient, payload, message_type, timeout): request-reply
+    - send_capable(capability, payload, message_type): route to any capable agent
     - broadcast(pattern, payload): send to all matching agents
     - reply(payload): return from handle() for request-reply
 
     Observability helpers (call from inside handle()):
     - llm_span(model, **attrs): context manager for LLM call spans
     - tool_span(tool_name, **attrs): context manager for tool call spans
+
+    Capability declaration (class-level, inherited and overridable):
+        capabilities: list[str] = ["text.summarize", "text.translate"]
+        capability_metadata: dict[str, Any] = {
+            "text.summarize": {"description": "...", "version": "1"}
+        }
     """
+
+    # Capability tags this agent advertises. Subclasses override at the class level.
+    # YAML topology can also set these, taking precedence over the class attribute.
+    capabilities: list[str] = []
+
+    # Free-form metadata per capability tag. Passed through to registry listeners
+    # (e.g. Presidium) verbatim — the runtime never interprets this dict.
+    capability_metadata: dict[str, Any] = {}
 
     def __init__(
         self,
@@ -330,6 +345,30 @@ class AgentProcess:
             parent_span_id=parent_span_id,
         )
         return await self._bus.request(message, timeout=timeout)
+
+    async def send_capable(
+        self,
+        capability: str,
+        payload: dict[str, Any],
+        message_type: str = "message",
+    ) -> None:
+        """Fire-and-forget to any agent advertising the given capability tag.
+
+        Picks a random entry from all registered agents (local and remote)
+        that declare ``capability``. Raises ``CapabilityNotFoundError`` if no
+        matching agent is registered.
+        """
+        from civitas.errors import CapabilityNotFoundError
+
+        if self._registry is None:
+            raise RuntimeError("AgentProcess not wired to a Registry")
+        candidates = self._registry.find_by_capability(capability)
+        if not candidates:
+            raise CapabilityNotFoundError(capability)
+        import random
+
+        entry = random.choice(candidates)
+        await self.send(entry.address, payload, message_type)
 
     async def call(
         self,

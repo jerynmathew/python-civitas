@@ -153,11 +153,14 @@ class Worker:
         # time to process the announcements before worker.start() returns.
         announce_names = list(self._agents) + ["_agency.worker.restart"]
         for name in announce_names:
+            maybe_agent: AgentProcess | None = self._agents.get(name)
+            payload: dict[str, Any] = {"name": name}
+            if maybe_agent is not None:
+                payload["capabilities"] = list(maybe_agent.capabilities)
+                payload["capability_metadata"] = dict(maybe_agent.capability_metadata)
             await self._transport.publish(
                 "_agency.register",
-                self._serializer.serialize(
-                    Message(type="_agency.register", payload={"name": name})
-                ),
+                self._serializer.serialize(Message(type="_agency.register", payload=payload)),
             )
         await asyncio.sleep(0.1)
 
