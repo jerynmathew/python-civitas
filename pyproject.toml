@@ -52,6 +52,7 @@ litellm   = ["litellm>=1.40"]
 zmq       = ["pyzmq>=25"]
 nats      = ["nats-py>=2.6"]
 nkeys     = ["nats-py>=2.6", "nkeys>=0.2"]
+postgres  = ["asyncpg>=0.29"]
 arize     = ["opentelemetry-sdk>=1.20", "opentelemetry-exporter-otlp-proto-grpc>=1.20"]
 langfuse  = ["langfuse>=2.0"]
 braintrust = ["braintrust>=0.0.100"]
@@ -177,7 +178,7 @@ warn_return_any = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = ["msgpack.*", "zmq.*", "nats.*", "nkeys", "nkeys.*", "litellm.*", "openai.*", "google", "google.*", "mistralai.*", "mcp.*", "aioquic", "aioquic.*", "uvicorn", "uvicorn.*", "nacl", "nacl.*"]
+module = ["msgpack.*", "zmq.*", "nats.*", "nkeys", "nkeys.*", "litellm.*", "openai.*", "google", "google.*", "mistralai.*", "mcp.*", "aioquic", "aioquic.*", "uvicorn", "uvicorn.*", "nacl", "nacl.*", "asyncpg", "asyncpg.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

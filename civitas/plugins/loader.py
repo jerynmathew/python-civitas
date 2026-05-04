@@ -40,6 +40,7 @@ _BUILTINS: dict[str, dict[str, str]] = {
     "state": {
         "in_memory": "civitas.plugins.state.InMemoryStateStore",
         "sqlite": "civitas.plugins.sqlite_store.SQLiteStateStore",
+        "postgres": "civitas.plugins.postgres_store.PostgresStateStore",
     },
     "transport": {
         "in_process": "civitas.transport.inprocess.InProcessTransport",
