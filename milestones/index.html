@@ -2528,8 +2528,8 @@
 <tr>
 <td>4</td>
 <td><a href="#m44-capability-aware-registry">Capability-Aware Registry</a></td>
-<td>⏳ Planned</td>
-<td>v0.5</td>
+<td>✅ Completed</td>
+<td>May 2026</td>
 </tr>
 <tr>
 <td>4</td>
@@ -3555,8 +3555,8 @@
 </table>
 <hr />
 <h3 id="m44-capability-aware-registry">M4.4 — Capability-Aware Registry<a class="headerlink" href="#m44-capability-aware-registry" title="Permanent link">&para;</a></h3>
-<p><strong>Status: ⏳ Planned — v0.5 | Priority: 🟡 Medium</strong></p>
-<p>Agents and LLMs discover capabilities at runtime — no pre-wiring needed.</p>
+<p><strong>Status: ✅ Completed — May 2026 | Priority: 🟡 Medium</strong></p>
+<p>Agents declare capability tags at the class level; the registry supports filtered lookups; agents can route to any capable peer without knowing its name.</p>
 <table>
 <thead>
 <tr>
@@ -3566,31 +3566,63 @@
 </thead>
 <tbody>
 <tr>
-<td><code>AgentCardStore</code>: auto-generated from <code>@agent</code> decorator, queryable by skill / input type / tags</td>
-<td>⏳</td>
+<td><code>RoutingEntry.capabilities</code> + <code>RoutingEntry.capability_metadata</code> fields</td>
+<td>✅</td>
 </tr>
 <tr>
-<td><code>ToolStore</code>: unified registry replacing per-agent <code>ToolRegistry</code></td>
-<td>⏳</td>
+<td><code>LocalRegistry.register()</code> / <code>register_remote()</code> accept capabilities</td>
+<td>✅</td>
 </tr>
 <tr>
-<td><code>@agent(expose_as_tool=True)</code> — agent-as-tool</td>
-<td>⏳</td>
+<td><code>find_by_capability(tag)</code> — all agents (local + remote) with that tag</td>
+<td>✅</td>
 </tr>
 <tr>
-<td><code>KeywordBackend</code> (default) and <code>LocalEmbedBackend</code> (<code>civitas[search]</code>)</td>
-<td>⏳</td>
+<td><code>find_by_capabilities(tags, match="any"\|"all")</code> — multi-tag filtered lookups</td>
+<td>✅</td>
 </tr>
 <tr>
-<td>Schema versioning (semver) with forward compatibility</td>
-<td>⏳</td>
+<td><code>AgentProcess.capabilities</code> / <code>capability_metadata</code> class-level declarations</td>
+<td>✅</td>
 </tr>
 <tr>
-<td>25+ test cases covering all registry operations</td>
-<td>⏳</td>
+<td><code>AgentProcess.send_capable(capability, payload)</code> — fire-and-forget to any capable agent</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>CapabilityNotFoundError</code> raised when no registered agent declares the tag</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>YAML <code>capabilities:</code> / <code>capability_metadata:</code> block overrides class-level defaults</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Distributed propagation: Worker announcements carry capabilities; <code>_on_remote_register</code> populates remote entries</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>RegistryListener</code> hook: async callbacks fired after every register/deregister (Presidium integration point)</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>LocalRegistry.add_listener()</code> / <code>remove_listener()</code> — fire-and-forget tasks with error logging</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Public exports: <code>RoutingEntry</code>, <code>RegistryListener</code>, <code>CapabilityNotFoundError</code> from <code>civitas</code> top-level</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>29 unit tests covering all registry operations, listener lifecycle, and <code>send_capable</code></td>
+<td>✅</td>
 </tr>
 </tbody>
 </table>
+<h4 id="design-notes">Design notes<a class="headerlink" href="#design-notes" title="Permanent link">&para;</a></h4>
+<p><strong>Boundary with Presidium</strong>: Civitas capability tags are operational routing data — plain strings by convention (e.g., <code>"text.summarize"</code>). Presidium owns the controlled vocabulary, human-readable descriptions, and governance metadata. Presidium plugs in via the <code>RegistryListener</code> hook — it receives every register/deregister event with full capability info and maintains its own authoritative Agent Registry.</p>
+<p><strong>Distributed topology</strong>: Every node (Runtime and Worker) has a complete capability view of the deployment. Worker announcements include <code>capabilities</code> and <code>capability_metadata</code>; the Runtime's <code>_on_remote_register</code> handler populates <code>register_remote()</code> entries. <code>send_capable()</code> thus works transparently across process boundaries.</p>
+<p><strong>Tag format</strong>: plain strings, dot-namespaced by convention (<code>"domain.action"</code>). No enum enforcement — Presidium owns the controlled vocabulary and Civitas treats tags as opaque routing keys.</p>
 <hr />
 <h3 id="http-gateway">HTTP Gateway<a class="headerlink" href="#http-gateway" title="Permanent link">&para;</a></h3>
 <p><strong>Status: ✅ Completed — April 2026</strong></p>
