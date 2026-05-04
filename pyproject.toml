@@ -186,6 +186,12 @@ module = ["langfuse", "langfuse.*", "braintrust", "braintrust.*", "langsmith", "
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+# OtlpSink calls internal opentelemetry SDK APIs whose typing varies across patch versions.
+# type: ignore comments here may be needed on some versions and unused on others.
+module = ["civitas.audit.sinks"]
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
 module = ["agents", "agents.*"]
 ignore_missing_imports = true
 

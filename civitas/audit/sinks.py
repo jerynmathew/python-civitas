@@ -270,7 +270,7 @@ class OtlpSink:
         self._provider.force_flush()
 
     async def close(self) -> None:
-        self._provider.shutdown()
+        self._provider.shutdown()  # type: ignore[no-untyped-call]
 
 
 # ---------------------------------------------------------------------------
