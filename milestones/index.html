@@ -3972,8 +3972,15 @@
 <td>PgBouncer deployment guide</td>
 <td>⏸️ Deferred to docs pass</td>
 </tr>
+<tr>
+<td>MySQL StateStore (<code>aiomysql</code>/<code>asyncmy</code> backend)</td>
+<td>⏸️ Deferred — see below</td>
+</tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>MySQL StateStore</strong> — deferred because Postgres covers the multi-process persistence gap and asyncpg is a better async foundation. Add if users are already running MySQL and cannot introduce a second database. Implementation is a clean 100-line addition following the same plugin pattern (<code>civitas[mysql]</code> extra, <code>type: mysql</code> loader entry, <code>mysql://</code> DSN in <code>_parse_dsn</code>).</p>
+</blockquote>
 <hr />
 <h3 id="m41-visual-topology-editor">M4.1 — Visual Topology Editor<a class="headerlink" href="#m41-visual-topology-editor" title="Permanent link">&para;</a></h3>
 <p><strong>Status: ⏸️ Deferred | Priority: 🟢 Low</strong></p>
