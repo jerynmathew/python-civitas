@@ -2546,8 +2546,8 @@
 <tr>
 <td>4</td>
 <td><a href="#postgres-statestore--migration">Postgres StateStore + Migration</a></td>
-<td>💡 Idea</td>
-<td>v0.4</td>
+<td>✅ Completed</td>
+<td>May 2026</td>
 </tr>
 <tr>
 <td>4</td>
@@ -3906,52 +3906,71 @@
 </ol>
 <hr />
 <h3 id="postgres-statestore-migration">Postgres StateStore + Migration<a class="headerlink" href="#postgres-statestore-migration" title="Permanent link">&para;</a></h3>
-<p><strong>Status: 💡 Idea — to be specced | Priority: 🔴 High</strong></p>
-<p>SQLite works for single-process deployments (Level 1) but breaks under concurrent cross-process writes (ZMQ Level 2+, NATS Level 3). <code>PostgresStateStore</code> extends the existing <code>StateStore</code> protocol — switching backends is a topology YAML change with no agent code changes. <code>civitas state migrate</code> handles moving existing state between backends with a dry-run mode.</p>
-<p>The spec needs to resolve: connection pool sizing, schema compatibility guarantees between backends, whether migration supports live (dual-write) or maintenance-window-only mode, and PgBouncer integration for high-concurrency deployments.</p>
+<p><strong>Status: ✅ Completed — May 2026 | Priority: 🔴 High</strong></p>
+<p>SQLite works for single-process deployments but breaks under concurrent cross-process writes (ZMQ Level 2+, NATS Level 3). <code>PostgresStateStore</code> extends the <code>StateStore</code> protocol — switching backends is a topology YAML change with no agent code changes.</p>
 <table>
 <thead>
 <tr>
-<th>Idea</th>
-<th>Notes</th>
+<th>Deliverable</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>PostgresStateStore</code> plugin — same <code>StateStore</code> protocol, asyncpg backend</td>
-<td><code>civitas[postgres]</code> extra</td>
+<td><code>StateStore</code> protocol extended with <code>list_agents()</code> and <code>close()</code></td>
+<td>✅</td>
 </tr>
 <tr>
-<td>Backend swap via topology YAML — no agent code changes</td>
-<td><code>backend: postgres</code>, <code>url: !ENV DATABASE_URL</code></td>
+<td><code>InMemoryStateStore.list_agents()</code> / <code>close()</code></td>
+<td>✅</td>
 </tr>
 <tr>
-<td>Connection pool config — pool size, max overflow, timeout</td>
-<td>Configurable in topology YAML</td>
+<td><code>PostgresStateStore</code> — <code>asyncpg</code> backend, connection pool, lazy init</td>
+<td>✅</td>
 </tr>
 <tr>
-<td><code>civitas state migrate --from sqlite:... --to postgres://...</code></td>
-<td>Dry-run by default; <code>--execute</code> to apply</td>
+<td><code>civitas_agent_state</code> table — JSONB, upsert, <code>updated_at</code> timestamp</td>
+<td>✅</td>
 </tr>
 <tr>
-<td>Schema compatibility — identical key-value layout across backends</td>
-<td>Migration is a straight copy, no transformation</td>
+<td>Pool config via topology YAML — <code>min_size</code>, <code>max_size</code>, <code>timeout</code></td>
+<td>✅</td>
 </tr>
 <tr>
-<td>Maintenance-window migration (stop → copy → restart)</td>
-<td>Supported in v0.4</td>
+<td><code>civitas[postgres]</code> optional extra — <code>asyncpg&gt;=0.29</code></td>
+<td>✅</td>
 </tr>
 <tr>
-<td>Zero-downtime migration (dual-write + drain)</td>
-<td>Deferred — complex; only needed for critical state</td>
+<td>Plugin loader entry: <code>type: postgres</code></td>
+<td>✅</td>
 </tr>
 <tr>
-<td>PgBouncer integration notes in deployment guide</td>
-<td>Connection pooler config for high-concurrency deployments</td>
+<td><code>@runtime_checkable StateStore</code> — <code>isinstance()</code> checks work</td>
+<td>✅</td>
 </tr>
 <tr>
-<td>Spec</td>
-<td>design/postgres-statestore.md — to be written</td>
+<td><code>civitas state migrate &lt;src&gt; &lt;dst&gt;</code> — dry-run by default, <code>--execute</code> to apply</td>
+<td>✅</td>
+</tr>
+<tr>
+<td><code>_parse_dsn()</code> — <code>sqlite:&lt;path&gt;</code>, <code>.db</code>/<code>.sqlite</code> extension, <code>postgresql://</code> URL</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Helpful <code>ImportError</code> with install hint if <code>asyncpg</code> not installed</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>20 unit tests covering protocol, PostgresStateStore (mocked), and migrate CLI</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Zero-downtime dual-write migration</td>
+<td>⏸️ Deferred — maintenance-window copy is sufficient for v0.4</td>
+</tr>
+<tr>
+<td>PgBouncer deployment guide</td>
+<td>⏸️ Deferred to docs pass</td>
 </tr>
 </tbody>
 </table>
