@@ -741,6 +741,9 @@ SQLite works for single-process deployments but breaks under concurrent cross-pr
 | 20 unit tests covering protocol, PostgresStateStore (mocked), and migrate CLI | ✅ |
 | Zero-downtime dual-write migration | ⏸️ Deferred — maintenance-window copy is sufficient for v0.4 |
 | PgBouncer deployment guide | ⏸️ Deferred to docs pass |
+| MySQL StateStore (`aiomysql`/`asyncmy` backend) | ⏸️ Deferred — see below |
+
+> **MySQL StateStore** — deferred because Postgres covers the multi-process persistence gap and asyncpg is a better async foundation. Add if users are already running MySQL and cannot introduce a second database. Implementation is a clean 100-line addition following the same plugin pattern (`civitas[mysql]` extra, `type: mysql` loader entry, `mysql://` DSN in `_parse_dsn`).
 
 ---
 
