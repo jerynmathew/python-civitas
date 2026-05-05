@@ -2564,8 +2564,8 @@
 <tr>
 <td>5</td>
 <td><a href="#llm-gateway">LLM Gateway</a></td>
-<td>💡 Idea</td>
-<td>v0.5+</td>
+<td>⏸️ Moved to Presidium</td>
+<td>—</td>
 </tr>
 <tr>
 <td>5</td>
@@ -4075,47 +4075,13 @@
 </table>
 <hr />
 <h3 id="llm-gateway">LLM Gateway<a class="headerlink" href="#llm-gateway" title="Permanent link">&para;</a></h3>
-<p><strong>Status: 💡 Idea — to be specced | Priority: 🔴 High</strong></p>
-<p>A supervised <code>GenServer</code> that sits between agents and LLM providers. All agents call <code>call("llm_gateway", {...})</code> instead of hitting providers directly. The gateway owns provider routing, fallback chains, cost tracking, rate limiting, and response caching — as supervised stateful processes on the bus.</p>
-<p><strong>What this is not:</strong> a replacement for LiteLLM proxy or Portkey. The implementation will wrap one of those (or expose the same interface) rather than re-implement provider routing for 100+ models.</p>
-<table>
-<thead>
-<tr>
-<th>Idea</th>
-<th>Notes</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Provider routing by cost / latency / capability</td>
-<td>Route <code>claude-opus-4-7</code> to Anthropic, fall back to <code>gpt-4o</code> on quota exhaustion</td>
-</tr>
-<tr>
-<td>Fallback chains</td>
-<td>Configurable ordered provider list per model tier</td>
-</tr>
-<tr>
-<td>Semantic + exact response caching</td>
-<td><code>CacheStore(GenServer)</code> child; <code>civitas[llm-cache]</code> extra</td>
-</tr>
-<tr>
-<td>Per-agent cost tracking</td>
-<td>Accumulate token spend by agent name; expose via <code>civitas dashboard</code></td>
-</tr>
-<tr>
-<td>Rate limiting per agent</td>
-<td>Prevents a single agent from exhausting provider quota</td>
-</tr>
-<tr>
-<td>LiteLLM proxy integration</td>
-<td><code>LiteLLMGateway</code> subclass as first implementation</td>
-</tr>
-<tr>
-<td>Spec</td>
-<td>design/llm-gateway.md — to be written</td>
-</tr>
-</tbody>
-</table>
+<p><strong>Status: ⏸️ Moved to Presidium (<code>presidium-llm-gateway</code>)</strong></p>
+<p>Model routing <em>without</em> governance (multi-provider fallback for reliability) is a thin Civitas utility — <code>CompositeModelProvider</code>. It is not a full gateway.</p>
+<p>The full governed LLM gateway — per-agent rate limits, cost tracking, budget enforcement, grant-based provider routing — belongs in Presidium. It wraps any Civitas <code>ModelProvider</code> via the plugin protocol and enforces governance policy before delegating to the underlying provider.</p>
+<p>Civitas provides the <code>ModelProvider</code> protocol (integration point 2 for Presidium). Civitas does not provide rate limiting, budgets, or grant-based routing — those are governance concerns.</p>
+<p><strong>Residual Civitas utility:</strong> <code>CompositeModelProvider</code> — a simple ordered fallback chain (primary → fallback) for reliability. No governance, no per-agent tracking. Infrastructure, not governance.</p>
+<p>See <a href="https://github.com/civitas-io/presidium/blob/main/docs/architecture/packages.md#presidium-llm-gateway">Presidium <code>presidium-llm-gateway</code></a> for the governed implementation.
+See <a href="../design/civitas-presidium-boundary/">docs/design/civitas-presidium-boundary.md</a> for the full boundary definition.</p>
 <hr />
 <h3 id="fabrica-tools-gateway">Fabrica — Tools Gateway<a class="headerlink" href="#fabrica-tools-gateway" title="Permanent link">&para;</a></h3>
 <p><strong>Status: 💡 Idea — to be specced | Priority: 🔴 High</strong></p>
