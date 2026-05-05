@@ -1,175 +1,175 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/adapters/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/adapters/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/architecture/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/architecture/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/cli/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/cli/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/concepts/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/concepts/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/contributing/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/contributing/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/deployment/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/deployment/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/evalloop/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/evalloop/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/faq/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/faq/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/gateway/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/gateway/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/genserver/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/genserver/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/getting-started/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/getting-started/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/mcp/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/mcp/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/messaging/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/messaging/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/milestones/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/milestones/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/observability/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/observability/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/plugins/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/plugins/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/supervision/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/supervision/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/topology/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/topology/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/transports/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/transports/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/api/bus/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/api/bus/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/api/evalloop/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/api/evalloop/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/api/gateway/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/api/gateway/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/api/genserver/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/api/genserver/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/api/messages/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/api/messages/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/api/observability/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/api/observability/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/api/plugins/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/api/plugins/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/api/process/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/api/process/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/api/runtime/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/api/runtime/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/api/supervisor/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/api/supervisor/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/api/transport/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/api/transport/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/design/civitas-presidium-boundary/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/design/civitas-presidium-boundary/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/design/dynamic-spawning/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/design/dynamic-spawning/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/design/evalloop/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/design/evalloop/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/design/gateway-api-surface/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/design/gateway-api-surface/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/design/genserver/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/design/genserver/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/design/http-gateway/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/design/http-gateway/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/design/mcp-integration/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/design/mcp-integration/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/design/security-hardening/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/design/security-hardening/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/rfc/0001-tool-retrieval/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/rfc/0001-tool-retrieval/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/security/architecture/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/security/architecture/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/security/enterprise-checklist/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/security/enterprise-checklist/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
     <url>
-         <loc>https://jerynmathew.github.io/python-civitas/security/threat-model/</loc>
+         <loc>https://civitas-io.github.io/python-civitas/security/threat-model/</loc>
          <lastmod>2026-05-05</lastmod>
     </url>
 </urlset>
