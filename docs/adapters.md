@@ -6,21 +6,7 @@ Civitas provides adapters that wrap third-party agent frameworks as `AgentProces
 
 ## What an adapter gives you
 
-```mermaid
-graph TD
-    subgraph "Without adapter"
-        FW["Framework agent\n(LangGraph, OpenAI SDK)"]
-        Note["No supervision\nNo transport\nNo tracing"]
-    end
-
-    subgraph "With Civitas adapter"
-        S["Supervisor"]
-        A["AgentProcess\n(adapter)"]
-        FW2["Framework agent\n(unchanged)"]
-        S -->|"restarts on crash"| A
-        A -->|"delegates to"| FW2
-    end
-```
+![Framework Adapter](assets/framework-adapter.svg)
 
 The adapter is a thin shell. The framework agent runs inside `handle()`. If it raises an unhandled exception, the supervisor restarts it exactly as it would any native `AgentProcess`.
 

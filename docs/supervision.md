@@ -47,15 +47,7 @@ Supervisor("root", children=[MyAgent("agent")])
 
 When a child crashes, restart **only that child**. All other children continue running unaffected.
 
-```mermaid
-graph TD
-    S["Supervisor\nONE_FOR_ONE"]
-    S --> A["agent-a\n✓ running"]
-    S --> B["agent-b\n✗ crashed → ↻ restarting"]
-    S --> C["agent-c\n✓ running"]
-
-    style B fill:#7f1d1d,color:#fff
-```
+![ONE_FOR_ONE Supervision](assets/supervision-one-for-one.svg)
 
 **Use when:** Children are independent — a crash in one does not invalidate the state of others.
 
@@ -82,17 +74,7 @@ Supervisor(
 
 When any child crashes, **stop and restart all children**.
 
-```mermaid
-graph TD
-    S["Supervisor\nONE_FOR_ALL"]
-    S --> A["agent-a\n↻ restarting"]
-    S --> B["agent-b\n✗ crashed → ↻ restarting"]
-    S --> C["agent-c\n↻ restarting"]
-
-    style A fill:#6b4c11,color:#fff
-    style B fill:#7f1d1d,color:#fff
-    style C fill:#6b4c11,color:#fff
-```
+![ONE_FOR_ALL Supervision](assets/supervision-one-for-all.svg)
 
 **Use when:** Children share mutable state or maintain synchronized positions. If one crashes, the others' state is no longer valid and they must start fresh.
 
@@ -118,16 +100,7 @@ Supervisor(
 
 When a child crashes, restart that child **and all children that were started after it** (younger siblings). Children started earlier are unaffected.
 
-```mermaid
-graph TD
-    S["Supervisor\nREST_FOR_ONE"]
-    S --> A["stage-1\n✓ unaffected\n(started first)"]
-    S --> B["stage-2\n✗ crashed → ↻\n(restarting)"]
-    S --> C["stage-3\n↻ restarting\n(younger sibling)"]
-
-    style B fill:#7f1d1d,color:#fff
-    style C fill:#6b4c11,color:#fff
-```
+![REST_FOR_ONE Supervision](assets/supervision-rest-for-one.svg)
 
 **Use when:** You have a pipeline where later stages depend on earlier ones. If stage-2 crashes, stage-3 is receiving invalid input and must also restart.
 
@@ -219,25 +192,7 @@ The window slides continuously — it's not a fixed interval that resets.
 
 When a supervisor exhausts its restart budget, it escalates to its own parent supervisor. The parent treats the child supervisor as if it were a crashed agent and applies its own restart strategy.
 
-```mermaid
-graph TD
-    Root["root supervisor\nONE_FOR_ONE\nmax_restarts=2"]
-    Child["research_sup\nONE_FOR_ONE\nmax_restarts=3"]
-    Agent["web_researcher"]
-
-    Root -->|monitors| Child
-    Child -->|monitors| Agent
-
-    Agent -->|"crash #1 → restart"| Child
-    Agent -->|"crash #2 → restart"| Child
-    Agent -->|"crash #3 → restart"| Child
-    Agent -->|"crash #4 → max_restarts exceeded"| Child
-    Child -->|"escalate: treats self as crashed"| Root
-    Root -->|"restart research_sup + all its children"| Child
-
-    style Agent fill:#7f1d1d,color:#fff
-    style Child fill:#6b4c11,color:#fff
-```
+![Supervision Escalation](assets/supervision-escalation.svg)
 
 If the root supervisor also exhausts its budget, the process stops permanently and an error is logged. There is no escalation above the root.
 
@@ -320,29 +275,7 @@ supervision:
 
 When agents run in separate OS processes (ZMQ or NATS transport), the supervisor cannot monitor them via asyncio task callbacks — the tasks are in a different process. Instead, it uses periodic heartbeats.
 
-```mermaid
-sequenceDiagram
-    participant Sup as Supervisor
-    participant Bus as MessageBus
-    participant Worker as Worker Process
-    participant Agent as Remote Agent
-
-    loop every heartbeat_interval
-        Sup->>Bus: _agency.heartbeat → agent-name
-        Bus->>Worker: route
-        Worker->>Agent: deliver
-        Agent-->>Bus: _agency.heartbeat_ack
-        Bus-->>Sup: ack received
-
-        alt ack not received within heartbeat_timeout
-            Sup->>Sup: missed_heartbeats[agent] += 1
-            alt missed >= threshold
-                Sup->>Bus: _agency.restart → worker
-                Worker->>Agent: restart
-            end
-        end
-    end
-```
+![Heartbeat Monitoring Sequence](assets/heartbeat-sequence.svg)
 
 Heartbeat monitoring is configured per remote child via `add_remote_child()`, or automatically when loading a topology YAML with `process: worker` entries:
 

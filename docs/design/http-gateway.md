@@ -31,47 +31,7 @@ All four share the same routing and message-translation layer. Only the network 
 
 ## Architecture
 
-```mermaid
-graph TD
-    subgraph "External"
-        C1["HTTP/1.1 client"]
-        C2["HTTP/2 client"]
-        C3["HTTP/3 / QUIC client"]
-        C4["gRPC client"]
-    end
-
-    subgraph "Edge — supervised process"
-        GW["HTTPGateway\n(AgentProcess)"]
-        H1["HTTP/1.1 + HTTP/2\n(uvicorn ASGI)"]
-        H3["HTTP/3 / QUIC\n(aioquic)"]
-        GR["gRPC server\n(grpclib / grpcio)"]
-    end
-
-    subgraph "Civitas bus"
-        BUS["MessageBus"]
-        A1["GenServer / AgentProcess"]
-        A2["AgentProcess"]
-    end
-
-    C1 -->|TCP| H1
-    C2 -->|TCP + TLS| H1
-    C3 -->|QUIC/UDP| H3
-    C4 -->|HTTP/2 + protobuf| GR
-
-    H1 --> GW
-    H3 --> GW
-    GR --> GW
-
-    GW -->|call / cast| BUS
-    BUS --> A1
-    BUS --> A2
-    A1 -->|reply| BUS
-    BUS -->|reply| GW
-    GW -->|HTTP response| C1
-    GW -->|HTTP response| C2
-    GW -->|HTTP/3 response| C3
-    GW -->|gRPC response| C4
-```
+![HTTP Gateway Architecture](../assets/http-gateway-arch.svg)
 
 `HTTPGateway` is started as a child of any `Supervisor`. It owns the three server coroutines internally and manages their lifecycle within its `on_start` / `on_stop` hooks.
 
