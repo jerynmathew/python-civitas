@@ -11,7 +11,11 @@ import typer
 from rich.table import Table
 
 from civitas.cli.app import console, error, info, success, warn
-from civitas.plugins.sqlite_store import SQLiteStateStore
+
+try:
+    from civitas_contrib.plugins.sqlite_store import SQLiteStateStore
+except ImportError:
+    SQLiteStateStore = None
 
 state_app = typer.Typer(
     name="state",
@@ -113,7 +117,7 @@ def state_clear(
 
 def _parse_dsn(dsn: str) -> Any:
     """Return an appropriate StateStore for the given DSN string."""
-    from civitas.plugins.postgres_store import PostgresStateStore
+    from civitas_contrib.plugins.postgres_store import PostgresStateStore
 
     if dsn.startswith("sqlite:"):
         path = dsn.removeprefix("sqlite:")

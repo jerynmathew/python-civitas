@@ -18,7 +18,6 @@ Public API:
     substitute_vars   — resolve ${VAR} patterns in YAML config dicts
     SandboxConfig     — per-MCP-server sandbox configuration
     FilesystemMount   — bind-mount entry for SandboxConfig
-    BubblewrapSandbox — bubblewrap (bwrap) subprocess sandbox wrapper
     AuditEvent        — structured audit record TypedDict
     AuditSink         — protocol for audit sinks
     NullSink          — no-op sink for tests / disabled auditing
@@ -53,7 +52,7 @@ from civitas.messages import Message
 from civitas.process import AgentProcess
 from civitas.registry import RegistryListener, RoutingEntry
 from civitas.runtime import Runtime
-from civitas.sandbox import BubblewrapSandbox, FilesystemMount, SandboxConfig
+from civitas.sandbox import FilesystemMount, SandboxConfig
 from civitas.secrets import SecretsProvider, substitute_vars
 from civitas.security.config import SecurityConfig
 from civitas.supervisor import DynamicSupervisor, Supervisor
@@ -64,7 +63,6 @@ __all__ = [
     "AgentProcess",
     "AuditEvent",
     "AuditSink",
-    "BubblewrapSandbox",
     "CapabilityNotFoundError",
     "ComponentSet",
     "CivitasError",

@@ -182,6 +182,11 @@ module = ["msgpack.*", "zmq.*", "nats.*", "nkeys", "nkeys.*", "litellm.*", "open
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+# civitas-contrib and fabrica are optional sibling packages — not installed in the core dev env
+module = ["civitas_contrib", "civitas_contrib.*", "fabrica", "fabrica.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 # Eval exporter SDKs: optional installs, no stubs bundled with the packages
 module = ["langfuse", "langfuse.*", "braintrust", "braintrust.*", "langsmith", "langsmith.*", "fiddler", "fiddler.*"]
 ignore_missing_imports = true

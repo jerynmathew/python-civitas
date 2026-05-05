@@ -12,8 +12,6 @@ from typing import TYPE_CHECKING, Any
 
 from civitas.audit.types import AuditEvent, AuditSink
 from civitas.errors import ConfigurationError, ErrorAction, SpawnError
-from civitas.mcp.client import MCPClient
-from civitas.mcp.tool import MCPTool
 from civitas.messages import Message, _new_span_id, _uuid7
 from civitas.observability.tracer import Span
 from civitas.plugins.loader import resolve_plugin_class
@@ -481,6 +479,14 @@ class AgentProcess:
                 await existing.disconnect()
             except Exception:
                 pass
+
+        try:
+            from fabrica.mcp.client import MCPClient
+            from fabrica.mcp.tool import MCPTool
+        except ImportError as exc:
+            raise ConfigurationError(
+                "MCP support requires fabrica. Install it with: pip install fabrica[mcp]"
+            ) from exc
 
         client = MCPClient(config, audit_sink=self._audit_sink, agent_name=self.name)
         await client.connect()

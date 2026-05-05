@@ -12,13 +12,6 @@ import yaml
 from civitas.audit.sinks import sink_from_config
 from civitas.components import ComponentSet, build_component_set
 from civitas.errors import ConfigurationError, SpawnError
-from civitas.eval.exporters import (
-    ArizeExporter,
-    BraintrustExporter,
-    FiddlerExporter,
-    LangfuseExporter,
-    LangSmithExporter,
-)
 from civitas.evalloop import EvalAgent, EvalExporter
 from civitas.gateway.core import GatewayConfig, HTTPGateway
 from civitas.genserver import GenServer
@@ -235,6 +228,19 @@ class Runtime:
             result: list[EvalExporter] = []
             for cfg in cfgs:
                 kind = cfg.get("type", "")
+                try:
+                    from civitas_contrib.eval.exporters import (
+                        ArizeExporter,
+                        BraintrustExporter,
+                        FiddlerExporter,
+                        LangfuseExporter,
+                        LangSmithExporter,
+                    )
+                except ImportError as exc:
+                    raise ConfigurationError(
+                        f"Eval exporter '{kind}' requires civitas-contrib. "
+                        "Install it with: pip install civitas-contrib"
+                    ) from exc
                 if kind == "arize":
                     result.append(
                         ArizeExporter(

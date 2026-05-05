@@ -28,19 +28,19 @@ __all__ = ["PluginError", "resolve_plugin_class", "load_plugin", "load_plugins_f
 # Built-in plugin mappings (name → dotted import path)
 _BUILTINS: dict[str, dict[str, str]] = {
     "model": {
-        "anthropic": "civitas.plugins.anthropic.AnthropicProvider",
-        "openai": "civitas.plugins.openai.OpenAIProvider",
-        "gemini": "civitas.plugins.gemini.GeminiProvider",
-        "mistral": "civitas.plugins.mistral.MistralProvider",
-        "litellm": "civitas.plugins.litellm.LiteLLMProvider",
+        "anthropic": "civitas_contrib.plugins.anthropic.AnthropicProvider",
+        "openai": "civitas_contrib.plugins.openai.OpenAIProvider",
+        "gemini": "civitas_contrib.plugins.gemini.GeminiProvider",
+        "mistral": "civitas_contrib.plugins.mistral.MistralProvider",
+        "litellm": "civitas_contrib.plugins.litellm.LiteLLMProvider",
     },
     "exporter": {
         "console": "civitas.observability.export_backend.ConsoleBackend",
     },
     "state": {
         "in_memory": "civitas.plugins.state.InMemoryStateStore",
-        "sqlite": "civitas.plugins.sqlite_store.SQLiteStateStore",
-        "postgres": "civitas.plugins.postgres_store.PostgresStateStore",
+        "sqlite": "civitas_contrib.plugins.sqlite_store.SQLiteStateStore",
+        "postgres": "civitas_contrib.plugins.postgres_store.PostgresStateStore",
     },
     "transport": {
         "in_process": "civitas.transport.inprocess.InProcessTransport",

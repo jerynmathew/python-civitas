@@ -1,6 +1,10 @@
-"""Tool execution sandbox — bubblewrap wrapper for MCP subprocess isolation."""
+"""Sandbox configuration types for MCP subprocess isolation.
 
-from civitas.sandbox.bubblewrap import BubblewrapSandbox
+The BubblewrapSandbox implementation has moved to fabrica:
+    pip install fabrica
+    from fabrica.sandbox import BubblewrapSandbox
+"""
+
 from civitas.sandbox.config import FilesystemMount, SandboxConfig
 
-__all__ = ["FilesystemMount", "SandboxConfig", "BubblewrapSandbox"]
+__all__ = ["FilesystemMount", "SandboxConfig"]
