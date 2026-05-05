@@ -39,27 +39,22 @@ Documentation = "https://civitas-io.github.io/python-civitas/"
 "Bug Tracker" = "https://github.com/civitas-io/python-civitas/issues"
 
 [project.optional-dependencies]
+# Runtime transports
+zmq       = ["pyzmq>=25"]
+nats      = ["nats-py>=2.6"]
+nkeys     = ["nats-py>=2.6", "nkeys>=0.2"]
+# HTTP gateway
+http      = ["uvicorn[standard]>=0.30", "pydantic>=2.0"]
+http3     = ["uvicorn[standard]>=0.30", "pydantic>=2.0", "aioquic>=1.0"]
+# Observability (OTEL exporter backend)
 otel      = [
     "opentelemetry-sdk>=1.20",
     "opentelemetry-exporter-otlp-proto-grpc>=1.20",
 ]
-anthropic = ["anthropic>=0.20"]
-mcp       = ["mcp>=1.0"]
-openai    = ["openai>=1.0"]
-gemini    = ["google-generativeai>=0.8"]
-mistral   = ["mistralai>=1.0"]
-litellm   = ["litellm>=1.40"]
-zmq       = ["pyzmq>=25"]
-nats      = ["nats-py>=2.6"]
-nkeys     = ["nats-py>=2.6", "nkeys>=0.2"]
-postgres  = ["asyncpg>=0.29"]
-arize     = ["opentelemetry-sdk>=1.20", "opentelemetry-exporter-otlp-proto-grpc>=1.20"]
-langfuse  = ["langfuse>=2.0"]
-braintrust = ["braintrust>=0.0.100"]
-langsmith = ["langsmith>=0.1"]
-fiddler   = ["fiddler-client>=3.0"]
-http      = ["uvicorn[standard]>=0.30", "pydantic>=2.0"]
-http3     = ["uvicorn[standard]>=0.30", "pydantic>=2.0", "aioquic>=1.0"]
+# Transport-level message signing
+security  = ["pynacl"]
+# Model providers, state stores, eval exporters, MCP, and framework adapters
+# have moved to civitas-contrib:  pip install civitas-contrib[anthropic,openai,...]
 dev       = [
     "pytest>=8",
     "pytest-asyncio>=0.23",
@@ -68,7 +63,6 @@ dev       = [
     "ruff>=0.4",
     "mypy>=1.10",
     "pre-commit>=3.7",
-    "anthropic>=0.20",
     "opentelemetry-sdk>=1.20",
     "opentelemetry-exporter-otlp-proto-grpc>=1.20",
     "types-pyyaml>=6.0.12",
@@ -80,9 +74,6 @@ docs      = [
     "mkdocs-material>=9.5",
     "mkdocstrings[python]>=0.25",
     "mkdocs-gen-files>=0.5",
-]
-security = [
-    "pynacl",
 ]
 
 [project.scripts]
