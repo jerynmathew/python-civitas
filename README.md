@@ -397,24 +397,24 @@ docker compose up --scale worker-worker=3
 
 ## Documentation
 
-Full documentation is available at **[jerynmathew.github.io/python-civitas](https://jerynmathew.github.io/python-civitas/)**.
+Full documentation is available at **[civitas-io.github.io/python-civitas](https://civitas-io.github.io/python-civitas/)**.
 
 | | |
 |---|---|
-| [Getting Started](https://jerynmathew.github.io/python-civitas/getting-started/) | Install, hello agent, first supervised system |
-| [Core Concepts](https://jerynmathew.github.io/python-civitas/concepts/) | AgentProcess, Supervisor, MessageBus, Transport |
-| [Supervision](https://jerynmathew.github.io/python-civitas/supervision/) | Strategies, backoff, escalation, heartbeats |
-| [Messaging](https://jerynmathew.github.io/python-civitas/messaging/) | send, ask, broadcast, backpressure, trace propagation |
-| [Transports](https://jerynmathew.github.io/python-civitas/transports/) | InProcess → ZMQ → NATS, switching levels |
-| [Observability](https://jerynmathew.github.io/python-civitas/observability/) | OTEL spans, console exporter, Jaeger setup |
-| [Plugins](https://jerynmathew.github.io/python-civitas/plugins/) | ModelProvider, ToolProvider, StateStore, custom plugins |
-| [Topology YAML](https://jerynmathew.github.io/python-civitas/topology/) | Schema reference, CLI commands |
-| [CLI Reference](https://jerynmathew.github.io/python-civitas/cli/) | All commands, options, and examples |
-| [Deployment](https://jerynmathew.github.io/python-civitas/deployment/) | Level 1–4 deployment ladder |
-| [Framework Adapters](https://jerynmathew.github.io/python-civitas/adapters/) | LangGraph, OpenAI SDK integration |
-| [Architecture](https://jerynmathew.github.io/python-civitas/architecture/) | Runtime internals, component wiring |
-| [FAQ](https://jerynmathew.github.io/python-civitas/faq/) | Why not Temporal? Why not LangGraph? GIL concerns |
-| [Contributing](https://jerynmathew.github.io/python-civitas/contributing/) | Dev setup, test strategy, plugin authoring |
+| [Getting Started](https://civitas-io.github.io/python-civitas/getting-started/) | Install, hello agent, first supervised system |
+| [Core Concepts](https://civitas-io.github.io/python-civitas/concepts/) | AgentProcess, Supervisor, MessageBus, Transport |
+| [Supervision](https://civitas-io.github.io/python-civitas/supervision/) | Strategies, backoff, escalation, heartbeats |
+| [Messaging](https://civitas-io.github.io/python-civitas/messaging/) | send, ask, broadcast, backpressure, trace propagation |
+| [Transports](https://civitas-io.github.io/python-civitas/transports/) | InProcess → ZMQ → NATS, switching levels |
+| [Observability](https://civitas-io.github.io/python-civitas/observability/) | OTEL spans, console exporter, Jaeger setup |
+| [Plugins](https://civitas-io.github.io/python-civitas/plugins/) | ModelProvider, ToolProvider, StateStore, custom plugins |
+| [Topology YAML](https://civitas-io.github.io/python-civitas/topology/) | Schema reference, CLI commands |
+| [CLI Reference](https://civitas-io.github.io/python-civitas/cli/) | All commands, options, and examples |
+| [Deployment](https://civitas-io.github.io/python-civitas/deployment/) | Level 1–4 deployment ladder |
+| [Framework Adapters](https://civitas-io.github.io/python-civitas/adapters/) | LangGraph, OpenAI SDK integration |
+| [Architecture](https://civitas-io.github.io/python-civitas/architecture/) | Runtime internals, component wiring |
+| [FAQ](https://civitas-io.github.io/python-civitas/faq/) | Why not Temporal? Why not LangGraph? GIL concerns |
+| [Contributing](https://civitas-io.github.io/python-civitas/contributing/) | Dev setup, test strategy, plugin authoring |
 
 ---
 

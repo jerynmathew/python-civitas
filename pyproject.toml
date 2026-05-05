@@ -33,10 +33,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://jerynmathew.github.io/python-civitas/"
-Repository = "https://github.com/jerynmathew/python-civitas"
-Documentation = "https://jerynmathew.github.io/python-civitas/"
-"Bug Tracker" = "https://github.com/jerynmathew/python-civitas/issues"
+Homepage = "https://civitas-io.github.io/python-civitas/"
+Repository = "https://github.com/civitas-io/python-civitas"
+Documentation = "https://civitas-io.github.io/python-civitas/"
+"Bug Tracker" = "https://github.com/civitas-io/python-civitas/issues"
 
 [project.optional-dependencies]
 otel      = [

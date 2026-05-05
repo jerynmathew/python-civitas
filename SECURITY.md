@@ -58,7 +58,7 @@ We credit reporters in the security advisory unless anonymity is requested.
 
 ## Security advisories
 
-Published at: **[GitHub Security Advisories](https://github.com/jerynmathew/python-civitas/security/advisories)**
+Published at: **[GitHub Security Advisories](https://github.com/civitas-io/python-civitas/security/advisories)**
 
 Each advisory includes:
 - CVE identifier (requested from MITRE via GitHub)

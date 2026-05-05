@@ -228,7 +228,7 @@ class ResilientOpenAIAgent(OpenAIAgent):
 ## CrewAIAgent
 
 !!! note "Coming soon"
-    `CrewAIAgent` is not yet implemented. The class exists as a placeholder and raises `NotImplementedError` on instantiation. Track progress or upvote the issue at [github.com/jerynmathew/python-civitas/issues](https://github.com/jerynmathew/python-civitas/issues).
+    `CrewAIAgent` is not yet implemented. The class exists as a placeholder and raises `NotImplementedError` on instantiation. Track progress or upvote the issue at [github.com/civitas-io/python-civitas/issues](https://github.com/civitas-io/python-civitas/issues).
 
 When available, it will wrap a CrewAI `Crew` as an `AgentProcess`, providing the same supervision, transport, and tracing benefits as `LangGraphAgent` and `OpenAIAgent`. The planned interface:
 
