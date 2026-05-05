@@ -2260,37 +2260,7 @@
 <p>Civitas's plugin system covers everything outside the core runtime: LLM providers, tools, state stores, and observability exporters. Every plugin is a Python protocol — no base class to inherit, no registration ceremony. Any class with the right method signatures works.</p>
 <hr />
 <h2 id="plugin-overview">Plugin overview<a class="headerlink" href="#plugin-overview" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>graph TD
-    subgraph Protocols
-        MP["ModelProvider\nchat(model, messages, tools)"]
-        TP["ToolProvider\nname · schema · execute(**kwargs)"]
-        SS["StateStore\nget / set / delete(agent_name)"]
-        EB["ExportBackend\nexport(spans) · shutdown()"]
-    end
-
-    subgraph Bundled
-        AP["AnthropicProvider\n[anthropic]"]
-        LP["LiteLLMProvider\n[litellm]"]
-        IM["InMemoryStateStore\n(default)"]
-        SQ["SQLiteStateStore\n(built-in)"]
-        CB["ConsoleBackend\n(built-in)"]
-    end
-
-    MP --&gt; AP
-    MP --&gt; LP
-    SS --&gt; IM
-    SS --&gt; SQ
-    EB --&gt; CB
-
-    style MP fill:#1e3a5f,color:#fff
-    style TP fill:#1e3a5f,color:#fff
-    style SS fill:#1e3a5f,color:#fff
-    style EB fill:#1e3a5f,color:#fff
-    style AP fill:#2d6a4f,color:#fff
-    style LP fill:#2d6a4f,color:#fff
-    style IM fill:#2d6a4f,color:#fff
-    style SQ fill:#2d6a4f,color:#fff
-    style CB fill:#2d6a4f,color:#fff</code></pre>
+<p><img alt="Plugin Protocols" src="../assets/plugin-protocols.svg" /></p>
 <p>Plugins are injected by <code>Runtime</code> at startup. Agents access them via <code>self.llm</code>, <code>self.tools</code>, and <code>self.store</code>. You configure them once in <code>Runtime(...)</code> or topology YAML — agent code never constructs or imports plugins directly.</p>
 <hr />
 <h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">&para;</a></h2>

@@ -2235,41 +2235,7 @@
 <p>Civitas brings these patterns to Python using asyncio, without requiring Erlang, the BEAM VM, or the JVM.</p>
 <hr />
 <h2 id="system-overview">System overview<a class="headerlink" href="#system-overview" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>graph TD
-    Runtime["Runtime\n(wires all components)"]
-
-    Runtime --&gt; Supervisor
-    Runtime --&gt; MessageBus
-    Runtime --&gt; Registry
-    Runtime --&gt; Transport
-    Runtime --&gt; Plugins
-
-    Supervisor --&gt;|"starts and monitors"| A1["AgentProcess\n(greeter)"]
-    Supervisor --&gt;|"starts and monitors"| A2["AgentProcess\n(researcher)"]
-    Supervisor --&gt;|"starts and monitors"| ChildSup["Supervisor\n(child)"]
-    ChildSup --&gt;|"starts and monitors"| A3["AgentProcess\n(worker)"]
-
-    A1 &lt;--&gt;|"send / ask"| MessageBus
-    A2 &lt;--&gt;|"send / ask"| MessageBus
-    A3 &lt;--&gt;|"send / ask"| MessageBus
-
-    MessageBus --&gt; Registry
-    MessageBus --&gt; Transport
-
-    Plugins --&gt; A1
-    Plugins --&gt; A2
-    Plugins --&gt; A3
-
-    style Runtime fill:#1e3a5f,color:#fff
-    style Supervisor fill:#1e3a5f,color:#fff
-    style ChildSup fill:#1e3a5f,color:#fff
-    style MessageBus fill:#6b4c11,color:#fff
-    style Registry fill:#6b4c11,color:#fff
-    style Transport fill:#6b4c11,color:#fff
-    style Plugins fill:#4a1942,color:#fff
-    style A1 fill:#2d6a4f,color:#fff
-    style A2 fill:#2d6a4f,color:#fff
-    style A3 fill:#2d6a4f,color:#fff</code></pre>
+<p><img alt="Civitas Runtime" src="../assets/runtime-overview.svg" /></p>
 <p>Each component has a single responsibility. <code>Runtime</code> assembles them; it doesn't own business logic.</p>
 <hr />
 <h2 id="agentprocess">AgentProcess<a class="headerlink" href="#agentprocess" title="Permanent link">&para;</a></h2>
@@ -2280,16 +2246,7 @@
 - Its own <strong>error boundary</strong> — exceptions in <code>handle()</code> do not propagate to callers
 - An asyncio <code>Task</code> running its message loop</p>
 <h3 id="lifecycle">Lifecycle<a class="headerlink" href="#lifecycle" title="Permanent link">&para;</a></h3>
-<pre class="mermaid"><code>stateDiagram-v2
-    direction LR
-    [*] --&gt; INITIALIZING : start()
-    INITIALIZING --&gt; RUNNING : on_start() completes
-    RUNNING --&gt; RUNNING : handle(message)
-    RUNNING --&gt; STOPPING : shutdown signal
-    RUNNING --&gt; CRASHED : unhandled exception
-    STOPPING --&gt; STOPPED : on_stop() completes
-    CRASHED --&gt; STOPPED : on_stop() completes
-    STOPPED --&gt; [*]</code></pre>
+<p><img alt="Agent State Machine" src="../assets/agent-state-machine.svg" /></p>
 <p>Four hooks to override:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyAgent</span><span class="p">(</span><span class="n">AgentProcess</span><span class="p">):</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">on_start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -2405,50 +2362,20 @@
 </span></code></pre></div>
 <h3 id="restart-strategies">Restart strategies<a class="headerlink" href="#restart-strategies" title="Permanent link">&para;</a></h3>
 <p><strong>ONE_FOR_ONE</strong> — restart only the crashed child. Other children are unaffected.</p>
-<pre class="mermaid"><code>graph LR
-    S[Supervisor]
-    S --&gt; A["agent-a ✓"]
-    S --&gt; B["agent-b ✗ → ↻ restarting"]
-    S --&gt; C["agent-c ✓"]
-    style B fill:#7f1d1d,color:#fff</code></pre>
+<p><img alt="ONE_FOR_ONE — only the crashed child restarts" src="../assets/supervision-one-for-one.svg" /></p>
 <p>Use when children are independent of each other.</p>
 <hr />
 <p><strong>ONE_FOR_ALL</strong> — restart all children when any one crashes.</p>
-<pre class="mermaid"><code>graph LR
-    S[Supervisor]
-    S --&gt; A["agent-a ↻"]
-    S --&gt; B["agent-b ✗ → ↻"]
-    S --&gt; C["agent-c ↻"]
-    style A fill:#6b4c11,color:#fff
-    style B fill:#7f1d1d,color:#fff
-    style C fill:#6b4c11,color:#fff</code></pre>
+<p><img alt="ONE_FOR_ALL — all children restart" src="../assets/supervision-one-for-all.svg" /></p>
 <p>Use when children share state or must be synchronized — a crash in one means the others' state is no longer valid.</p>
 <hr />
 <p><strong>REST_FOR_ONE</strong> — restart the crashed child and all children started after it (younger siblings). Children started before are unaffected.</p>
-<pre class="mermaid"><code>graph LR
-    S[Supervisor]
-    S --&gt; A["agent-a ✓\n(started first)"]
-    S --&gt; B["agent-b ✗ → ↻\n(crashed)"]
-    S --&gt; C["agent-c ↻\n(younger sibling)"]
-    style B fill:#7f1d1d,color:#fff
-    style C fill:#6b4c11,color:#fff</code></pre>
+<p><img alt="REST_FOR_ONE — crashed child and younger siblings restart" src="../assets/supervision-rest-for-one.svg" /></p>
 <p>Use for pipeline-style systems where later stages depend on earlier ones — restart the broken stage and everything downstream.</p>
 <hr />
 <h3 id="escalation">Escalation<a class="headerlink" href="#escalation" title="Permanent link">&para;</a></h3>
 <p>When a supervisor exceeds <code>max_restarts</code> within <code>restart_window</code>, it gives up and escalates to its own parent supervisor:</p>
-<pre class="mermaid"><code>graph TD
-    Root["root supervisor"]
-    Child["child supervisor\n(max_restarts exceeded)"]
-    A["agent ✗✗✗"]
-
-    Root --&gt;|monitors| Child
-    Child --&gt;|monitors| A
-    A --&gt;|crashes repeatedly| Child
-    Child --&gt;|"escalates after max_restarts"| Root
-    Root --&gt;|"restarts child supervisor"| Child
-
-    style A fill:#7f1d1d,color:#fff
-    style Child fill:#6b4c11,color:#fff</code></pre>
+<p><img alt="Supervision Escalation" src="../assets/supervision-escalation.svg" /></p>
 <p>This is the tree structure working as designed: local problems are handled locally; only persistent failures propagate upward.</p>
 <h3 id="backoff">Backoff<a class="headerlink" href="#backoff" title="Permanent link">&para;</a></h3>
 <p>Each restart attempt waits a calculated delay before starting the child:</p>
@@ -2516,18 +2443,7 @@
 <hr />
 <h2 id="messagebus-and-registry">MessageBus and Registry<a class="headerlink" href="#messagebus-and-registry" title="Permanent link">&para;</a></h2>
 <p>The <code>MessageBus</code> routes messages between agents. The <code>Registry</code> maps agent names to their delivery addresses.</p>
-<pre class="mermaid"><code>sequenceDiagram
-    participant A as AgentProcess (sender)
-    participant Bus as MessageBus
-    participant Reg as Registry
-    participant T as Transport
-    participant B as AgentProcess (recipient)
-
-    A-&gt;&gt;Bus: route(message)
-    Bus-&gt;&gt;Reg: lookup("recipient-name")
-    Reg--&gt;&gt;Bus: address
-    Bus-&gt;&gt;T: publish(address, bytes)
-    T-&gt;&gt;B: deliver to mailbox</code></pre>
+<p><img alt="Message Routing" src="../assets/message-routing.svg" /></p>
 <p>From the agent's perspective: you call <code>self.send("other-agent", {...})</code> and the message arrives in <code>other-agent</code>'s <code>handle()</code>. The routing layer is invisible.</p>
 <p>The Registry is also used for pattern-matching in <code>broadcast</code>. A call to <code>self.broadcast("workers.*", payload)</code> delivers to every registered agent whose name matches the glob.</p>
 <hr />
@@ -2540,48 +2456,13 @@
 </span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">request</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span>
 </span></code></pre></div>
 <p>Three implementations are provided:</p>
-<pre class="mermaid"><code>graph LR
-    L1["InProcessTransport\nasyncio queues\nsingle process\nno extra deps"]
-    L2["ZMQTransport\nZeroMQ XSUB/XPUB\nmulti-process\nsame machine"]
-    L3["NATSTransport\nNATS server\ndistributed\nmulti-machine"]
-
-    L1 --&gt;|"scale up: change topology.yaml"| L2
-    L2 --&gt;|"scale out: change topology.yaml"| L3
-
-    style L1 fill:#1e3a5f,color:#fff
-    style L2 fill:#2d6a4f,color:#fff
-    style L3 fill:#4a1942,color:#fff</code></pre>
+<p><img alt="Transport Tiers" src="../assets/transport-tiers.svg" /></p>
 <p>Agent code never references the transport directly. The runtime injects it. Switching from <code>InProcessTransport</code> to <code>NATSTransport</code> requires changing one line in your topology YAML.</p>
 <p>Messages are serialized to msgpack bytes before being handed to the transport, regardless of which transport is in use. This is what enables the switch — agents send and receive the same byte format at every level.</p>
 <hr />
 <h2 id="plugin-system">Plugin system<a class="headerlink" href="#plugin-system" title="Permanent link">&para;</a></h2>
 <p>Everything outside the core runtime — LLM providers, tools, state stores, observability exporters — is a plugin. Plugins are Python protocols (structural typing, not inheritance):</p>
-<pre class="mermaid"><code>graph TD
-    subgraph Protocols["Plugin Protocols"]
-        MP["ModelProvider\nasync chat(model, messages, tools)"]
-        TP["ToolProvider\nname, schema, async execute(**kwargs)"]
-        SS["StateStore\nasync get/set/delete(agent_name)"]
-    end
-
-    subgraph Implementations["Bundled Implementations"]
-        AP["AnthropicProvider\npython-civitas[anthropic]"]
-        LP["LiteLLMProvider\npython-civitas[litellm]\n100+ models"]
-        IS["InMemoryStateStore\ndefault, volatile"]
-        SQ["SQLiteStateStore\nfile-based persistence"]
-    end
-
-    MP --&gt; AP
-    MP --&gt; LP
-    SS --&gt; IS
-    SS --&gt; SQ
-
-    style MP fill:#1e3a5f,color:#fff
-    style TP fill:#1e3a5f,color:#fff
-    style SS fill:#1e3a5f,color:#fff
-    style AP fill:#2d6a4f,color:#fff
-    style LP fill:#2d6a4f,color:#fff
-    style IS fill:#2d6a4f,color:#fff
-    style SQ fill:#2d6a4f,color:#fff</code></pre>
+<p><img alt="Plugin Protocols" src="../assets/plugin-protocols.svg" /></p>
 <p>Any class that satisfies the protocol can be used — you don't subclass anything. To write a custom model provider:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyProvider</span><span class="p">:</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">chat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">messages</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -2597,20 +2478,7 @@
 <hr />
 <h2 id="runtime">Runtime<a class="headerlink" href="#runtime" title="Permanent link">&para;</a></h2>
 <p><code>Runtime</code> assembles all the components and manages the system lifecycle.</p>
-<pre class="mermaid"><code>flowchart LR
-    Config["Config / YAML"] --&gt; RT
-
-    subgraph RT["Runtime.start()"]
-        direction TB
-        S1["Serializer"] --&gt; S2["Tracer"] --&gt; S3["Transport"] --&gt; S4["Registry"] --&gt; S5["MessageBus"]
-        S5 --&gt; S6["Plugins"] --&gt; S7["Wire agents"] --&gt; S8["Register agents"]
-        S8 --&gt; S9["Start transport"] --&gt; S10["Start supervision tree"]
-    end
-
-    RT --&gt; Ready["System ready\nagents accepting messages"]
-
-    style RT fill:#1e3a5f,color:#fff
-    style Ready fill:#2d6a4f,color:#fff</code></pre>
+<p><img alt="Runtime Startup Sequence" src="../assets/runtime-startup.svg" /></p>
 <p>The startup sequence is deterministic: infrastructure first (serializer, tracer, transport, registry, bus), then plugins, then agents. Agents are never started before the bus is ready.</p>
 <p><strong>Programmatic:</strong></p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">runtime</span> <span class="o">=</span> <span class="n">Runtime</span><span class="p">(</span>
@@ -2632,34 +2500,7 @@
 <hr />
 <h2 id="how-the-pieces-fit-together">How the pieces fit together<a class="headerlink" href="#how-the-pieces-fit-together" title="Permanent link">&para;</a></h2>
 <p>A complete system, traced through one message:</p>
-<pre class="mermaid"><code>sequenceDiagram
-    participant Caller
-    participant RT as Runtime
-    participant Bus as MessageBus
-    participant Reg as Registry
-    participant T as Transport
-    participant Sup as Supervisor
-    participant Agent
-
-    RT-&gt;&gt;Sup: start()
-    Sup-&gt;&gt;Agent: start() → on_start()
-    Agent--&gt;&gt;Sup: RUNNING
-
-    Caller-&gt;&gt;RT: ask("my-agent", {"key": "value"})
-    RT-&gt;&gt;Bus: route(message)
-    Bus-&gt;&gt;Reg: lookup("my-agent")
-    Bus-&gt;&gt;T: publish(address, bytes)
-    T-&gt;&gt;Agent: mailbox.put(message)
-
-    Agent-&gt;&gt;Agent: handle(message)
-    Note over Agent: self.llm.chat()&lt;br/&gt;self.tools.get("x").execute()&lt;br/&gt;self.ask("other-agent", ...)
-    Agent--&gt;&gt;T: reply message
-    T--&gt;&gt;Caller: reply
-
-    Agent-&gt;&gt;Agent: crash!
-    Sup-&gt;&gt;Sup: detect crash
-    Sup-&gt;&gt;Agent: restart (with backoff)
-    Agent--&gt;&gt;Sup: RUNNING again</code></pre>
+<p><img alt="Runtime Sequence — Startup, Message Routing, Crash Recovery" src="../assets/runtime-sequence.svg" /></p>
 <p>The caller never sees the crash. The supervisor handles it between messages.</p>
 <hr />
 <h2 id="what-civitas-does-not-do">What Civitas does not do<a class="headerlink" href="#what-civitas-does-not-do" title="Permanent link">&para;</a></h2>

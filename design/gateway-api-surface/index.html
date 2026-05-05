@@ -2461,33 +2461,7 @@
 <p>This spec defines that surface. The design principle is the same as <code>HTTPGateway</code> itself: the agent never sees HTTP. All HTTP concerns live at the gateway boundary.</p>
 <hr />
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>graph TD
-    subgraph "HTTP boundary"
-        REQ["Incoming request"]
-        MW["Middleware chain\n(auth, logging, rate-limit)"]
-        VAL["Request validation\n(Pydantic schema)"]
-        GW["HTTPGateway\n(route table)"]
-        VALR["Response validation\n(Pydantic schema)"]
-        RES["HTTP response"]
-    end
-
-    subgraph "Civitas bus"
-        BUS["MessageBus"]
-        GS["GenServer / AgentProcess"]
-    end
-
-    REQ --&gt; MW
-    MW --&gt;|"401/403 on rejection"| RES
-    MW --&gt; VAL
-    VAL --&gt;|"422 on schema error"| RES
-    VAL --&gt; GW
-    GW --&gt;|"call() / cast()"| BUS
-    BUS --&gt; GS
-    GS --&gt;|reply| BUS
-    BUS --&gt;|reply| VALR
-    VALR --&gt; RES
-
-    DOCS["GET /docs\nGET /openapi.json"] -.-&gt;|"introspects route table + schemas"| GW</code></pre>
+<p><img alt="HTTP Gateway API Surface" src="../../assets/http-gateway-api.svg" /></p>
 <p>The agent only ever sees a <code>Message</code>. The gateway owns every HTTP concept — method, status code, headers, validation errors, OpenAPI schema.</p>
 <hr />
 <h2 id="routes">Routes<a class="headerlink" href="#routes" title="Permanent link">&para;</a></h2>

@@ -2017,61 +2017,12 @@
 <p>Internal reference for contributors and advanced users. Covers the runtime startup sequence, component wiring, message flow, fault handling, and key design decisions.</p>
 <hr />
 <h2 id="component-map">Component map<a class="headerlink" href="#component-map" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>graph TD
-    subgraph Runtime
-        R["Runtime\nLifecycle orchestrator"]
-        CS["ComponentSet\nShared wiring container"]
-        SUP["Supervisor\nFault tolerance tree"]
-    end
-
-    subgraph Infrastructure
-        T["Transport\nInProcess / ZMQ / NATS"]
-        REG["Registry\nName → address map"]
-        SER["Serializer\nMsgpack / JSON"]
-        TR["Tracer\nSpan emitter + queue"]
-        BUS["MessageBus\nRouting + serialization"]
-        SS["StateStore\nCheckpoint persistence"]
-    end
-
-    subgraph Agents
-        A1["AgentProcess\n(mailbox + event loop)"]
-        A2["AgentProcess\n..."]
-    end
-
-    R --&gt; CS
-    R --&gt; SUP
-    CS --&gt; T &amp; REG &amp; SER &amp; TR &amp; SS
-    CS --&gt; BUS
-    BUS --&gt; T
-    BUS --&gt; REG
-    BUS --&gt; SER
-    BUS --&gt; TR
-    SUP --&gt; A1 &amp; A2
-    CS --&gt;|"inject"| A1 &amp; A2</code></pre>
+<p><img alt="Civitas Components" src="../assets/architecture-components.svg" /></p>
 <p>Every component except <code>Supervisor</code> and <code>AgentProcess</code> lives in <code>ComponentSet</code>. <code>Runtime.start()</code> assembles the <code>ComponentSet</code>, injects it into every agent, then hands control to the supervisor tree.</p>
 <hr />
 <h2 id="runtime-startup-sequence">Runtime startup sequence<a class="headerlink" href="#runtime-startup-sequence" title="Permanent link">&para;</a></h2>
 <p>The startup sequence is defined in <code>Runtime.start()</code> and documented in the class docstring. Steps are in strict order — each depends on the previous.</p>
-<pre class="mermaid"><code>flowchart TD
-    S1["1. Read configuration\n(YAML or constructor args)"]
-    S2["2. Create Serializer\n(Msgpack default, JSON optional)"]
-    S3["3. Create Tracer\n(SpanQueue + export backend)"]
-    S4["4. Create Transport\n(InProcess / ZMQ / NATS)"]
-    S5["5. Create Registry\n(LocalRegistry, empty)"]
-    S6["6. Create MessageBus\n(wires Transport + Registry + Serializer + Tracer)"]
-    S7["7. Create plugin instances\n(ModelProvider, ToolRegistry, StateStore)"]
-    S8["8. Inject dependencies\ninto all AgentProcesses"]
-    S9["9. Register all agents\nin Registry"]
-    S10["10. Start Transport\n(bind sockets / connect to NATS)"]
-    S10b["Subscribe each agent\nto its transport address"]
-    S10c["Subscribe to _agency.register\nand _agency.deregister"]
-    S10d["wait_ready()\n(ZMQ slow-joiner mitigation)"]
-    S11["11. Start supervision tree\n(bottom-up, supervisors first)"]
-    S12["12. Start all supervisors\n(heartbeat monitors)"]
-    S13["13. Runtime is READY"]
-
-    S1 --&gt; S2 --&gt; S3 --&gt; S4 --&gt; S5 --&gt; S6 --&gt; S7 --&gt; S8 --&gt; S9 --&gt; S10
-    S10 --&gt; S10b --&gt; S10c --&gt; S10d --&gt; S11 --&gt; S12 --&gt; S13</code></pre>
+<p><img alt="Runtime Startup Sequence" src="../assets/runtime-startup.svg" /></p>
 <p><strong>Key invariants:</strong>
 - Transport is started (step 10) before agents are started (step 11) — agents begin receiving messages the moment they start, so the delivery layer must be ready first.
 - All agents are registered in the Registry (step 9) before the transport subscribes them (step 10) — the Registry is the authoritative source for routing; transport subscription is mechanical delivery.
@@ -2102,63 +2053,12 @@
 <hr />
 <h2 id="message-flow-end-to-end">Message flow — end to end<a class="headerlink" href="#message-flow-end-to-end" title="Permanent link">&para;</a></h2>
 <p>This sequence traces a single <code>ask()</code> from one agent to another and back.</p>
-<pre class="mermaid"><code>sequenceDiagram
-    participant Caller as agent_A.handle()
-    participant Bus as MessageBus
-    participant Ser as Serializer
-    participant Tr as Transport
-    participant Ser2 as Serializer
-    participant Mbox as agent_B mailbox
-    participant B as agent_B.handle()
-
-    Caller-&gt;&gt;Bus: bus.request(message, timeout=30)
-    Bus-&gt;&gt;Bus: registry.lookup("agent_b") → address
-    Bus-&gt;&gt;Bus: tracer.start_send_span(message)
-    Bus-&gt;&gt;Ser: serialize(message) → bytes
-    Bus-&gt;&gt;Tr: transport.request(address, bytes, timeout)
-
-    Note over Tr: Transport creates ephemeral reply address&lt;br/&gt;Publishes message, awaits reply on _reply.{uuid}
-
-    Tr-&gt;&gt;Ser2: bytes delivered to agent_b subscription
-    Ser2-&gt;&gt;Ser2: deserialize(bytes) → Message
-    Ser2-&gt;&gt;Mbox: agent.receive(message)
-    Mbox-&gt;&gt;B: dequeue → handle(message)
-    B-&gt;&gt;B: return self.reply({...})
-    B-&gt;&gt;Bus: bus.route(reply_message)
-    Bus-&gt;&gt;Ser: serialize(reply)
-    Bus-&gt;&gt;Tr: transport.publish(_reply.{uuid}, bytes)
-
-    Tr-&gt;&gt;Bus: return reply bytes
-    Bus-&gt;&gt;Ser: deserialize(reply bytes) → Message
-    Bus--&gt;&gt;Caller: return Message</code></pre>
+<p><img alt="Message Flow — End to End" src="../assets/message-request-reply.svg" /></p>
 <p><strong>Trace propagation:</strong> The <code>trace_id</code> and <code>span_id</code> from the original message are carried in all downstream messages. <code>bus.request()</code> creates the initial span; every subsequent <code>handle()</code> creates a child span linked by <code>parent_span_id</code>. This chain works across process and machine boundaries because trace IDs are embedded in the serialized message payload — not in thread-local storage.</p>
 <hr />
 <h2 id="fault-handling-path">Fault handling path<a class="headerlink" href="#fault-handling-path" title="Permanent link">&para;</a></h2>
 <p>When an agent's asyncio task raises an unhandled exception, control flows through the supervisor:</p>
-<pre class="mermaid"><code>flowchart TD
-    A["agent._task raises Exception"]
-    B["task.done_callback fires\n_on_child_done(name, task)"]
-    C["asyncio.create_task(\n_handle_crash(name, exc)\n)"]
-    D["Update sliding window\n(deque-based, O(1))"]
-    E{"len(timestamps) &gt; max_restarts?"}
-    F["_escalate(name, exc)"]
-    G["emit supervisor.restart span"]
-    H["_compute_backoff(restart_count)\nasyncio.sleep(delay)"]
-    I{"strategy?"}
-    J["_restart_child(name)\nONE_FOR_ONE"]
-    K["_restart_all_children()\nONE_FOR_ALL"]
-    L["_restart_rest_for_one(name)\nREST_FOR_ONE"]
-    M{"parent supervisor?"}
-    N["parent._handle_crash(self.name, exc)\nescalate up the tree"]
-    O["Log permanent failure\nagent stays CRASHED"]
-
-    A --&gt; B --&gt; C --&gt; D --&gt; E
-    E --&gt;|"Yes"| F
-    E --&gt;|"No"| G --&gt; H --&gt; I
-    I --&gt; J &amp; K &amp; L
-    F --&gt; M
-    M --&gt;|"Yes"| N
-    M --&gt;|"No"| O</code></pre>
+<p><img alt="Crash Recovery" src="../assets/crash-recovery.svg" /></p>
 <p><strong>Sliding window</strong> (<code>_restart_timestamps</code>): A <code>deque</code> of crash timestamps. On each crash, the current time is appended and entries older than <code>restart_window</code> seconds are popped from the left. If the deque length exceeds <code>max_restarts</code>, the supervisor escalates. This is O(1) per crash.</p>
 <p><strong>Backoff computation:</strong></p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">_compute_backoff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">restart_count</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
@@ -2204,13 +2104,7 @@
 <hr />
 <h2 id="agentprocess-internals">AgentProcess internals<a class="headerlink" href="#agentprocess-internals" title="Permanent link">&para;</a></h2>
 <p>Each <code>AgentProcess</code> runs as a single asyncio task (<code>agent._task</code>). Inside that task:</p>
-<pre class="mermaid"><code>stateDiagram-v2
-    [*] --&gt; INITIALIZING: _start()
-    INITIALIZING --&gt; RUNNING: on_start() completes
-    RUNNING --&gt; RUNNING: handle(message)
-    RUNNING --&gt; STOPPING: _stop() called
-    STOPPING --&gt; STOPPED: on_stop() completes
-    RUNNING --&gt; CRASHED: unhandled exception</code></pre>
+<p><img alt="Agent State Machine" src="../assets/agent-state-machine.svg" /></p>
 <p><strong>Mailbox:</strong> An <code>asyncio.Queue</code> with a bounded capacity (default: 1000 messages). <code>receive()</code> calls <code>put_nowait()</code> — if the mailbox is full, <code>asyncio.QueueFull</code> is raised and the message is dropped with a warning. The agent's event loop calls <code>get()</code> to dequeue messages one at a time.</p>
 <p><strong>State restore:</strong> On <code>INITIALIZING → RUNNING</code> transition (inside <code>_start()</code>), the runtime calls <code>store.get(agent.name)</code> and assigns the result to <code>self.state</code> before <code>on_start()</code> runs. This means <code>on_start()</code> always sees the last checkpointed state, whether the agent is starting for the first time or restarting after a crash.</p>
 <p><strong><code>_max_retries</code>:</strong> <code>AgentProcess</code> exposes <code>_max_retries = 3</code> as a class attribute. <code>on_error()</code> can compare <code>message.attempt</code> against this to decide whether to retry or escalate. The <code>attempt</code> field on <code>Message</code> is incremented by the bus each time the message is redelivered.</p>
@@ -2226,9 +2120,7 @@
 <hr />
 <h2 id="tracer-and-spanqueue">Tracer and SpanQueue<a class="headerlink" href="#tracer-and-spanqueue" title="Permanent link">&para;</a></h2>
 <p>The <code>Tracer</code> never blocks the message loop. Span emission goes through a <code>SpanQueue</code>:</p>
-<pre class="mermaid"><code>flowchart LR
-    A["agent.handle()"] --&gt;|"put_nowait(span)"| Q["SpanQueue\n(asyncio.Queue, cap=10000)"]
-    Q --&gt;|"background consumer"| E["ExportBackend\n(ConsoleBackend / OTEL)"]</code></pre>
+<p><img alt="Span Queue" src="../assets/span-queue.svg" /></p>
 <p>If <code>put_nowait()</code> raises <code>QueueFull</code> (10,000 spans buffered), the oldest span is evicted to make room. Losing a span is always preferable to stalling the message loop.</p>
 <p><strong>Three output modes</strong> (selected automatically at <code>Tracer()</code> construction):
 1. No <code>opentelemetry-sdk</code> → Python <code>logging</code> at <code>DEBUG</code> level
@@ -2238,21 +2130,7 @@
 <hr />
 <h2 id="worker-process-wiring">Worker process wiring<a class="headerlink" href="#worker-process-wiring" title="Permanent link">&para;</a></h2>
 <p>A <code>Worker</code> has the same <code>ComponentSet</code> as a <code>Runtime</code> — same transport, registry, serializer, tracer. The difference is that a <code>Worker</code> has no supervision tree. It hosts agents directly and does not manage restarts.</p>
-<pre class="mermaid"><code>sequenceDiagram
-    participant W as Worker.start()
-    participant CS as build_component_set()
-    participant T as Transport
-    participant R as _agency.register
-
-    W-&gt;&gt;CS: build ComponentSet (same as Runtime)
-    W-&gt;&gt;W: inject(agent) for each agent
-    W-&gt;&gt;T: transport.start()
-    W-&gt;&gt;T: subscribe each agent
-    W-&gt;&gt;R: publish _agency.register {name: agent.name}
-    Note over W: Runtime receives _agency.register&lt;br/&gt;and calls registry.register_remote(name)
-    W-&gt;&gt;W: wait for shutdown signal
-    W-&gt;&gt;R: publish _agency.deregister
-    W-&gt;&gt;T: transport.stop()</code></pre>
+<p><img alt="Worker Registration" src="../assets/worker-registration.svg" /></p>
 <p>The supervisor in the main process monitors worker agents via heartbeats. When a heartbeat is missed, the supervisor sends <code>_agency.restart</code> → the Worker restarts the named agent locally → the agent publishes <code>_agency.register</code> again → the Registry entry is refreshed.</p>
 <hr />
 <h2 id="key-design-decisions">Key design decisions<a class="headerlink" href="#key-design-decisions" title="Permanent link">&para;</a></h2>

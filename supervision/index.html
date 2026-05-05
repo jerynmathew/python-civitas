@@ -2286,13 +2286,7 @@
 <h2 id="restart-strategies">Restart strategies<a class="headerlink" href="#restart-strategies" title="Permanent link">&para;</a></h2>
 <h3 id="one_for_one">ONE_FOR_ONE<a class="headerlink" href="#one_for_one" title="Permanent link">&para;</a></h3>
 <p>When a child crashes, restart <strong>only that child</strong>. All other children continue running unaffected.</p>
-<pre class="mermaid"><code>graph TD
-    S["Supervisor\nONE_FOR_ONE"]
-    S --&gt; A["agent-a\n✓ running"]
-    S --&gt; B["agent-b\n✗ crashed → ↻ restarting"]
-    S --&gt; C["agent-c\n✓ running"]
-
-    style B fill:#7f1d1d,color:#fff</code></pre>
+<p><img alt="ONE_FOR_ONE Supervision" src="../assets/supervision-one-for-one.svg" /></p>
 <p><strong>Use when:</strong> Children are independent — a crash in one does not invalidate the state of others.</p>
 <p><strong>Examples:</strong>
 - A pool of worker agents each handling independent requests
@@ -2311,15 +2305,7 @@
 <hr />
 <h3 id="one_for_all">ONE_FOR_ALL<a class="headerlink" href="#one_for_all" title="Permanent link">&para;</a></h3>
 <p>When any child crashes, <strong>stop and restart all children</strong>.</p>
-<pre class="mermaid"><code>graph TD
-    S["Supervisor\nONE_FOR_ALL"]
-    S --&gt; A["agent-a\n↻ restarting"]
-    S --&gt; B["agent-b\n✗ crashed → ↻ restarting"]
-    S --&gt; C["agent-c\n↻ restarting"]
-
-    style A fill:#6b4c11,color:#fff
-    style B fill:#7f1d1d,color:#fff
-    style C fill:#6b4c11,color:#fff</code></pre>
+<p><img alt="ONE_FOR_ALL Supervision" src="../assets/supervision-one-for-all.svg" /></p>
 <p><strong>Use when:</strong> Children share mutable state or maintain synchronized positions. If one crashes, the others' state is no longer valid and they must start fresh.</p>
 <p><strong>Examples:</strong>
 - A producer and consumer that share a queue reference
@@ -2337,14 +2323,7 @@
 <hr />
 <h3 id="rest_for_one">REST_FOR_ONE<a class="headerlink" href="#rest_for_one" title="Permanent link">&para;</a></h3>
 <p>When a child crashes, restart that child <strong>and all children that were started after it</strong> (younger siblings). Children started earlier are unaffected.</p>
-<pre class="mermaid"><code>graph TD
-    S["Supervisor\nREST_FOR_ONE"]
-    S --&gt; A["stage-1\n✓ unaffected\n(started first)"]
-    S --&gt; B["stage-2\n✗ crashed → ↻\n(restarting)"]
-    S --&gt; C["stage-3\n↻ restarting\n(younger sibling)"]
-
-    style B fill:#7f1d1d,color:#fff
-    style C fill:#6b4c11,color:#fff</code></pre>
+<p><img alt="REST_FOR_ONE Supervision" src="../assets/supervision-rest-for-one.svg" /></p>
 <p><strong>Use when:</strong> You have a pipeline where later stages depend on earlier ones. If stage-2 crashes, stage-3 is receiving invalid input and must also restart.</p>
 <p><strong>Examples:</strong>
 - Sequential processing stages: fetcher → parser → indexer
@@ -2456,23 +2435,7 @@
 <hr />
 <h2 id="escalation-chain">Escalation chain<a class="headerlink" href="#escalation-chain" title="Permanent link">&para;</a></h2>
 <p>When a supervisor exhausts its restart budget, it escalates to its own parent supervisor. The parent treats the child supervisor as if it were a crashed agent and applies its own restart strategy.</p>
-<pre class="mermaid"><code>graph TD
-    Root["root supervisor\nONE_FOR_ONE\nmax_restarts=2"]
-    Child["research_sup\nONE_FOR_ONE\nmax_restarts=3"]
-    Agent["web_researcher"]
-
-    Root --&gt;|monitors| Child
-    Child --&gt;|monitors| Agent
-
-    Agent --&gt;|"crash #1 → restart"| Child
-    Agent --&gt;|"crash #2 → restart"| Child
-    Agent --&gt;|"crash #3 → restart"| Child
-    Agent --&gt;|"crash #4 → max_restarts exceeded"| Child
-    Child --&gt;|"escalate: treats self as crashed"| Root
-    Root --&gt;|"restart research_sup + all its children"| Child
-
-    style Agent fill:#7f1d1d,color:#fff
-    style Child fill:#6b4c11,color:#fff</code></pre>
+<p><img alt="Supervision Escalation" src="../assets/supervision-escalation.svg" /></p>
 <p>If the root supervisor also exhausts its budget, the process stops permanently and an error is logged. There is no escalation above the root.</p>
 <hr />
 <h2 id="nested-supervisors">Nested supervisors<a class="headerlink" href="#nested-supervisors" title="Permanent link">&para;</a></h2>
@@ -2542,27 +2505,7 @@
 <hr />
 <h2 id="heartbeat-monitoring-for-remote-agents">Heartbeat monitoring for remote agents<a class="headerlink" href="#heartbeat-monitoring-for-remote-agents" title="Permanent link">&para;</a></h2>
 <p>When agents run in separate OS processes (ZMQ or NATS transport), the supervisor cannot monitor them via asyncio task callbacks — the tasks are in a different process. Instead, it uses periodic heartbeats.</p>
-<pre class="mermaid"><code>sequenceDiagram
-    participant Sup as Supervisor
-    participant Bus as MessageBus
-    participant Worker as Worker Process
-    participant Agent as Remote Agent
-
-    loop every heartbeat_interval
-        Sup-&gt;&gt;Bus: _agency.heartbeat → agent-name
-        Bus-&gt;&gt;Worker: route
-        Worker-&gt;&gt;Agent: deliver
-        Agent--&gt;&gt;Bus: _agency.heartbeat_ack
-        Bus--&gt;&gt;Sup: ack received
-
-        alt ack not received within heartbeat_timeout
-            Sup-&gt;&gt;Sup: missed_heartbeats[agent] += 1
-            alt missed &gt;= threshold
-                Sup-&gt;&gt;Bus: _agency.restart → worker
-                Worker-&gt;&gt;Agent: restart
-            end
-        end
-    end</code></pre>
+<p><img alt="Heartbeat Monitoring Sequence" src="../assets/heartbeat-sequence.svg" /></p>
 <p>Heartbeat monitoring is configured per remote child via <code>add_remote_child()</code>, or automatically when loading a topology YAML with <code>process: worker</code> entries:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">supervisor</span><span class="o">.</span><span class="n">add_remote_child</span><span class="p">(</span>
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;remote_agent&quot;</span><span class="p">,</span>

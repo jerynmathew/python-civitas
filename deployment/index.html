@@ -1948,31 +1948,11 @@
 <p>Civitas uses a four-level deployment ladder. Every level runs the same agent code — only the transport and process topology change. Start at Level 1, graduate to higher levels as your scale or isolation requirements grow.</p>
 <hr />
 <h2 id="the-deployment-ladder">The deployment ladder<a class="headerlink" href="#the-deployment-ladder" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>graph LR
-    L1["Level 1\nSingle process\nInProcessTransport\nDevelopment default"]
-    L2["Level 2\nMulti-process\nZMQTransport\nSame machine"]
-    L3["Level 3\nDistributed\nNATSTransport\nMultiple machines"]
-    L4["Level 4\nContainerized\nDocker Compose\nProduction"]
-
-    L1 --&gt;|"change transport"| L2
-    L2 --&gt;|"change transport"| L3
-    L3 --&gt;|"civitas deploy"| L4
-
-    style L1 fill:#1e3a5f,color:#fff
-    style L2 fill:#2d6a4f,color:#fff
-    style L3 fill:#4a1942,color:#fff
-    style L4 fill:#7a3a00,color:#fff</code></pre>
+<p><img alt="Deployment Levels" src="../assets/transport-tiers.svg" /></p>
 <hr />
 <h2 id="level-1-single-process">Level 1 — Single process<a class="headerlink" href="#level-1-single-process" title="Permanent link">&para;</a></h2>
 <p><strong>Default. No extra dependencies. For development and simple single-machine deployments.</strong></p>
-<pre class="mermaid"><code>graph TD
-    subgraph "One Python process"
-        S["Supervisor"]
-        A1["Agent A"]
-        A2["Agent B"]
-        A3["Agent C"]
-        S --&gt; A1 &amp; A2 &amp; A3
-    end</code></pre>
+<p><img alt="Single Process Deployment" src="../assets/transport-inprocess.svg" /></p>
 <p>All agents run as asyncio tasks inside one Python process. The <code>InProcessTransport</code> delivers messages via asyncio queues — fast (~2–5 µs per message), zero network overhead.</p>
 <p><strong>Install:</strong></p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>civitas
@@ -2014,24 +1994,7 @@
 <hr />
 <h2 id="level-2-multi-process-zmq">Level 2 — Multi-process (ZMQ)<a class="headerlink" href="#level-2-multi-process-zmq" title="Permanent link">&para;</a></h2>
 <p><strong>Scale beyond the GIL. Isolate agent processes on a single machine.</strong></p>
-<pre class="mermaid"><code>graph TD
-    subgraph "Process A — supervisor"
-        S["Supervisor"]
-        A1["Orchestrator"]
-        A2["Summarizer"]
-    end
-
-    subgraph "ZMQ Proxy"
-        P["XSUB/XPUB\ntcp://127.0.0.1:5559-60"]
-    end
-
-    subgraph "Process B — worker"
-        A3["WebResearcher"]
-    end
-
-    A1 &lt;--&gt;|"PUB/SUB"| P
-    A2 &lt;--&gt;|"PUB/SUB"| P
-    A3 &lt;--&gt;|"PUB/SUB"| P</code></pre>
+<p><img alt="Multi-Process ZMQ Deployment" src="../assets/transport-zmq.svg" /></p>
 <p>Agents marked <code>process: worker</code> in the topology run in a separate OS process. The supervisor process starts a ZMQ XSUB/XPUB proxy; all other processes connect to it.</p>
 <p><strong>Install:</strong></p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pip<span class="w"> </span>install<span class="w"> </span>civitas<span class="o">[</span>zmq<span class="o">]</span>
@@ -2080,26 +2043,7 @@
 <hr />
 <h2 id="level-3-distributed-nats">Level 3 — Distributed (NATS)<a class="headerlink" href="#level-3-distributed-nats" title="Permanent link">&para;</a></h2>
 <p><strong>Run agents on multiple machines. Production scale.</strong></p>
-<pre class="mermaid"><code>graph TD
-    subgraph "Machine A"
-        A["Orchestrator\nSummarizer"]
-    end
-
-    subgraph "NATS Server"
-        N["NATS Broker\nagency.agent.*"]
-    end
-
-    subgraph "Machine B"
-        B["WebResearcher"]
-    end
-
-    subgraph "Machine C"
-        C["AnotherWorker"]
-    end
-
-    A &lt;--&gt;|"nats://host:4222"| N
-    B &lt;--&gt;|"nats://host:4222"| N
-    C &lt;--&gt;|"nats://host:4222"| N</code></pre>
+<p><img alt="Distributed NATS Deployment" src="../assets/transport-nats.svg" /></p>
 <p>NATS replaces the ZMQ proxy with a cloud-native message broker. Every agent subscribes to its own NATS subject (<code>civitas.agent.&lt;name&gt;</code>). The topology, supervision tree, and agent code are unchanged from Level 2.</p>
 <p><strong>Install:</strong></p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pip<span class="w"> </span>install<span class="w"> </span>civitas<span class="o">[</span>nats<span class="o">]</span>

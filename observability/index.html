@@ -2397,16 +2397,7 @@
 <hr />
 <h2 id="three-output-modes">Three output modes<a class="headerlink" href="#three-output-modes" title="Permanent link">&para;</a></h2>
 <p>Civitas selects the output mode automatically based on what is installed and what environment variables are set:</p>
-<pre class="mermaid"><code>flowchart TD
-    A["Civitas starts"] --&gt; B{"opentelemetry-sdk\ninstalled?"}
-    B --&gt;|"No"| C["Built-in console output\nvia Python logging"]
-    B --&gt;|"Yes"| D{"OTEL_EXPORTER_OTLP_ENDPOINT\nset?"}
-    D --&gt;|"No"| E["OTEL ConsoleSpanExporter\nJSON to stdout"]
-    D --&gt;|"Yes"| F["OTLP gRPC exporter\nJaeger / Grafana / etc."]
-
-    style C fill:#1e3a5f,color:#fff
-    style E fill:#2d6a4f,color:#fff
-    style F fill:#4a1942,color:#fff</code></pre>
+<p><img alt="Observability Setup" src="../assets/observability-setup.svg" /></p>
 <hr />
 <h2 id="mode-1-built-in-console-output">Mode 1 — Built-in console output<a class="headerlink" href="#mode-1-built-in-console-output" title="Permanent link">&para;</a></h2>
 <p><strong>Default — no dependencies beyond <code>python-civitas</code> core.</strong></p>
@@ -2481,20 +2472,7 @@
 <hr />
 <h2 id="trace-context-propagation">Trace context propagation<a class="headerlink" href="#trace-context-propagation" title="Permanent link">&para;</a></h2>
 <p>Trace context flows automatically through every message. You never set <code>trace_id</code> or <code>span_id</code> manually.</p>
-<pre class="mermaid"><code>graph TD
-    A["runtime.ask(orchestrator)\nnew trace_id=abc\nspan_id=001"]
-    B["orchestrator.handle()\ntrace_id=abc\nspan_id=002\nparent=001"]
-    C["self.ask(researcher)\ntrace_id=abc\nspan_id=003\nparent=002"]
-    D["researcher.handle()\ntrace_id=abc\nspan_id=004\nparent=003"]
-    E["llm_span(claude)\ntrace_id=abc\nspan_id=005\nparent=004"]
-    F["tool_span(web_search)\ntrace_id=abc\nspan_id=006\nparent=004"]
-    G["self.ask(summarizer)\ntrace_id=abc\nspan_id=007\nparent=004"]
-    H["summarizer.handle()\ntrace_id=abc\nspan_id=008\nparent=007"]
-
-    A --&gt; B --&gt; C --&gt; D
-    D --&gt; E
-    D --&gt; F
-    D --&gt; G --&gt; H</code></pre>
+<p><img alt="Distributed Tracing" src="../assets/distributed-tracing.svg" /></p>
 <p>The <code>trace_id</code> is the same for every span in a causal chain. The parent-child relationships (<code>parent_span_id</code>) form the tree structure that OTEL backends render as a waterfall trace. This propagates across process and machine boundaries — spans from a Worker process appear in the same trace as spans from the supervisor process.</p>
 <hr />
 <h2 id="adding-custom-spans-in-agents">Adding custom spans in agents<a class="headerlink" href="#adding-custom-spans-in-agents" title="Permanent link">&para;</a></h2>

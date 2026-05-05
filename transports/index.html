@@ -2104,17 +2104,7 @@
 <p>The transport is the delivery layer underneath the MessageBus. Civitas provides three implementations that form a deployment scaling ladder — from a single Python process to a distributed multi-machine cluster. The same agent code runs at every level; only the topology configuration changes.</p>
 <hr />
 <h2 id="the-scaling-ladder">The scaling ladder<a class="headerlink" href="#the-scaling-ladder" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>graph LR
-    L1["Level 1\nInProcessTransport\nOne Python process\nAsyncio queues"]
-    L2["Level 2\nZMQTransport\nMultiple OS processes\nSame machine"]
-    L3["Level 3\nNATSTransport\nMultiple machines\nDistributed"]
-
-    L1 --&gt;|"change transport in topology.yaml"| L2
-    L2 --&gt;|"change transport in topology.yaml"| L3
-
-    style L1 fill:#1e3a5f,color:#fff
-    style L2 fill:#2d6a4f,color:#fff
-    style L3 fill:#4a1942,color:#fff</code></pre>
+<p><img alt="Transport Tiers" src="../assets/transport-tiers.svg" /></p>
 <p>The agent code is byte-for-byte identical at every level. The <code>MessageBus</code> and <code>Registry</code> interfaces stay the same. Only the <code>transport:</code> block in your topology YAML changes.</p>
 <hr />
 <h2 id="transport-protocol">Transport protocol<a class="headerlink" href="#transport-protocol" title="Permanent link">&para;</a></h2>
@@ -2145,12 +2135,7 @@
 <hr />
 <h2 id="level-1-inprocesstransport">Level 1 — InProcessTransport<a class="headerlink" href="#level-1-inprocesstransport" title="Permanent link">&para;</a></h2>
 <p><strong>Default for development and single-process deployments.</strong></p>
-<pre class="mermaid"><code>graph TD
-    subgraph "Single Python process"
-        A1["AgentProcess A"] &lt;--&gt;|"asyncio Queue"| Bus["MessageBus"]
-        A2["AgentProcess B"] &lt;--&gt;|"asyncio Queue"| Bus
-        A3["AgentProcess C"] &lt;--&gt;|"asyncio Queue"| Bus
-    end</code></pre>
+<p><img alt="InProcess Transport" src="../assets/transport-inprocess.svg" /></p>
 <p>Messages are delivered by placing serialized bytes into the recipient's asyncio queue. Despite being in-process, messages are still serialized through msgpack — this ensures that swapping to ZMQ or NATS never requires changing agent code.</p>
 <p><strong>Install:</strong> No extra dependencies — included in the core package.</p>
 <p><strong>Configuration:</strong></p>
@@ -2208,21 +2193,7 @@
 <hr />
 <h2 id="level-2-zmqtransport">Level 2 — ZMQTransport<a class="headerlink" href="#level-2-zmqtransport" title="Permanent link">&para;</a></h2>
 <p><strong>Multi-process on a single machine.</strong></p>
-<pre class="mermaid"><code>graph TD
-    subgraph "Process A (supervisor + main agents)"
-        A["Orchestrator\nSynthesizer\nWriter"]
-    end
-
-    subgraph "Proxy (started by Process A)"
-        P["ZMQ XSUB/XPUB\nForwarder"]
-    end
-
-    subgraph "Process B (worker)"
-        B["WebResearcher"]
-    end
-
-    A &lt;--&gt;|"PUB/SUB via tcp://127.0.0.1:5559-60"| P
-    B &lt;--&gt;|"PUB/SUB via tcp://127.0.0.1:5559-60"| P</code></pre>
+<p><img alt="ZMQ Transport" src="../assets/transport-zmq.svg" /></p>
 <p>ZMQ uses an XSUB/XPUB proxy to bridge PUB/SUB across OS processes. One process starts the proxy; all other processes connect to it. Request-reply uses ephemeral PUB/SUB topics — the same pattern as InProcess, but over TCP sockets.</p>
 <p><strong>Install:</strong></p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pip<span class="w"> </span>install<span class="w"> </span>civitas<span class="o">[</span>zmq<span class="o">]</span>
@@ -2300,26 +2271,7 @@
 <hr />
 <h2 id="level-3-natstransport">Level 3 — NATSTransport<a class="headerlink" href="#level-3-natstransport" title="Permanent link">&para;</a></h2>
 <p><strong>Distributed across multiple machines.</strong></p>
-<pre class="mermaid"><code>graph TD
-    subgraph "Machine A"
-        A["Orchestrator\nSynthesizer\nWriter"]
-    end
-
-    subgraph "NATS Server"
-        N["NATS\nagency.agent.*"]
-    end
-
-    subgraph "Machine B"
-        B["WebResearcher"]
-    end
-
-    subgraph "Machine C"
-        C["Another Worker"]
-    end
-
-    A &lt;--&gt;|"nats://host:4222"| N
-    B &lt;--&gt;|"nats://host:4222"| N
-    C &lt;--&gt;|"nats://host:4222"| N</code></pre>
+<p><img alt="NATS Transport" src="../assets/transport-nats.svg" /></p>
 <p>NATS maps each agent address to a subject under the <code>civitas.agent.</code> prefix. For example, an agent named <code>researcher</code> subscribes to <code>civitas.agent.researcher</code>. Request-reply uses the same ephemeral subscription pattern as the other transports.</p>
 <p><strong>Install:</strong></p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>pip<span class="w"> </span>install<span class="w"> </span>civitas<span class="o">[</span>nats<span class="o">]</span>

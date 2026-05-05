@@ -2421,45 +2421,7 @@
 <p>All four share the same routing and message-translation layer. Only the network I/O layer differs.</p>
 <hr />
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
-<pre class="mermaid"><code>graph TD
-    subgraph "External"
-        C1["HTTP/1.1 client"]
-        C2["HTTP/2 client"]
-        C3["HTTP/3 / QUIC client"]
-        C4["gRPC client"]
-    end
-
-    subgraph "Edge — supervised process"
-        GW["HTTPGateway\n(AgentProcess)"]
-        H1["HTTP/1.1 + HTTP/2\n(uvicorn ASGI)"]
-        H3["HTTP/3 / QUIC\n(aioquic)"]
-        GR["gRPC server\n(grpclib / grpcio)"]
-    end
-
-    subgraph "Civitas bus"
-        BUS["MessageBus"]
-        A1["GenServer / AgentProcess"]
-        A2["AgentProcess"]
-    end
-
-    C1 --&gt;|TCP| H1
-    C2 --&gt;|TCP + TLS| H1
-    C3 --&gt;|QUIC/UDP| H3
-    C4 --&gt;|HTTP/2 + protobuf| GR
-
-    H1 --&gt; GW
-    H3 --&gt; GW
-    GR --&gt; GW
-
-    GW --&gt;|call / cast| BUS
-    BUS --&gt; A1
-    BUS --&gt; A2
-    A1 --&gt;|reply| BUS
-    BUS --&gt;|reply| GW
-    GW --&gt;|HTTP response| C1
-    GW --&gt;|HTTP response| C2
-    GW --&gt;|HTTP/3 response| C3
-    GW --&gt;|gRPC response| C4</code></pre>
+<p><img alt="HTTP Gateway Architecture" src="../../assets/http-gateway-arch.svg" /></p>
 <p><code>HTTPGateway</code> is started as a child of any <code>Supervisor</code>. It owns the three server coroutines internally and manages their lifecycle within its <code>on_start</code> / <code>on_stop</code> hooks.</p>
 <hr />
 <h2 id="request-to-message-mapping">Request-to-message mapping<a class="headerlink" href="#request-to-message-mapping" title="Permanent link">&para;</a></h2>

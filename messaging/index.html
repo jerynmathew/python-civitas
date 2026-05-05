@@ -2289,24 +2289,7 @@
 </span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">reply</span><span class="p">({</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;service unavailable&quot;</span><span class="p">})</span>
 </span></code></pre></div>
 <h3 id="how-request-reply-works-under-the-hood">How request-reply works under the hood<a class="headerlink" href="#how-request-reply-works-under-the-hood" title="Permanent link">&para;</a></h3>
-<pre class="mermaid"><code>sequenceDiagram
-    participant Caller as Caller agent
-    participant Bus as MessageBus
-    participant T as Transport
-    participant Recipient as Recipient agent
-
-    Caller-&gt;&gt;Bus: ask("recipient", payload)
-    Note over Bus: Generates correlation_id (UUID7)&lt;br/&gt;Transport creates reply address: _reply.{uuid}
-    Bus-&gt;&gt;T: request(address, bytes, timeout)
-    T-&gt;&gt;Recipient: deliver to mailbox (reply_to = "_reply.{uuid}")
-
-    Recipient-&gt;&gt;Recipient: handle(message)
-    Recipient-&gt;&gt;Bus: route(reply message)
-    Note over Bus: reply.recipient = message.reply_to = "_reply.{uuid}"
-    Bus-&gt;&gt;T: publish("_reply.{uuid}", bytes)
-    T--&gt;&gt;Caller: reply_queue.get() unblocks
-
-    Caller-&gt;&gt;Caller: continues with reply Message</code></pre>
+<p><img alt="Request–Reply Flow" src="../assets/message-request-reply.svg" /></p>
 <p>Key points:
 - The transport creates a UUID-keyed ephemeral reply address per request (<code>_reply.{uuid7}</code>)
 - The reply address is injected into the request message as <code>message.reply_to</code>
@@ -2413,31 +2396,13 @@
 <hr />
 <h2 id="trace-context-propagation">Trace context propagation<a class="headerlink" href="#trace-context-propagation" title="Permanent link">&para;</a></h2>
 <p>Every message carries distributed trace context — <code>trace_id</code>, <code>span_id</code>, and <code>parent_span_id</code>. These are set automatically by <code>send()</code>, <code>ask()</code>, and <code>reply()</code> based on the current message being handled. You never set them manually.</p>
-<pre class="mermaid"><code>graph TD
-    A["orchestrator.handle(msg)\ntrace_id=abc\nspan_id=111"]
-    B["send to researcher\ntrace_id=abc\nspan_id=222\nparent=111"]
-    C["researcher.handle(msg)\ntrace_id=abc\nspan_id=333"]
-    D["ask summarizer\ntrace_id=abc\nspan_id=444\nparent=333"]
-    E["summarizer.handle(msg)\ntrace_id=abc\nspan_id=555"]
-
-    A --&gt;|"self.ask(researcher)"| B
-    B --&gt; C
-    C --&gt;|"self.ask(summarizer)"| D
-    D --&gt; E</code></pre>
+<p><img alt="Distributed Tracing" src="../assets/distributed-tracing.svg" /></p>
 <p>The <code>trace_id</code> is the same across all spans in a causal chain. When exported to Jaeger or any OTEL backend, the entire chain — across agents and process boundaries — appears as a single distributed trace.</p>
 <p><code>span_id</code> changes with every message. <code>parent_span_id</code> points to the span that triggered this message. Together they form the parent-child relationship that makes traces readable.</p>
 <hr />
 <h2 id="backpressure">Backpressure<a class="headerlink" href="#backpressure" title="Permanent link">&para;</a></h2>
 <p>Every agent has a bounded mailbox (default: 1000 messages). When the mailbox is full, any <code>send()</code> or <code>ask()</code> targeting that agent <strong>blocks the caller</strong> until space is available. This is backpressure — it naturally slows producers when consumers can't keep up.</p>
-<pre class="mermaid"><code>graph LR
-    P["Producer agent\nsend() blocks here"]
-    M["Mailbox\n[████████████]\n1000/1000 full"]
-    C["Consumer agent\nprocessing slowly"]
-
-    P --&gt;|"await mailbox.put()\n⏸ blocked"| M
-    M --&gt;|"mailbox.get()"| C
-    C --&gt;|"processes message\nspace freed"| M
-    M --&gt;|"unblocks producer"| P</code></pre>
+<p><img alt="Backpressure" src="../assets/backpressure.svg" /></p>
 <p>Backpressure flows through the system naturally:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>slow summarizer → full mailbox → blocks researcher → blocks orchestrator → caller slows down
 </span></code></pre></div>
@@ -2494,14 +2459,7 @@
 <hr />
 <h2 id="routing-in-detail">Routing in detail<a class="headerlink" href="#routing-in-detail" title="Permanent link">&para;</a></h2>
 <p>When <code>self.send("recipient", payload)</code> is called, the bus resolves where to deliver it in three steps:</p>
-<pre class="mermaid"><code>flowchart TD
-    A["bus.route(message)"] --&gt; B{"Registry lookup\nby recipient name"}
-    B --&gt;|"found"| C["Publish to\nRoutingEntry.address"]
-    B --&gt;|"not found"| D{"Is recipient an\nephemeral reply address?"}
-    D --&gt;|"yes (_reply.*)"| E["Publish to\nephemeral address"]
-    D --&gt;|"no"| F["Raise\nMessageRoutingError"]
-
-    style F fill:#7f1d1d,color:#fff</code></pre>
+<p><img alt="Message Routing" src="../assets/message-routing.svg" /></p>
 <p>If an agent is not registered — either because it hasn't started yet or because its name is misspelled — you get a <code>MessageRoutingError</code> with the unknown name. This fails fast rather than silently dropping messages.</p>
 <hr />
 <h2 id="patterns">Patterns<a class="headerlink" href="#patterns" title="Permanent link">&para;</a></h2>
