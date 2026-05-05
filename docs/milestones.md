@@ -38,7 +38,7 @@ Development progress across all phases of Civitas.
 | 4 | [Postgres StateStore + Migration](#postgres-statestore--migration) | ✅ Completed | May 2026 |
 | 4 | [Visual Topology Editor](#m41-visual-topology-editor) | ⏸️ Deferred | — |
 | 5 | [Prompt Library & Playground](#prompt-library--playground) | 💡 Idea | v0.5+ |
-| 5 | [LLM Gateway](#llm-gateway) | 💡 Idea | v0.5+ |
+| 5 | [LLM Gateway](#llm-gateway) | ⏸️ Moved to Presidium | — |
 | 5 | [Fabrica — Tools Gateway](#fabrica--tools-gateway) | 💡 Idea | v0.5+ |
 | 5 | [Skills Gateway](#skills-gateway) | 💡 Idea | v0.5+ |
 
@@ -794,21 +794,18 @@ This is one of the strongest SaaS upgrade stories: the OSS `PromptStore` runs in
 
 ### LLM Gateway
 
-**Status: 💡 Idea — to be specced | Priority: 🔴 High**
+**Status: ⏸️ Moved to Presidium (`presidium-llm-gateway`)**
 
-A supervised `GenServer` that sits between agents and LLM providers. All agents call `call("llm_gateway", {...})` instead of hitting providers directly. The gateway owns provider routing, fallback chains, cost tracking, rate limiting, and response caching — as supervised stateful processes on the bus.
+Model routing *without* governance (multi-provider fallback for reliability) is a thin Civitas utility — `CompositeModelProvider`. It is not a full gateway.
 
-**What this is not:** a replacement for LiteLLM proxy or Portkey. The implementation will wrap one of those (or expose the same interface) rather than re-implement provider routing for 100+ models.
+The full governed LLM gateway — per-agent rate limits, cost tracking, budget enforcement, grant-based provider routing — belongs in Presidium. It wraps any Civitas `ModelProvider` via the plugin protocol and enforces governance policy before delegating to the underlying provider.
 
-| Idea | Notes |
-|------|-------|
-| Provider routing by cost / latency / capability | Route `claude-opus-4-7` to Anthropic, fall back to `gpt-4o` on quota exhaustion |
-| Fallback chains | Configurable ordered provider list per model tier |
-| Semantic + exact response caching | `CacheStore(GenServer)` child; `civitas[llm-cache]` extra |
-| Per-agent cost tracking | Accumulate token spend by agent name; expose via `civitas dashboard` |
-| Rate limiting per agent | Prevents a single agent from exhausting provider quota |
-| LiteLLM proxy integration | `LiteLLMGateway` subclass as first implementation |
-| Spec | design/llm-gateway.md — to be written |
+Civitas provides the `ModelProvider` protocol (integration point 2 for Presidium). Civitas does not provide rate limiting, budgets, or grant-based routing — those are governance concerns.
+
+**Residual Civitas utility:** `CompositeModelProvider` — a simple ordered fallback chain (primary → fallback) for reliability. No governance, no per-agent tracking. Infrastructure, not governance.
+
+See [Presidium `presidium-llm-gateway`](https://github.com/civitas-io/presidium/blob/main/docs/architecture/packages.md#presidium-llm-gateway) for the governed implementation.
+See [docs/design/civitas-presidium-boundary.md](design/civitas-presidium-boundary.md) for the full boundary definition.
 
 ---
 
