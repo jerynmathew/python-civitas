@@ -716,7 +716,69 @@ from `civitas.errors`.
 
 Never call `os.environ["KEY"]` in application code. Use `civitas.config.settings`.
 
-### 14. Importing civitas-contrib or fabrica at module top in civitas core
+### 14. Patching private attributes for observability hooks
+
+If you need to observe lifecycle events (crashes, restarts, message completions), add a proper
+injectable hook or callback to the public API. Never monkey-patch private attributes.
+
+```python
+# Wrong — fragile, breaks on internal rename, mypy complains
+original = runtime._root_supervisor._handle_crash
+runtime._root_supervisor._handle_crash = _patched  # type: ignore[method-assign]
+
+# Correct — use a callback registered through the public API
+runtime.on_crash(callback)    # or pass metrics_collector= to Runtime
+```
+
+### 15. Opening a span without a matching close in all code paths
+
+Every span opened in a `try` block must close in a `finally`. An exception between
+`start_span()` and `span.end()` produces a leaked open span.
+
+```python
+# Wrong — exception between start and end leaks the span
+span = self._tracer.start_span("civitas.agent.handle", ...)
+result = await self.handle(message)     # can raise
+span.end()
+
+# Correct
+span = self._tracer.start_span("civitas.agent.handle", ...)
+try:
+    result = await self.handle(message)
+finally:
+    span.end()
+```
+
+### 16. Declaring API surface without wiring it up
+
+A field, method, or configuration key that exists but is never called by any code path
+is dead API. It sets user expectations that aren't met.
+
+```python
+# Message.ttl declared, documented, but bus.route() never checks it
+# MetricsCollector.message_handled() defined but never called
+
+# Rule: if you define an interface, wire it up before merging
+```
+
+### 17. Silently accepting unknown configuration keys
+
+`from_config()` and similar loaders should reject unknown keys immediately with a clear
+error. Silent acceptance causes "my config is being ignored" bugs that are hard to diagnose.
+
+```python
+# Wrong — typo in YAML silently ignored, runtime starts with defaults
+config = yaml.safe_load(text)
+supervision_cfg = config.get("supervison", {})   # typo
+
+# Correct — validate top-level keys at parse time
+KNOWN_KEYS = {"transport", "plugins", "supervision", "topology"}
+unknown = set(config.keys()) - KNOWN_KEYS
+if unknown:
+    raise ConfigurationError(f"Unknown config keys: {unknown!r}")
+```
+
+### 18. Importing civitas-contrib or fabrica at module top in civitas core
 
 civitas core must not have top-level imports from civitas-contrib or fabrica.
 Use lazy imports at call sites with helpful `ConfigurationError` messages.
