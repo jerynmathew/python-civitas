@@ -15,7 +15,7 @@ import logging.handlers
 import os
 import signal
 import time
-from datetime import UTC
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,8 +24,6 @@ from civitas.audit.types import AuditEvent
 
 def _now_iso() -> str:
     """Return current UTC time as ISO 8601 string."""
-    from datetime import datetime
-
     return datetime.now(UTC).isoformat()
 
 

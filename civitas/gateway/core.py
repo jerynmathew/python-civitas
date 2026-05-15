@@ -7,6 +7,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from civitas.errors import ConfigurationError
 from civitas.gateway.router import RouteTable
 from civitas.messages import Message
 from civitas.process import AgentProcess
@@ -111,9 +112,18 @@ class HTTPGateway(AgentProcess):
         if self._gw_config.enable_http3:
             from civitas.gateway.h3 import H3Server
 
-            assert self._gw_config.port_quic is not None
-            assert self._gw_config.tls_cert is not None
-            assert self._gw_config.tls_key is not None
+            if self._gw_config.port_quic is None:
+                raise ConfigurationError(
+                    "HTTPGateway: 'port_quic' is required when enable_http3=True"
+                )
+            if self._gw_config.tls_cert is None:
+                raise ConfigurationError(
+                    "HTTPGateway: 'tls_cert' is required when enable_http3=True"
+                )
+            if self._gw_config.tls_key is None:
+                raise ConfigurationError(
+                    "HTTPGateway: 'tls_key' is required when enable_http3=True"
+                )
             self._h3_server = H3Server(
                 asgi_app=asgi_app,
                 host=self._gw_config.host,

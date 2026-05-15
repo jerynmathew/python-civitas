@@ -6,7 +6,7 @@ import asyncio
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import UTC
+from datetime import UTC, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
@@ -180,9 +180,6 @@ class AgentProcess:
         value = self._credentials.get(provider_name)
         _sink = getattr(self, "_audit_sink", None)
         if value is not None and _sink is not None:
-            import asyncio
-            from datetime import datetime
-
             event = AuditEvent(
                 event="secret.access",
                 ts=datetime.now(UTC).isoformat(),

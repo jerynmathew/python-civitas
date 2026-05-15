@@ -203,6 +203,21 @@ class Runtime:
         """
         config = yaml.safe_load(Path(path).read_text())
         config = substitute_vars(config)
+        _KNOWN_CONFIG_KEYS = {
+            "transport",
+            "plugins",
+            "supervision",
+            "supervisor",
+            "mcp",
+            "security",
+            "audit",
+        }
+        unknown = set(config.keys()) - _KNOWN_CONFIG_KEYS
+        if unknown:
+            raise ConfigurationError(
+                f"Unknown top-level config keys: {sorted(unknown)!r}. "
+                f"Valid keys are: {sorted(_KNOWN_CONFIG_KEYS)!r}"
+            )
         classes = agent_classes or {}
 
         def _resolve_class(type_str: str) -> type[AgentProcess]:

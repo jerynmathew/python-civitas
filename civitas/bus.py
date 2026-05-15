@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from civitas.audit.types import AuditEvent, AuditSink
@@ -103,8 +103,6 @@ class MessageBus:
             span.end()
 
         if self._audit_sink is not None:
-            from datetime import datetime
-
             await self._audit_sink.emit(
                 AuditEvent(
                     event="message.route",
