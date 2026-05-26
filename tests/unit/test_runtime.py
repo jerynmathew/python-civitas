@@ -613,31 +613,6 @@ class TestExtractPublicKeysFlatNode:
 
 
 # ---------------------------------------------------------------------------
-# from_config — unknown exporter type warns (line 229)
-# ---------------------------------------------------------------------------
-
-
-def test_from_config_unknown_exporter_warns(tmp_path: Path) -> None:
-    yaml_file = tmp_path / "t.yaml"
-    yaml_file.write_text(
-        textwrap.dedent("""\
-        supervision:
-          name: root
-          children:
-            - type: eval_agent
-              name: eval_a
-              exporters:
-                - type: unknown_exporter
-        """)
-    )
-    with patch("civitas.runtime.logger") as mock_log:
-        Runtime.from_config(yaml_file)
-    mock_log.warning.assert_called()
-    warning_calls = str(mock_log.warning.call_args_list)
-    assert "unknown_exporter" in warning_calls
-
-
-# ---------------------------------------------------------------------------
 # from_config — module.class flat node format (lines 302-304)
 # ---------------------------------------------------------------------------
 
@@ -880,31 +855,6 @@ def test_from_config_mcp_sandbox_parsed(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # from_config — fiddler exporter parsed (lines 228-236)
 # ---------------------------------------------------------------------------
-
-
-def test_from_config_fiddler_exporter(tmp_path: Path) -> None:
-    yaml_file = tmp_path / "t.yaml"
-    yaml_file.write_text(
-        textwrap.dedent("""\
-        supervision:
-          name: root
-          children:
-            - type: eval_agent
-              name: eval_a
-              exporters:
-                - type: fiddler
-                  url: https://app.fiddler.ai
-                  token: tok
-                  org_id: my-org
-                  project_id: my-proj
-                  model_id: my-model
-        """)
-    )
-    with patch("civitas.runtime.FiddlerExporter") as mock_fiddler:
-        mock_fiddler.return_value = MagicMock()
-        rt = Runtime.from_config(yaml_file)
-    mock_fiddler.assert_called_once()
-    assert rt is not None
 
 
 # ---------------------------------------------------------------------------

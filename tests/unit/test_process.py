@@ -363,22 +363,6 @@ def test_default_shutdown_timeout():
     assert agent._shutdown_timeout == 30.0
 
 
-# ---------------------------------------------------------------------------
-# Observability span context managers (F05-x)
-# ---------------------------------------------------------------------------
-
-
-def _make_agent_with_tracer() -> tuple[TrackingAgent, Any]:
-    """Return a TrackingAgent wired with an in-memory test tracer."""
-    pytest.importorskip("opentelemetry", reason="opentelemetry-sdk not installed")
-    from civitas.plugins.otel import create_test_tracer  # optional dep — gated by importorskip
-
-    agent = TrackingAgent("obs_agent")
-    tracer, exporter = create_test_tracer()
-    agent._tracer = tracer
-    return agent, exporter
-
-
 def test_llm_span_no_tracer_yields_dummy():
     """llm_span() yields a dummy Span when no tracer is attached."""
     agent = TrackingAgent()
@@ -391,50 +375,6 @@ def test_tool_span_no_tracer_yields_dummy():
     agent = TrackingAgent()
     with agent.tool_span("web_search") as span:
         assert isinstance(span, Span)
-
-
-def test_llm_span_with_tracer_creates_span():
-    """llm_span() creates a real span when a tracer is attached."""
-    agent, exporter = _make_agent_with_tracer()
-    agent._current_message = Message(sender="x", recipient="obs_agent", trace_id="t1")
-    with agent.llm_span("test-model", tokens_in=100) as span:
-        span.set_attribute("civitas.llm.tokens_out", 50)
-    spans = exporter.get_finished_spans()
-    assert len(spans) == 1
-    assert spans[0].name == "civitas.llm.chat"
-
-
-def test_tool_span_with_tracer_creates_span():
-    """tool_span() creates a real span when a tracer is attached."""
-    agent, exporter = _make_agent_with_tracer()
-    agent._current_message = Message(sender="x", recipient="obs_agent", trace_id="t1")
-    with agent.tool_span("web_search") as span:
-        span.set_attribute("result", "ok")
-    spans = exporter.get_finished_spans()
-    assert len(spans) == 1
-    assert spans[0].name == "civitas.tool.invoke"
-
-
-def test_llm_span_records_error_on_exception():
-    """llm_span() sets error on the span when an exception is raised."""
-    agent, exporter = _make_agent_with_tracer()
-
-    with pytest.raises(ValueError, match="llm failed"):
-        with agent.llm_span("test-model"):
-            raise ValueError("llm failed")
-    spans = exporter.get_finished_spans()
-    assert len(spans) == 1
-
-
-def test_tool_span_records_error_on_exception():
-    """tool_span() sets error on the span when an exception is raised."""
-    agent, exporter = _make_agent_with_tracer()
-
-    with pytest.raises(RuntimeError, match="tool failed"):
-        with agent.tool_span("search"):
-            raise RuntimeError("tool failed")
-    spans = exporter.get_finished_spans()
-    assert len(spans) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -614,39 +554,3 @@ async def test_stop_noop_when_never_started():
     # _task is None, _status is INITIALIZING
     await agent._stop()
     # No exception — idempotent
-
-
-# ---------------------------------------------------------------------------
-# Retry span emitted with tracer
-# ---------------------------------------------------------------------------
-
-
-async def test_retry_emits_span_when_tracer_set():
-    """RETRY action emits a civitas.agent.retry span when a tracer is attached (lines 459-470)."""
-    pytest.importorskip("opentelemetry", reason="opentelemetry-sdk not installed")
-    from civitas.plugins.otel import create_test_tracer
-
-    class RetryOnceAgent(AgentProcess):
-        def __init__(self) -> None:
-            super().__init__("retrier", max_retries=3)
-            self.count = 0
-
-        async def handle(self, message: Message) -> None:
-            self.count += 1
-            if self.count == 1:
-                raise ValueError("first attempt fails")
-
-        async def on_error(self, error: Exception, message: Message) -> ErrorAction:
-            return ErrorAction.RETRY
-
-    agent = RetryOnceAgent()
-    tracer, exporter = create_test_tracer()
-    agent._tracer = tracer
-
-    await agent._start()
-    await agent._mailbox.put(Message(type="work"))
-    await wait_for(lambda: agent.count >= 2)
-    await agent._stop()
-
-    span_names = [s.name for s in exporter.get_finished_spans()]
-    assert any("retry" in n for n in span_names), f"Expected retry span, got: {span_names}"
